@@ -1,0 +1,47 @@
+.risk-filter {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px 20px;
+  min-width: 120px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 2px solid transparent;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.stat-card.active.block {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.stat-card.active.warn {
+  border-color: #d97706;
+  background: #fffbeb;
+}
+
+.stat-card.active.ok {
+  border-color: #16a34a;
+  background: #f0fdf4;
+}
+
+.stat-card .label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.stat-card .value {
+  font-size: 24px;
+  font-weight: 700;
+  margin-top: 4px;
+}

@@ -1,0 +1,12 @@
+.risk-board-layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.risk-board {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
