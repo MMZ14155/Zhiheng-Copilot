@@ -4,3 +4,7 @@ client/dist/
 client/package-lock.json
 docs/
 README.md
+docker-build.log
+__pycache__/
+*.pyc
+.env

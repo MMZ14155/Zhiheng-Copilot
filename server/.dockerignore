@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
+.env
+.git/
+.gitignore
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-build.log
+README.md
+alembic/versions/__pycache__/
