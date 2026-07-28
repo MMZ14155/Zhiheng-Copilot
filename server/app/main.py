@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.files import router as files_router
 from app.core.config import get_settings
 from app.db.session import get_session
 
@@ -22,6 +23,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(files_router, prefix="/api/v1")
 
 
 @app.get("/api/v1/health")
