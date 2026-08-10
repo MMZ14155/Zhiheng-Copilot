@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, func
+from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -19,6 +19,12 @@ class TrackedFile(Base):
         ),
         Index("ix_tracked_file_project", "project_id"),
         Index("ix_tracked_file_current_version", "current_version"),
+        Index(
+            "uq_tracked_file_source",
+            "source_file_id",
+            unique=True,
+            postgresql_where=text("source_file_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
