@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.files import router as files_router
 from app.api.deliverables import router as deliverables_router
 from app.api.projects import router as projects_router
+from app.api.ai import router as ai_router
 from app.core.config import get_settings
 from app.db.session import get_session
 
@@ -32,6 +33,7 @@ app.add_middleware(
 app.include_router(files_router, prefix="/api/v1")
 app.include_router(deliverables_router, prefix="/api/v1")
 app.include_router(projects_router, prefix="/api/v1")
+app.include_router(ai_router, prefix="/api/v1")
 
 
 @app.exception_handler(StarletteHTTPException)
