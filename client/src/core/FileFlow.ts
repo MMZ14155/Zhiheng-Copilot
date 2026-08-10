@@ -13,6 +13,7 @@ import type {
  * @param buffer 二进制数据
  * @returns 十六进制字符串
  */
+/** @deprecated 版本哈希已由服务端生成，仅为兼容现有 mock 流程保留。 */
 function bufferToHex(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   return Array.from(bytes)
@@ -25,6 +26,7 @@ function bufferToHex(buffer: ArrayBuffer): string {
  * @param input 输入字符串
  * @returns 64 位十六进制哈希字符串
  */
+/** @deprecated 版本哈希已由服务端生成，仅为兼容现有 mock 流程保留。 */
 async function sha256(input: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(input);
@@ -82,6 +84,7 @@ async function hashSingleFile(
  * @param changelog 变更日志
  * @returns 64 位版本哈希字符串
  */
+/** @deprecated 请上传文件并使用服务端响应中的 version。 */
 export async function generateVersionHash(
   files: { name: string; content: ArrayBuffer | Uint8Array }[],
   uploadedBy: string,
@@ -149,6 +152,7 @@ export function promoteToDeliverable(
  * @param changelog 变更日志
  * @returns 锁定后的文件版本
  */
+/** @deprecated 请上传文件并使用服务端响应中的 version。 */
 export async function createFrozenVersion(
   files: { fileRef: WorkspaceFile; content: ArrayBuffer | Uint8Array }[],
   uploadedBy: string,

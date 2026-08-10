@@ -3,6 +3,21 @@
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 16px;
 }
+.project-list-heading { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+.project-list-heading h2 { margin:0 0 4px; }
+.project-list-heading span,.project-code { color:#64748b; font-size:13px; }
+.project-list-heading button,.project-list-state button { border:1px solid #cbd5e1; border-radius:6px; background:#fff; padding:8px 14px; cursor:pointer; }
+.project-list-heading button:disabled { cursor:wait; opacity:.6; }
+.project-list-state { padding:48px 24px; text-align:center; color:#64748b; background:#fff; border-radius:10px; }
+.project-list-state.error { color:#b91c1c; }
+.project-card-real { border-left:4px solid #2563eb; }
+.project-status.active { background:#dcfce7; color:#166534; }
+.project-status.completed { background:#dbeafe; color:#1e40af; }
+.project-status.archived { background:#e2e8f0; color:#475569; }
+.project-progress { margin-top:14px; }
+.project-progress-label { display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; }
+.project-progress-track { height:7px; overflow:hidden; border-radius:999px; background:#e2e8f0; }
+.project-progress-track span { display:block; height:100%; border-radius:inherit; background:#2563eb; }
 
 .project-card {
   display: block;
