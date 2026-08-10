@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ApiError, projectsApi } from '../api';
 import type { ProjectList } from '../api';
 import ChatArea from '../components/ChatArea';
+import CreateProjectModal from '../components/CreateProjectModal';
 import ProjectCardGrid from '../components/ProjectCardGrid';
 
 // ==================== 风险评级逻辑（暂时注释禁用，待服务端风险接口接入后恢复） ====================
@@ -94,6 +95,7 @@ export default function RiskBoard() {
   const [data, setData] = useState<ProjectList | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -108,10 +110,11 @@ export default function RiskBoard() {
   }, []);
   useEffect(() => { void load(); }, [load]);
   return <div className="risk-board-layout"><ChatArea /><div className="risk-board">
-    <div className="project-list-heading"><div><h2>项目列表</h2>{!loading && !error && <span>共 {data?.total ?? 0} 个项目</span>}</div><button type="button" onClick={() => void load()} disabled={loading}>{loading ? '加载中…' : '刷新'}</button></div>
+    <div className="project-list-heading"><div><h2>项目列表</h2>{!loading && !error && <span>共 {data?.total ?? 0} 个项目</span>}</div><div className="project-list-actions"><button type="button" onClick={() => void load()} disabled={loading}>{loading ? '加载中…' : '刷新'}</button><button type="button" className="create-project-button" onClick={() => setShowCreateModal(true)}>新建项目</button></div></div>
     {loading && <div className="project-list-state" role="status">正在加载项目…</div>}
     {!loading && error && <div className="project-list-state error" role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>重新加载</button></div>}
     {!loading && !error && data?.items.length === 0 && <div className="project-list-state">暂无项目，请先通过项目接口创建项目。</div>}
     {!loading && !error && data && data.items.length > 0 && <ProjectCardGrid projects={data.items} />}
+    {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} onCreated={load} />}
   </div></div>;
 }

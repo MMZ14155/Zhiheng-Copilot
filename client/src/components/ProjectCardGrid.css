@@ -7,6 +7,8 @@
 .project-list-heading h2 { margin:0 0 4px; }
 .project-list-heading span,.project-code { color:#64748b; font-size:13px; }
 .project-list-heading button,.project-list-state button { border:1px solid #cbd5e1; border-radius:6px; background:#fff; padding:8px 14px; cursor:pointer; }
+.project-list-actions { display:flex; gap:10px; }
+.project-list-heading .create-project-button { border-color:#2563eb; background:#2563eb; color:#fff; }
 .project-list-heading button:disabled { cursor:wait; opacity:.6; }
 .project-list-state { padding:48px 24px; text-align:center; color:#64748b; background:#fff; border-radius:10px; }
 .project-list-state.error { color:#b91c1c; }
