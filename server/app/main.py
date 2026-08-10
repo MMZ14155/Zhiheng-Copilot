@@ -1,11 +1,15 @@
 import logging
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.files import router as files_router
+from app.api.projects import router as projects_router
 from app.core.config import get_settings
 from app.db.session import get_session
 
@@ -25,6 +29,26 @@ app.add_middleware(
 )
 
 app.include_router(files_router, prefix="/api/v1")
+app.include_router(projects_router, prefix="/api/v1")
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+    if isinstance(exc.detail, dict) and {"detail", "code"} <= exc.detail.keys():
+        content = exc.detail
+    else:
+        content = {"detail": str(exc.detail), "code": "HTTP_ERROR"}
+    logger.warning("http error path=%s status=%s code=%s", request.url.path, exc.status_code, content["code"])
+    return JSONResponse(status_code=exc.status_code, content=content)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    logger.warning("request validation failed path=%s errors=%s", request.url.path, exc.errors())
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "请求参数校验失败", "code": "VALIDATION_ERROR"},
+    )
 
 
 @app.get("/api/v1/health")

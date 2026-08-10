@@ -1,0 +1,151 @@
+from datetime import date, datetime
+from decimal import Decimal
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+
+ProjectStatus = Literal["active", "archived", "completed"]
+ProjectLinkType = Literal["renewal", "related"]
+
+
+class ProjectParty(BaseModel):
+    role: str = Field(..., min_length=1, max_length=80)
+    name: str = Field(..., min_length=1, max_length=200)
+    contact: str | None = Field(default=None, max_length=200)
+
+
+class ProjectBase(BaseModel):
+    name: str = Field(..., min_length=1, max_length=200)
+    code: str = Field(..., min_length=1, max_length=80)
+    customer_name: str = Field(..., min_length=1, max_length=200)
+    parties: list[ProjectParty] = Field(default_factory=list)
+    contract_amount: Decimal | None = Field(default=None, gt=0)
+    signed_date: date | None = None
+    started_date: date | None = None
+    planned_delivery_date: date | None = None
+    status: ProjectStatus = "active"
+    progress: int = Field(default=0, ge=0, le=100)
+    notes: str | None = Field(default=None, max_length=10000)
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "ProjectBase":
+        if self.signed_date and self.started_date and self.started_date < self.signed_date:
+            raise ValueError("started_date must be greater than or equal to signed_date")
+        if (
+            self.started_date
+            and self.planned_delivery_date
+            and self.planned_delivery_date < self.started_date
+        ):
+            raise ValueError("planned_delivery_date must be greater than or equal to started_date")
+        return self
+
+
+class ProjectCreate(ProjectBase):
+    pass
+
+
+class ProjectUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    code: str | None = Field(default=None, min_length=1, max_length=80)
+    customer_name: str | None = Field(default=None, min_length=1, max_length=200)
+    parties: list[ProjectParty] | None = None
+    contract_amount: Decimal | None = Field(default=None, gt=0)
+    signed_date: date | None = None
+    started_date: date | None = None
+    planned_delivery_date: date | None = None
+    status: ProjectStatus | None = None
+    progress: int | None = Field(default=None, ge=0, le=100)
+    notes: str | None = Field(default=None, max_length=10000)
+
+    @field_validator("parties")
+    @classmethod
+    def validate_parties(cls, value: list[ProjectParty] | None) -> list[ProjectParty] | None:
+        if value is not None and len(value) == 0:
+            return []
+        return value
+
+
+class ProjectLinkCreate(BaseModel):
+    target_project_id: int = Field(..., gt=0)
+    link_type: ProjectLinkType
+    note: str | None = Field(default=None, max_length=2000)
+
+
+class DeliverableSummary(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class LatestSummary(BaseModel):
+    id: int
+    version_no: int
+    content: str | None
+    created_by: str | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RelatedProjectSummary(BaseModel):
+    id: int
+    name: str
+    code: str
+    customer_name: str
+    status: ProjectStatus
+    signed_date: date | None
+    link_id: int
+    link_type: ProjectLinkType
+
+
+class ProjectResponse(BaseModel):
+    id: int
+    name: str
+    code: str
+    customer_name: str
+    parties: list[ProjectParty]
+    contract_amount: Decimal | None
+    signed_date: date | None
+    started_date: date | None
+    planned_delivery_date: date | None
+    status: ProjectStatus
+    progress: int
+    notes: str | None
+    created_at: datetime
+    updated_at: datetime
+    links: list[RelatedProjectSummary] | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProjectDetailResponse(ProjectResponse):
+    deliverables: list[DeliverableSummary] = Field(default_factory=list)
+    latest_summary: LatestSummary | None = None
+
+
+class ProjectListResponse(BaseModel):
+    page: int
+    size: int
+    total: int
+    items: list[ProjectResponse]
+
+
+class ProjectLinkResponse(BaseModel):
+    id: int
+    source_project_id: int
+    target_project_id: int
+    link_type: ProjectLinkType
+    note: str | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RenewalChainResponse(BaseModel):
+    project_id: int
+    depth_limit: int
+    items: list[ProjectResponse]
