@@ -15,6 +15,8 @@ from app.models.task import Task
 from app.schemas.ai import (
     ContractInfoResponse,
     LlmUsageResponse,
+    SummaryAnswersRequest,
+    SummaryAnswersTaskResponse,
     SummaryHistoryResponse,
     SummaryResponse,
     TaskCreatedResponse,
@@ -46,6 +48,60 @@ async def create_summary_task(
     background_tasks.add_task(AiTaskExecutor.run, task.id)
     logger.info("created summary task task_id=%s project_id=%s", task.id, project_id)
     return TaskCreatedResponse(task_id=task.id)
+
+
+@router.post(
+    "/projects/{project_id}/summary/answers",
+    response_model=SummaryAnswersTaskResponse,
+    status_code=202,
+)
+async def create_summary_regeneration_task(
+    project_id: int,
+    body: SummaryAnswersRequest,
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_session),
+):
+    if await session.get(Project, project_id) is None:
+        raise not_found(f"项目 {project_id} 不存在", code="PROJECT_NOT_FOUND")
+    latest = await session.scalar(
+        select(Summary)
+        .where(Summary.project_id == project_id)
+        .order_by(Summary.version_no.desc())
+        .limit(1)
+    )
+    if latest is None:
+        raise conflict("项目尚无总结，无法回填回答", code="SUMMARY_NOT_FOUND")
+
+    pending = set(latest.pending_questions)
+    accepted = [item.model_dump() for item in body.answers if item.question in pending]
+    ignored = [item.question for item in body.answers if item.question not in pending]
+    task = Task(
+        project_id=project_id,
+        task_type="summary_regeneration",
+        status="pending",
+        payload={
+            "project_id": project_id,
+            "base_summary_id": latest.id,
+            "answers": accepted,
+            "ignored_questions": ignored,
+        },
+    )
+    session.add(task)
+    await session.commit()
+    await session.refresh(task)
+    background_tasks.add_task(AiTaskExecutor.run, task.id)
+    logger.info(
+        "created summary regeneration task task_id=%s project_id=%s accepted=%s ignored=%s",
+        task.id,
+        project_id,
+        len(accepted),
+        ignored,
+    )
+    return SummaryAnswersTaskResponse(
+        task_id=task.id,
+        accepted_questions=[item["question"] for item in accepted],
+        ignored_questions=ignored,
+    )
 
 
 @router.get("/projects/{project_id}/summary", response_model=SummaryResponse)

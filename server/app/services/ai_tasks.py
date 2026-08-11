@@ -30,6 +30,8 @@ class AiTaskExecutor:
             try:
                 if task.task_type == "summary_generation":
                     await AiTaskExecutor._summary(session, task)
+                elif task.task_type == "summary_regeneration":
+                    await AiTaskExecutor._summary(session, task, regenerate=True)
                 elif task.task_type == "contract_recognition":
                     await AiTaskExecutor._extract(session, task)
                 else:
@@ -54,12 +56,18 @@ class AiTaskExecutor:
                 logger.exception("AI task failed task_id=%s", task_id)
 
     @staticmethod
-    async def _summary(session, task: Task) -> None:
+    async def _summary(session, task: Task, regenerate: bool = False) -> None:
         project = await session.scalar(
             select(Project).where(Project.id == task.project_id).with_for_update()
         )
         if not project:
             raise ValueError("项目不存在")
+        previous = None
+        answers = task.payload.get("answers", []) if regenerate else []
+        if regenerate:
+            previous = await session.get(Summary, task.payload.get("base_summary_id"))
+            if previous is None or previous.project_id != project.id:
+                raise ValueError("回填所基于的总结不存在")
         tracked = list(
             (
                 await session.execute(
@@ -115,6 +123,19 @@ class AiTaskExecutor:
                     }
                     for x in tracked
                 ],
+                "previous_summary": (
+                    {
+                        "version_no": previous.version_no,
+                        "core_info": previous.core_info,
+                        "contract_invoice_progress": previous.contract_invoice_progress,
+                        "missing_materials": previous.missing_materials,
+                        "pending_questions": previous.pending_questions,
+                        "content": previous.content,
+                    }
+                    if previous
+                    else None
+                ),
+                "question_answers": answers,
                 "requirements": ["核心信息", "合同发票回款进度", "缺失材料", "询问材料与项目进度"],
             },
             ensure_ascii=False,

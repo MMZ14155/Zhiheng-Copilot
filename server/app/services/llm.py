@@ -45,16 +45,43 @@ class MockLlmProvider:
                 "missing_fields": [],
             }
         elif output_schema is SummaryGenerationOutput:
+            try:
+                prompt_data = json.loads(prompt)
+            except json.JSONDecodeError:
+                prompt_data = {}
+            answers = prompt_data.get("question_answers") or []
+            previous = prompt_data.get("previous_summary") or {}
+            pending = (
+                previous["pending_questions"]
+                if "pending_questions" in previous
+                else ["是否仍有缺失材料？", "项目当前进度如何？"]
+            )
+            answered_questions = {item["question"] for item in answers}
+            previous_answers = previous.get("core_info", {}).get("answered_questions", [])
+            answer_history = [
+                *previous_answers,
+                *[
+                    {"question": item["question"], "answer": item["answer"]}
+                    for item in answers
+                ],
+            ]
+            answer_points = "；".join(
+                f"{item['question']} {item['answer']}" for item in answers
+            )
             data = {
-                "core_info": {"summary": "项目资料已完成 mock 汇总"},
+                "core_info": {
+                    "summary": "项目资料已完成 mock 汇总",
+                    "answered_questions": answer_history,
+                },
                 "contract_invoice_progress": {
                     "contract": "已收集合同资料",
                     "invoice": "待确认开票情况",
                     "payment": "待确认回款情况",
                 },
                 "missing_materials": [],
-                "pending_questions": ["是否仍有缺失材料？", "项目当前进度如何？"],
-                "content": "核心信息已汇总；合同资料已收集，开票与回款进度待确认。",
+                "pending_questions": [q for q in pending if q not in answered_questions],
+                "content": "核心信息已汇总；合同资料已收集，开票与回款进度待确认。"
+                + (f" 已回填信息：{answer_points}。" if answer_points else ""),
             }
         else:
             raise ValueError(f"不支持输出类型 {output_schema.__name__}")

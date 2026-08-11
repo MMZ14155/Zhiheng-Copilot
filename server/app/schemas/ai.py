@@ -2,12 +2,40 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class TaskCreatedResponse(BaseModel):
     task_id: int
     status: Literal["pending"] = "pending"
+
+
+class SummaryAnswer(BaseModel):
+    question: str = Field(min_length=1, max_length=1000)
+    answer: str = Field(min_length=1, max_length=10000)
+
+    @field_validator("question", "answer")
+    @classmethod
+    def strip_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("内容不能为空")
+        return value.strip()
+
+
+class SummaryAnswersRequest(BaseModel):
+    answers: list[SummaryAnswer] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def questions_must_be_unique(self):
+        questions = [item.question for item in self.answers]
+        if len(questions) != len(set(questions)):
+            raise ValueError("question 不能重复")
+        return self
+
+
+class SummaryAnswersTaskResponse(TaskCreatedResponse):
+    accepted_questions: list[str] = Field(default_factory=list)
+    ignored_questions: list[str] = Field(default_factory=list)
 
 
 class LlmUsageResponse(BaseModel):
