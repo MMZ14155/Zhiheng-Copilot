@@ -27,13 +27,16 @@
 }
 
 .detail-section {
-  margin-bottom: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.detail-section h4 {
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 6px;
+.detail-section:last-child { border-bottom: 0; }
+
+.detail-section h3 {
+  font-size: 16px;
+  color: #111827;
+  margin: 0 0 16px;
 }
 
 .detail-section p,
@@ -53,4 +56,31 @@
   padding: 12px;
   background: #fef2f2;
   border-radius: 8px;
+}
+
+.detail-state { text-align: center; padding: 72px 24px; color: #6b7280; }
+.detail-state.error { color: #991b1b; }
+.detail-state button { border: 0; border-radius: 8px; padding: 9px 16px; color: #fff; background: #2563eb; cursor: pointer; }
+.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 32px; }
+.detail-info { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; }
+.detail-info span { color: #6b7280; font-size: 12px; }
+.detail-info strong { color: #1f2937; font-size: 14px; font-weight: 500; white-space: pre-wrap; }
+.detail-progress { margin: 22px 0; }
+.detail-progress > div:first-child { display: flex; justify-content: space-between; font-size: 13px; }
+.detail-progress-track { height: 8px; margin-top: 8px; overflow: hidden; border-radius: 999px; background: #e5e7eb; }
+.detail-progress-track span { display: block; height: 100%; border-radius: inherit; background: #2563eb; }
+.detail-list { display: grid; gap: 10px; }
+.detail-list article, .summary-card { display: flex; align-items: center; gap: 16px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb; }
+.detail-list article strong { min-width: 100px; font-size: 13px; }
+.detail-list article span { flex: 1; font-size: 13px; }
+.detail-list article small { margin-left: auto; color: #6b7280; }
+.detail-empty { color: #9ca3af; }
+.summary-card { display: block; }
+.summary-card p { margin: 10px 0 0; white-space: pre-wrap; }
+
+@media (max-width: 640px) {
+  .detail-header { align-items: flex-start; gap: 16px; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .detail-list article { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .detail-list article small { margin-left: 0; }
 }

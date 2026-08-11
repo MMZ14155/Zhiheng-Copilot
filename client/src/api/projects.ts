@@ -1,5 +1,5 @@
 import { jsonRequest, queryString } from './client';
-import { mapProjectList } from './mappers';
+import { mapProjectDetail, mapProjectList } from './mappers';
 import type { ProjectDetailResponseDto, ProjectLinkCreateDto, ProjectLinkResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectUpdateDto, ProjectWriteDto, RenewalChainResponseDto } from './dto';
 
 export interface ProjectListParams { page?: number; size?: number; company?: string; status?: string; clientName?: string; expand?: 'links' }
@@ -9,7 +9,7 @@ export async function listProjects(params: ProjectListParams = {}) {
   return mapProjectList(await jsonRequest<ProjectListResponseDto>(`/projects${query}`));
 }
 export const createProject = (body: ProjectWriteDto) => jsonRequest<ProjectResponseDto>('/projects', { method: 'POST', body });
-export const getProject = (id: number) => jsonRequest<ProjectDetailResponseDto>(`/projects/${id}`);
+export const getProject = async (id: number) => mapProjectDetail(await jsonRequest<ProjectDetailResponseDto>(`/projects/${id}`));
 export const updateProject = (id: number, body: ProjectUpdateDto) => jsonRequest<ProjectResponseDto>(`/projects/${id}`, { method: 'PATCH', body });
 export const createProjectLink = (id: number, body: ProjectLinkCreateDto) => jsonRequest<ProjectLinkResponseDto>(`/projects/${id}/links`, { method: 'POST', body });
 export const deleteProjectLink = (id: number) => jsonRequest<void>(`/links/${id}`, { method: 'DELETE' });
