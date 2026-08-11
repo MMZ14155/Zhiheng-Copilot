@@ -12,7 +12,10 @@ from app.db.session import get_session
 from app.models.project import Project
 from app.models.project_link import ProjectLink
 from app.models.summary import Summary
+from app.models.summary_input import SummaryInput
+from app.models.tracked_file import TrackedFile
 from app.models.workspace_file import WorkspaceFile
+from app.schemas.ai import SummaryInputResponse
 from app.schemas.projects import (
     DeliverableSummary,
     LatestSummary,
@@ -207,19 +210,43 @@ async def get_project(
         .where(WorkspaceFile.project_id == project_id, WorkspaceFile.is_deliverable.is_(True))
         .order_by(WorkspaceFile.updated_at.desc(), WorkspaceFile.id.desc())
     )
-    summary = await session.scalar(
-        select(Summary)
+    latest_summary_id = (
+        select(Summary.id)
         .where(Summary.project_id == project_id)
         .order_by(Summary.created_at.desc(), Summary.id.desc())
         .limit(1)
+        .scalar_subquery()
     )
+    summary_rows = (
+        await session.execute(
+            select(Summary, SummaryInput, TrackedFile.name)
+            .outerjoin(SummaryInput, SummaryInput.summary_id == Summary.id)
+            .outerjoin(TrackedFile, TrackedFile.id == SummaryInput.tracked_file_id)
+            .where(Summary.id == latest_summary_id)
+            .order_by(SummaryInput.id)
+        )
+    ).all()
+    summary = summary_rows[0][0] if summary_rows else None
+    summary_inputs = [
+        SummaryInputResponse(
+            tracked_file_id=summary_input.tracked_file_id,
+            tracked_file_name=tracked_file_name,
+            file_version=summary_input.file_version,
+        )
+        for _, summary_input, tracked_file_name in summary_rows
+        if summary_input is not None
+    ]
 
     response = ProjectDetailResponse.model_validate(project)
     response.deliverables = [
         DeliverableSummary.model_validate(deliverable)
         for deliverable in deliverables_result.scalars().all()
     ]
-    response.latest_summary = LatestSummary.model_validate(summary) if summary else None
+    response.latest_summary = (
+        LatestSummary.model_validate(summary).model_copy(update={"inputs": summary_inputs})
+        if summary
+        else None
+    )
     logger.info("fetched project detail id=%s", project_id)
     return response
 

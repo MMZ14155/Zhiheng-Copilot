@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.schemas.ai import SummaryInputResponse
+
 
 ProjectStatus = Literal["active", "archived", "completed"]
 ProjectLinkType = Literal["renewal", "related"]
@@ -87,6 +89,7 @@ class LatestSummary(BaseModel):
     content: str | None
     created_by: str | None
     created_at: datetime
+    inputs: list[SummaryInputResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

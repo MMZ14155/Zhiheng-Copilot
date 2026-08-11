@@ -59,6 +59,12 @@ class TaskResponse(BaseModel):
     llm_usage: LlmUsageResponse
 
 
+class SummaryInputResponse(BaseModel):
+    tracked_file_id: int | None
+    tracked_file_name: str | None
+    file_version: str = Field(min_length=64, max_length=64)
+
+
 class SummaryResponse(BaseModel):
     id: int
     project_id: int
@@ -70,6 +76,7 @@ class SummaryResponse(BaseModel):
     content: str | None
     created_by: str | None
     created_at: datetime
+    inputs: list[SummaryInputResponse] = Field(default_factory=list)
     model_config = ConfigDict(from_attributes=True)
 
 

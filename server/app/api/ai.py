@@ -11,13 +11,16 @@ from app.models.file_version import FileVersion
 from app.models.llm_call import LlmCall
 from app.models.project import Project
 from app.models.summary import Summary
+from app.models.summary_input import SummaryInput
 from app.models.task import Task
+from app.models.tracked_file import TrackedFile
 from app.schemas.ai import (
     ContractInfoResponse,
     LlmUsageResponse,
     SummaryAnswersRequest,
     SummaryAnswersTaskResponse,
     SummaryHistoryResponse,
+    SummaryInputResponse,
     SummaryResponse,
     TaskCreatedResponse,
     TaskResponse,
@@ -26,6 +29,26 @@ from app.services.ai_tasks import AiTaskExecutor
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["ai"])
+
+
+def _serialize_summaries(
+    rows: list[tuple[Summary, SummaryInput | None, str | None]],
+) -> list[SummaryResponse]:
+    summaries: dict[int, SummaryResponse] = {}
+    for summary, summary_input, tracked_file_name in rows:
+        response = summaries.get(summary.id)
+        if response is None:
+            response = SummaryResponse.model_validate(summary)
+            summaries[summary.id] = response
+        if summary_input is not None:
+            response.inputs.append(
+                SummaryInputResponse(
+                    tracked_file_id=summary_input.tracked_file_id,
+                    tracked_file_name=tracked_file_name,
+                    file_version=summary_input.file_version,
+                )
+            )
+    return list(summaries.values())
 
 
 @router.post("/projects/{project_id}/summary", response_model=TaskCreatedResponse, status_code=202)
@@ -108,29 +131,41 @@ async def create_summary_regeneration_task(
 async def latest_summary(project_id: int, session: AsyncSession = Depends(get_session)):
     if await session.get(Project, project_id) is None:
         raise not_found("项目不存在", code="PROJECT_NOT_FOUND")
-    item = await session.scalar(
-        select(Summary)
+    latest_id = (
+        select(Summary.id)
         .where(Summary.project_id == project_id)
         .order_by(Summary.version_no.desc())
         .limit(1)
+        .scalar_subquery()
     )
-    if not item:
+    rows = (
+        await session.execute(
+            select(Summary, SummaryInput, TrackedFile.name)
+            .outerjoin(SummaryInput, SummaryInput.summary_id == Summary.id)
+            .outerjoin(TrackedFile, TrackedFile.id == SummaryInput.tracked_file_id)
+            .where(Summary.id == latest_id)
+            .order_by(SummaryInput.id)
+        )
+    ).all()
+    if not rows:
         raise not_found("项目尚无总结", code="SUMMARY_NOT_FOUND")
-    return SummaryResponse.model_validate(item)
+    return _serialize_summaries(rows)[0]
 
 
 @router.get("/projects/{project_id}/summary/history", response_model=SummaryHistoryResponse)
 async def summary_history(project_id: int, session: AsyncSession = Depends(get_session)):
     if await session.get(Project, project_id) is None:
         raise not_found("项目不存在", code="PROJECT_NOT_FOUND")
-    rows = (
+    rows = list(
         await session.execute(
-            select(Summary)
+            select(Summary, SummaryInput, TrackedFile.name)
+            .outerjoin(SummaryInput, SummaryInput.summary_id == Summary.id)
+            .outerjoin(TrackedFile, TrackedFile.id == SummaryInput.tracked_file_id)
             .where(Summary.project_id == project_id)
-            .order_by(Summary.version_no.desc())
+            .order_by(Summary.version_no.desc(), SummaryInput.id)
         )
-    ).scalars()
-    return SummaryHistoryResponse(items=[SummaryResponse.model_validate(x) for x in rows])
+    )
+    return SummaryHistoryResponse(items=_serialize_summaries(rows))
 
 
 @router.post("/versions/{version}/extract", response_model=TaskCreatedResponse, status_code=202)
