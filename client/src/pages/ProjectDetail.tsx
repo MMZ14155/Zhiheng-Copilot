@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ApiError, projectsApi } from '../api';
+import { aiApi, ApiError, projectsApi } from '../api';
 import type { ProjectDetail as ProjectDetailModel } from '../api';
+import { useTaskPolling } from '../hooks/useTaskPolling';
 
 const statusLabels: Record<ProjectDetailModel['status'], string> = {
   active: '进行中',
@@ -16,6 +17,25 @@ export default function ProjectDetail() {
   const [loading, setLoading] = useState(projectId !== null);
   const [notFound, setNotFound] = useState(projectId === null);
   const [error, setError] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<string[]>([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [questionsError, setQuestionsError] = useState<string | null>(null);
+
+  const loadQuestions = useCallback(async () => {
+    if (projectId === null) return;
+    setQuestionsLoading(true);
+    setQuestionsError(null);
+    try {
+      const summary = await aiApi.getLatestSummary(projectId);
+      setQuestions(summary.pending_questions);
+    } catch (reason) {
+      console.error('待确认问题加载失败', reason);
+      setQuestions([]);
+      setQuestionsError(reason instanceof ApiError ? reason.message : '待确认问题加载失败，请稍后重试');
+    } finally {
+      setQuestionsLoading(false);
+    }
+  }, [projectId]);
 
   const loadProject = useCallback(async () => {
     if (projectId === null) return;
@@ -23,7 +43,13 @@ export default function ProjectDetail() {
     setNotFound(false);
     setError(null);
     try {
-      setProject(await projectsApi.getProject(projectId));
+      const detail = await projectsApi.getProject(projectId);
+      setProject(detail);
+      if (detail.latestSummary !== null) void loadQuestions();
+      else {
+        setQuestions([]);
+        setQuestionsError(null);
+      }
     } catch (reason) {
       console.error('项目详情加载失败', reason);
       setProject(null);
@@ -32,7 +58,7 @@ export default function ProjectDetail() {
     } finally {
       setLoading(false);
     }
-  }, [projectId]);
+  }, [loadQuestions, projectId]);
 
   useEffect(() => { void loadProject(); }, [loadProject]);
 
@@ -65,10 +91,54 @@ export default function ProjectDetail() {
         </section>
         {project.parties.length > 0 && <section className="detail-section"><h3>签约方</h3><div className="detail-list">{project.parties.map((party, index) => <article key={`${party.role}-${party.name}-${index}`}><strong>{party.role}</strong><span>{party.name}</span><small>{party.contact ?? '未填写联系方式'}</small></article>)}</div></section>}
         <section className="detail-section"><h3>交付物清单</h3>{project.deliverables.length === 0 ? <p className="detail-empty">暂无交付物</p> : <div className="detail-list">{project.deliverables.map((item) => <article key={item.id}><strong>{item.name}</strong><small>更新时间 {item.updatedAt}</small></article>)}</div>}</section>
-        <section className="detail-section"><h3>最新总结</h3>{project.latestSummary === null ? <p className="detail-empty">暂无总结</p> : <article className="summary-card"><strong>版本 {project.latestSummary.versionNo}</strong><p>{project.latestSummary.content ?? '暂无总结内容'}</p></article>}</section>
+        <section className="detail-section">
+          <h3>最新总结</h3>
+          {project.latestSummary === null ? <p className="detail-empty">暂无总结</p> : <>
+            <article className="summary-card"><strong>版本 {project.latestSummary.versionNo}</strong><p>{project.latestSummary.content ?? '暂无总结内容'}</p></article>
+            {questionsLoading && <p className="questions-state" role="status">正在加载待确认问题…</p>}
+            {!questionsLoading && questionsError && <div className="questions-state questions-error" role="alert"><span>{questionsError}</span><button type="button" onClick={() => void loadQuestions()}>重试</button></div>}
+            {!questionsLoading && !questionsError && questions.length > 0 && <div className="questions-panel"><h4>待确认问题</h4>{questions.map((question) => <SummaryQuestion key={question} projectId={projectId!} question={question} onCompleted={loadProject} />)}</div>}
+          </>}
+        </section>
       </div>
     </div>
   );
+}
+
+function SummaryQuestion({ projectId, question, onCompleted }: { projectId: number; question: string; onCompleted: () => Promise<void> }) {
+  const [answer, setAnswer] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const polling = useTaskPolling({ onCompleted });
+  const busy = submitting || polling.isPolling;
+
+  const submit = async () => {
+    if (!answer.trim()) {
+      setSubmitError('请输入回答后再提交');
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const task = await aiApi.submitSummaryAnswers(projectId, [{ question, answer: answer.trim() }]);
+      polling.start(task.task_id);
+    } catch (reason) {
+      console.error('总结回答提交失败', reason);
+      setSubmitError(reason instanceof ApiError ? reason.message : '回答提交失败，请稍后重试');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return <article className="question-item">
+    <label htmlFor={`summary-answer-${projectId}-${question}`}>{question}</label>
+    <textarea id={`summary-answer-${projectId}-${question}`} value={answer} disabled={busy} onChange={(event) => setAnswer(event.target.value)} placeholder="请输入回答" rows={3} />
+    <div className="question-actions">
+      <button type="button" disabled={busy} onClick={() => void submit()}>{busy ? '总结生成中…' : '提交回答'}</button>
+      {polling.state === 'failed' && <button type="button" className="secondary" onClick={polling.retry}>重试任务</button>}
+    </div>
+    {(submitError ?? polling.error) && <p className="question-error" role="alert">{submitError ?? polling.error}</p>}
+  </article>;
 }
 
 function Info({ label, value }: { label: string; value: string }) {

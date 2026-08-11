@@ -30,6 +30,9 @@ export interface TagSnapshotCreateDto { source_file_id: number; version: string;
 export interface TagSnapshotResponseDto { id: number; tag_id: number; source_file_id: number | null; file_version: string; name: string; note: string | null; created_at: string }
 export interface TagSnapshotListResponseDto { items: TagSnapshotResponseDto[] }
 export interface TaskCreatedResponseDto { task_id: number; status: 'pending' }
+export interface SummaryAnswerDto { question: string; answer: string }
+export interface SummaryAnswersRequestDto { answers: SummaryAnswerDto[] }
+export interface SummaryAnswersTaskResponseDto { task_id: number; accepted_questions: string[]; ignored_questions: string[] }
 export interface TaskResponseDto { id: number; project_id: number | null; task_type: string; status: string; payload: JsonObject; failure_reason: string | null; started_at: string | null; finished_at: string | null; created_at: string; updated_at: string; llm_usage: { call_count: number; input_tokens: number; output_tokens: number; cost: number } }
 export interface SummaryResponseDto { id: number; project_id: number; version_no: number; core_info: JsonObject; contract_invoice_progress: JsonObject; missing_materials: Array<Record<string, string>>; pending_questions: string[]; content: string | null; created_by: string | null; created_at: string }
 export interface SummaryHistoryResponseDto { items: SummaryResponseDto[] }
