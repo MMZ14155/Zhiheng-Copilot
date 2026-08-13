@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { aiApi, ApiError, projectsApi } from '../api';
 import type { ProjectDetail as ProjectDetailModel } from '../api';
+import VersionHistory from '../components/VersionHistory';
 import { useTaskPolling } from '../hooks/useTaskPolling';
 
 const statusLabels: Record<ProjectDetailModel['status'], string> = {
@@ -90,11 +91,19 @@ export default function ProjectDetail() {
           <Info label="备注" value={project.notes ?? '暂无备注'} />
         </section>
         {project.parties.length > 0 && <section className="detail-section"><h3>签约方</h3><div className="detail-list">{project.parties.map((party, index) => <article key={`${party.role}-${party.name}-${index}`}><strong>{party.role}</strong><span>{party.name}</span><small>{party.contact ?? '未填写联系方式'}</small></article>)}</div></section>}
-        <section className="detail-section"><h3>交付物清单</h3>{project.deliverables.length === 0 ? <p className="detail-empty">暂无交付物</p> : <div className="detail-list">{project.deliverables.map((item) => <article key={item.id}><strong>{item.name}</strong><small>更新时间 {item.updatedAt}</small></article>)}</div>}</section>
+        <section className="detail-section"><h3>交付物清单</h3><VersionHistory projectId={projectId!} deliverables={project.deliverables} /></section>
         <section className="detail-section">
           <h3>最新总结</h3>
           {project.latestSummary === null ? <p className="detail-empty">暂无总结</p> : <>
-            <article className="summary-card"><strong>版本 {project.latestSummary.versionNo}</strong><p>{project.latestSummary.content ?? '暂无总结内容'}</p></article>
+            <article className="summary-card">
+              {project.latestSummary.inputs.length > 0 && <ul className="summary-inputs" aria-label="总结关联版本">
+                {project.latestSummary.inputs.map((input, index) => <li key={`${input.trackedFileId ?? 'unknown'}-${input.fileVersion}-${index}`}>
+                  <span>{input.trackedFileName ?? '未知文件'}</span>
+                  <code title={input.fileVersion}>{input.fileVersion.slice(0, 8)}</code>
+                </li>)}
+              </ul>}
+              <p>{project.latestSummary.content ?? '暂无总结内容'}</p>
+            </article>
             {questionsLoading && <p className="questions-state" role="status">正在加载待确认问题…</p>}
             {!questionsLoading && questionsError && <div className="questions-state questions-error" role="alert"><span>{questionsError}</span><button type="button" onClick={() => void loadQuestions()}>重试</button></div>}
             {!questionsLoading && !questionsError && questions.length > 0 && <div className="questions-panel"><h4>待确认问题</h4>{questions.map((question) => <SummaryQuestion key={question} projectId={projectId!} question={question} onCompleted={loadProject} />)}</div>}
