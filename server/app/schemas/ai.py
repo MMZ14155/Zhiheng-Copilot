@@ -85,6 +85,7 @@ class SummaryHistoryResponse(BaseModel):
 
 
 class ContractInfoResponse(BaseModel):
+    type: Literal["contract"] = "contract"
     id: int
     version: str
     contract_no: str | None
@@ -106,6 +107,58 @@ class ContractExtractionOutput(BaseModel):
     amount: Decimal | None = None
     signed_date: date | None = None
     payment_terms: list[dict[str, str]] = Field(default_factory=list)
+    missing_fields: list[str] = Field(default_factory=list)
+
+
+class InvoiceInfoResponse(BaseModel):
+    type: Literal["invoice"] = "invoice"
+    id: int
+    version: str
+    invoice_no: str | None
+    issued_date: date | None
+    amount: Decimal | None
+    tax_amount: Decimal | None
+    tax_rate: Decimal | None
+    buyer: str | None
+    seller: str | None
+    missing_fields: list[str]
+    raw_output: dict
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InvoiceExtractionOutput(BaseModel):
+    invoice_no: str | None = None
+    issued_date: date | None = None
+    amount: Decimal | None = None
+    tax_amount: Decimal | None = None
+    tax_rate: Decimal | None = None
+    buyer: str | None = None
+    seller: str | None = None
+    missing_fields: list[str] = Field(default_factory=list)
+
+
+class PaymentInfoResponse(BaseModel):
+    type: Literal["payment"] = "payment"
+    id: int
+    version: str
+    amount: Decimal | None
+    payment_date: date | None
+    payer: str | None
+    contract_no: str | None
+    remarks: str | None
+    missing_fields: list[str]
+    raw_output: dict
+    created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaymentExtractionOutput(BaseModel):
+    amount: Decimal | None = None
+    payment_date: date | None = None
+    payer: str | None = None
+    contract_no: str | None = None
+    remarks: str | None = None
     missing_fields: list[str] = Field(default_factory=list)
 
 

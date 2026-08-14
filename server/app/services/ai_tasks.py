@@ -7,12 +7,19 @@ from sqlalchemy import func, select
 from app.db.session import AsyncSessionLocal
 from app.models.contract_info import ContractInfo
 from app.models.file_version import FileVersion
+from app.models.invoice_info import InvoiceInfo
+from app.models.payment_info import PaymentInfo
 from app.models.project import Project
 from app.models.summary import Summary
 from app.models.summary_input import SummaryInput
 from app.models.task import Task
 from app.models.tracked_file import TrackedFile
-from app.schemas.ai import ContractExtractionOutput, SummaryGenerationOutput
+from app.schemas.ai import (
+    ContractExtractionOutput,
+    InvoiceExtractionOutput,
+    PaymentExtractionOutput,
+    SummaryGenerationOutput,
+)
 from app.services.llm import LoggedLlmClient
 
 logger = logging.getLogger(__name__)
@@ -164,38 +171,53 @@ class AiTaskExecutor:
         version = await session.get(FileVersion, task.payload["version"])
         if not version:
             raise ValueError("版本不存在")
+        extraction_config = {
+            "contract": (
+                ContractExtractionOutput,
+                ContractInfo,
+                "contract_extraction",
+                ["合同编号", "甲乙方", "金额", "签署日期", "付款条款"],
+            ),
+            "invoice": (
+                InvoiceExtractionOutput,
+                InvoiceInfo,
+                "invoice_extraction",
+                ["发票号码", "开票日期", "金额", "税额", "税率", "购买方", "销售方"],
+            ),
+            "payment": (
+                PaymentExtractionOutput,
+                PaymentInfo,
+                "payment_extraction",
+                ["回款金额", "回款日期", "付款方", "对应合同编号", "备注"],
+            ),
+        }
+        config = extraction_config.get(version.document_type)
+        if config is None:
+            raise ValueError(f"不支持识别的材料类型 {version.document_type}")
+        output_schema, model, scene, required_fields = config
         prompt = json.dumps(
             {
                 "version": version.version,
                 "document_type": version.document_type,
                 "content_hash": version.content_hash,
-                "required_fields": ["合同编号", "甲乙方", "金额", "期限", "付款条款"],
+                "required_fields": required_fields,
             },
             ensure_ascii=False,
         )
         out = await LoggedLlmClient().call(
             task_id=task.id,
-            scene="contract_extraction",
+            scene=scene,
             prompt=prompt,
-            output_schema=ContractExtractionOutput,
-            request_meta={"file_version": version.version},
+            output_schema=output_schema,
+            request_meta={"file_version": version.version, "document_type": version.document_type},
         )
         info = await session.scalar(
-            select(ContractInfo).where(ContractInfo.version == version.version)
+            select(model).where(model.version == version.version)
         )
         if not info:
-            info = ContractInfo(version=version.version)
+            info = model(version=version.version)
             session.add(info)
-        info.contract_no, info.party_a, info.party_b, info.amount, info.signed_date = (
-            out.contract_no,
-            out.party_a,
-            out.party_b,
-            out.amount,
-            out.signed_date,
-        )
-        info.payment_terms, info.missing_fields, info.raw_output = (
-            out.payment_terms,
-            out.missing_fields,
-            out.model_dump(mode="json"),
-        )
+        for field, value in out.model_dump(mode="python").items():
+            setattr(info, field, value)
+        info.raw_output = out.model_dump(mode="json")
         version.parse_status = "parsed"

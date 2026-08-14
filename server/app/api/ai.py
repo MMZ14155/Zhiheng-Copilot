@@ -8,15 +8,19 @@ from app.api.errors import conflict, not_found
 from app.db.session import get_session
 from app.models.contract_info import ContractInfo
 from app.models.file_version import FileVersion
+from app.models.invoice_info import InvoiceInfo
 from app.models.llm_call import LlmCall
 from app.models.project import Project
+from app.models.payment_info import PaymentInfo
 from app.models.summary import Summary
 from app.models.summary_input import SummaryInput
 from app.models.task import Task
 from app.models.tracked_file import TrackedFile
 from app.schemas.ai import (
     ContractInfoResponse,
+    InvoiceInfoResponse,
     LlmUsageResponse,
+    PaymentInfoResponse,
     SummaryAnswersRequest,
     SummaryAnswersTaskResponse,
     SummaryHistoryResponse,
@@ -177,26 +181,52 @@ async def create_extract_task(
     file_version = await session.get(FileVersion, version)
     if not file_version:
         raise not_found("版本不存在", code="VERSION_NOT_FOUND")
-    if file_version.document_type != "contract":
-        raise conflict("仅合同版本支持合同识别", code="NOT_CONTRACT_VERSION")
-    task = Task(task_type="contract_recognition", status="pending", payload={"version": version})
+    if file_version.document_type not in {"contract", "invoice", "payment"}:
+        raise conflict("该版本不是可识别的材料类型", code="NOT_CONTRACT_VERSION")
+    task = Task(
+        task_type="contract_recognition",
+        status="pending",
+        payload={"version": version, "document_type": file_version.document_type},
+    )
     session.add(task)
     file_version.parse_status = "processing"
     await session.commit()
     await session.refresh(task)
     background_tasks.add_task(AiTaskExecutor.run, task.id)
-    logger.info("created extraction task task_id=%s version=%s", task.id, version)
+    logger.info(
+        "created extraction task task_id=%s version=%s document_type=%s",
+        task.id,
+        version,
+        file_version.document_type,
+    )
     return TaskCreatedResponse(task_id=task.id)
 
 
-@router.get("/versions/{version}/extract", response_model=ContractInfoResponse)
+@router.get(
+    "/versions/{version}/extract",
+    response_model=ContractInfoResponse | InvoiceInfoResponse | PaymentInfoResponse,
+)
 async def get_extract(version: str, session: AsyncSession = Depends(get_session)):
-    if await session.get(FileVersion, version) is None:
+    file_version = await session.get(FileVersion, version)
+    if file_version is None:
         raise not_found("版本不存在", code="VERSION_NOT_FOUND")
-    item = await session.scalar(select(ContractInfo).where(ContractInfo.version == version))
+    model_by_type = {
+        "contract": ContractInfo,
+        "invoice": InvoiceInfo,
+        "payment": PaymentInfo,
+    }
+    model = model_by_type.get(file_version.document_type)
+    if model is None:
+        raise conflict("该版本不是可识别的材料类型", code="NOT_CONTRACT_VERSION")
+    item = await session.scalar(select(model).where(model.version == version))
     if not item:
-        raise not_found("该版本尚无合同识别结果", code="EXTRACTION_NOT_FOUND")
-    return ContractInfoResponse.model_validate(item)
+        raise not_found("该版本尚无识别结果", code="EXTRACTION_NOT_FOUND")
+    response_by_type = {
+        "contract": ContractInfoResponse,
+        "invoice": InvoiceInfoResponse,
+        "payment": PaymentInfoResponse,
+    }
+    return response_by_type[file_version.document_type].model_validate(item)
 
 
 @router.get("/tasks/{task_id}", response_model=TaskResponse)

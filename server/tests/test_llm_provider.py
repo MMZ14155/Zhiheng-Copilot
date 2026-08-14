@@ -1,7 +1,12 @@
 import asyncio
 import json
 
-from app.schemas.ai import ContractExtractionOutput, SummaryGenerationOutput
+from app.schemas.ai import (
+    ContractExtractionOutput,
+    InvoiceExtractionOutput,
+    PaymentExtractionOutput,
+    SummaryGenerationOutput,
+)
 from app.services.llm import MockLlmProvider
 
 
@@ -15,6 +20,26 @@ def test_mock_provider_returns_valid_contract_schema():
     assert result.input_tokens > 0
     assert result.output_tokens > 0
     assert result.cost == 0
+
+
+def test_mock_provider_returns_valid_invoice_schema():
+    result = asyncio.run(MockLlmProvider().generate("extract invoice", InvoiceExtractionOutput))
+
+    output = InvoiceExtractionOutput.model_validate(result.data)
+    assert output.invoice_no == "MOCK-INVOICE-001"
+    assert output.buyer == "示例购买方"
+    assert result.input_tokens > 0
+    assert result.output_tokens > 0
+
+
+def test_mock_provider_returns_valid_payment_schema():
+    result = asyncio.run(MockLlmProvider().generate("extract payment", PaymentExtractionOutput))
+
+    output = PaymentExtractionOutput.model_validate(result.data)
+    assert output.contract_no == "MOCK-CONTRACT-001"
+    assert output.payer == "示例付款方"
+    assert result.input_tokens > 0
+    assert result.output_tokens > 0
 
 
 def test_mock_provider_summary_asks_for_missing_context():

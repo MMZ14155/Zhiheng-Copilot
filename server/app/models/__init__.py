@@ -1,8 +1,10 @@
 from app.models.contract_info import ContractInfo
 from app.models.file_version import FileVersion
+from app.models.invoice_info import InvoiceInfo
 from app.models.llm_call import LlmCall
 from app.models.project import Project
 from app.models.project_link import ProjectLink
+from app.models.payment_info import PaymentInfo
 from app.models.summary import Summary
 from app.models.summary_input import SummaryInput
 from app.models.tag import Tag
@@ -14,9 +16,11 @@ from app.models.workspace_file import WorkspaceFile
 __all__ = [
     "ContractInfo",
     "FileVersion",
+    "InvoiceInfo",
     "LlmCall",
     "Project",
     "ProjectLink",
+    "PaymentInfo",
     "Summary",
     "SummaryInput",
     "Tag",

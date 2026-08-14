@@ -9,7 +9,12 @@ from pydantic import BaseModel
 
 from app.db.session import AsyncSessionLocal
 from app.models.llm_call import LlmCall
-from app.schemas.ai import ContractExtractionOutput, SummaryGenerationOutput
+from app.schemas.ai import (
+    ContractExtractionOutput,
+    InvoiceExtractionOutput,
+    PaymentExtractionOutput,
+    SummaryGenerationOutput,
+)
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -42,6 +47,26 @@ class MockLlmProvider:
                 "amount": "100000.00",
                 "signed_date": "2026-08-10",
                 "payment_terms": [{"stage": "验收", "ratio": "100%"}],
+                "missing_fields": [],
+            }
+        elif output_schema is InvoiceExtractionOutput:
+            data = {
+                "invoice_no": "MOCK-INVOICE-001",
+                "issued_date": "2026-08-11",
+                "amount": "106000.00",
+                "tax_amount": "6000.00",
+                "tax_rate": "0.06",
+                "buyer": "示例购买方",
+                "seller": "示例销售方",
+                "missing_fields": [],
+            }
+        elif output_schema is PaymentExtractionOutput:
+            data = {
+                "amount": "100000.00",
+                "payment_date": "2026-08-12",
+                "payer": "示例付款方",
+                "contract_no": "MOCK-CONTRACT-001",
+                "remarks": "合同款已到账",
                 "missing_fields": [],
             }
         elif output_schema is SummaryGenerationOutput:
