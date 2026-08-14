@@ -29,6 +29,14 @@ from app.schemas.projects import (
     RelatedProjectSummary,
     RenewalChainResponse,
 )
+from app.schemas.risks import RiskConfig, RiskResponse
+from app.services.deliverables import DeliverableService
+from app.services.risk_monitor import (
+    DeliverableRiskState,
+    aggregate_risk,
+    evaluate_project,
+    load_risk_config,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["projects"])
@@ -278,6 +286,58 @@ async def update_project(
     await session.refresh(project)
     logger.info("updated project id=%s", project_id)
     return _to_project_response(project)
+
+
+async def _risk_deliverables(
+    session: AsyncSession, project_id: int
+) -> list[DeliverableRiskState]:
+    states = await DeliverableService.list_with_state(session, project_id)
+    return [
+        DeliverableRiskState(
+            name=tracked.name,
+            category=tracked.category,
+            required=tracked.required,
+            status=status,
+            unfrozen_versions=sum(not version.is_frozen for version in versions),
+        )
+        for tracked, versions, status in states
+    ]
+
+
+@router.get("/projects/{project_id}/risks", response_model=RiskResponse)
+async def get_project_risks(
+    project_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> RiskResponse:
+    project = await _get_project_or_404(session, project_id)
+    config = load_risk_config(project)
+    risks = evaluate_project(project, await _risk_deliverables(session, project_id), config)
+    level = aggregate_risk(risks)
+    logger.info("evaluated project risks id=%s level=%s count=%s", project_id, level, len(risks))
+    return RiskResponse(level=level, risks=risks, config=config)
+
+
+@router.get("/projects/{project_id}/risk-config", response_model=RiskConfig)
+async def get_project_risk_config(
+    project_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> RiskConfig:
+    project = await _get_project_or_404(session, project_id)
+    return load_risk_config(project)
+
+
+@router.patch("/projects/{project_id}/risk-config", response_model=RiskConfig)
+async def update_project_risk_config(
+    project_id: int,
+    payload: RiskConfig,
+    session: AsyncSession = Depends(get_session),
+) -> RiskConfig:
+    project = await _get_project_or_404(session, project_id)
+    config = payload.model_copy(update={"project_id": str(project_id)})
+    project.risk_config = config.model_dump(by_alias=True, mode="json")
+    await session.commit()
+    logger.info("updated project risk config id=%s", project_id)
+    return config
 
 
 @router.post("/projects/{project_id}/links", response_model=ProjectLinkResponse, status_code=201)

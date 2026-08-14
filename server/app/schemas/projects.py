@@ -9,6 +9,8 @@ from app.schemas.ai import SummaryInputResponse
 
 ProjectStatus = Literal["active", "archived", "completed"]
 ProjectLinkType = Literal["renewal", "related"]
+ProjectStage = Literal["init", "planning", "executing", "accepting", "closed"]
+AcceptanceResult = Literal["pending", "passed", "failed", "partial"]
 
 
 class ProjectParty(BaseModel):
@@ -58,6 +60,14 @@ class ProjectUpdate(BaseModel):
     planned_delivery_date: date | None = None
     status: ProjectStatus | None = None
     progress: int | None = Field(default=None, ge=0, le=100)
+    stage: ProjectStage | None = None
+    budget: Decimal | None = Field(default=None, ge=0)
+    cost: Decimal | None = Field(default=None, ge=0)
+    planned_days: int | None = Field(default=None, ge=0)
+    used_days: int | None = Field(default=None, ge=0)
+    quality_issues: int | None = Field(default=None, ge=0)
+    satisfaction: Decimal | None = Field(default=None, ge=0, le=5)
+    acceptance_result: AcceptanceResult | None = None
     notes: str | None = Field(default=None, max_length=10000)
 
     @field_validator("parties")
@@ -109,6 +119,14 @@ class ProjectResponse(BaseModel):
     id: int
     name: str
     code: str
+    stage: ProjectStage | None
+    budget: Decimal | None
+    cost: Decimal | None
+    planned_days: int | None
+    used_days: int | None
+    quality_issues: int | None
+    satisfaction: Decimal | None
+    acceptance_result: AcceptanceResult | None
     customer_name: str
     parties: list[ProjectParty]
     contract_amount: Decimal | None
