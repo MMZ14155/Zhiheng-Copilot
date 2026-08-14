@@ -13,6 +13,10 @@
 .project-list-state { padding:48px 24px; text-align:center; color:#64748b; background:#fff; border-radius:10px; }
 .project-list-state.error { color:#b91c1c; }
 .project-card-real { border-left:4px solid #2563eb; }
+.card-actions { display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+.project-risk.block { background:#fee2e2; color:#991b1b; }
+.project-risk.warn { background:#fef3c7; color:#92400e; }
+.project-risk.ok { background:#dcfce7; color:#166534; }
 .project-status.active { background:#dcfce7; color:#166534; }
 .project-status.completed { background:#dbeafe; color:#1e40af; }
 .project-status.archived { background:#e2e8f0; color:#475569; }

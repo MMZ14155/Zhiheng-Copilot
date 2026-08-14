@@ -1,8 +1,17 @@
-import type { ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, TrackedFileResponseDto } from './dto';
-import type { ProjectDetail, ProjectList, ProjectListItem, TrackedFile } from './models';
+import type { ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, TrackedFileResponseDto } from './dto';
+import type { ProjectDetail, ProjectList, ProjectListItem, ProjectRisks, TrackedFile } from './models';
 
 export const mapProject = (dto: ProjectResponseDto): ProjectListItem => ({ id: String(dto.id), name: dto.name, code: dto.code, customerName: dto.customer_name, status: dto.status, progress: dto.progress, contractAmount: dto.contract_amount, signedDate: dto.signed_date, plannedDeliveryDate: dto.planned_delivery_date, updatedAt: dto.updated_at });
 export const mapProjectList = (dto: ProjectListResponseDto): ProjectList => ({ page: dto.page, size: dto.size, total: dto.total, items: dto.items.map(mapProject) });
+export const mapProjectRisks = (dto: ProjectRisksResponseDto): ProjectRisks => ({
+  level: dto.level,
+  risks: dto.risks.map((risk) => ({
+    type: risk.type,
+    level: risk.level,
+    reason: risk.reason,
+    recommendation: risk.recommendation,
+  })),
+});
 export const mapProjectDetail = (dto: ProjectDetailResponseDto): ProjectDetail => ({
   id: String(dto.id),
   name: dto.name,

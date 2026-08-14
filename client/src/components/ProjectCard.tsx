@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom';
 import type { ProjectListItem } from '../api';
 
 const labels: Record<ProjectListItem['status'], string> = { active: '进行中', archived: '已归档', completed: '已完成' };
+const riskLabels = { block: '阻塞', warn: '预警', ok: '健康' } as const;
+const riskColors = { block: '#dc2626', warn: '#d97706', ok: '#16a34a' } as const;
 
 export default function ProjectCard({ project }: { project: ProjectListItem }) {
-  return <Link to={`/projects/${project.id}`} className="project-card project-card-real"><div className="card-header"><div><div className="card-title">{project.name}</div><div className="project-code">{project.code}</div></div><div className={`badge project-status ${project.status}`}>{labels[project.status]}</div></div><div className="card-meta">客户：{project.customerName}<br />合同金额：{project.contractAmount === null ? '未填写' : `${project.contractAmount} 元`}<br />签约日期：{project.signedDate ?? '未填写'}<br />计划交付：{project.plannedDeliveryDate ?? '未填写'}</div><div className="project-progress" aria-label={`项目进度 ${project.progress}%`}><div className="project-progress-label"><span>项目进度</span><strong>{project.progress}%</strong></div><div className="project-progress-track"><span style={{ width: `${project.progress}%` }} /></div></div></Link>;
+  return <Link to={`/projects/${project.id}`} className="project-card project-card-real" style={{ borderLeftColor: project.riskLevel ? riskColors[project.riskLevel] : undefined }}><div className="card-header"><div><div className="card-title">{project.name}</div><div className="project-code">{project.code}</div></div><div className="card-actions"><div className={`badge project-status ${project.status}`}>{labels[project.status]}</div>{project.riskLevel && <div className={`badge project-risk ${project.riskLevel}`}>{riskLabels[project.riskLevel]}</div>}</div></div><div className="card-meta">客户：{project.customerName}<br />合同金额：{project.contractAmount === null ? '未填写' : `${project.contractAmount} 元`}<br />签约日期：{project.signedDate ?? '未填写'}<br />计划交付：{project.plannedDeliveryDate ?? '未填写'}</div><div className="project-progress" aria-label={`项目进度 ${project.progress}%`}><div className="project-progress-label"><span>项目进度</span><strong>{project.progress}%</strong></div><div className="project-progress-track"><span style={{ width: `${project.progress}%` }} /></div></div></Link>;
 }
 
 // ==================== 风险评级配色（暂时注释禁用，待服务端风险接口接入后恢复） ====================

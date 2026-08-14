@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, projectsApi } from '../api';
-import type { ProjectList } from '../api';
+import type { ProjectList, RiskLevel } from '../api';
 import ChatArea from '../components/ChatArea';
 import CreateProjectModal from '../components/CreateProjectModal';
 import ProjectCardGrid from '../components/ProjectCardGrid';
+import RiskFilter from '../components/RiskFilter';
 
 // ==================== 风险评级逻辑（暂时注释禁用，待服务端风险接口接入后恢复） ====================
 // 原实现基于本地 mock 与 RiskMonitor 在浏览器端计算每个项目的风险等级，
@@ -96,11 +97,26 @@ export default function RiskBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [filter, setFilter] = useState<RiskLevel | 'all'>('all');
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setData(await projectsApi.listProjects({ page: 1, size: 100 }));
+      const projects = await projectsApi.listProjects({ page: 1, size: 100 });
+      const riskResults = await Promise.allSettled(
+        projects.items.map((project) => projectsApi.getProjectRisks(project.id)),
+      );
+      setData({
+        ...projects,
+        items: projects.items.map((project, index) => {
+          const result = riskResults[index];
+          if (result.status === 'rejected') {
+            console.error(`项目 ${project.id} 风险数据加载失败`, result.reason);
+            return { ...project, riskLevel: null };
+          }
+          return { ...project, riskLevel: result.value.level };
+        }),
+      });
     } catch (reason) {
       console.error('项目列表加载失败', reason);
       setError(reason instanceof ApiError ? reason.message : '项目列表加载失败，请稍后重试');
@@ -109,12 +125,22 @@ export default function RiskBoard() {
     }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  const counts = useMemo(() => ({
+    block: data?.items.filter((project) => project.riskLevel === 'block').length ?? 0,
+    warn: data?.items.filter((project) => project.riskLevel === 'warn').length ?? 0,
+    ok: data?.items.filter((project) => project.riskLevel === 'ok').length ?? 0,
+    total: data?.total ?? 0,
+  }), [data]);
+  const filteredProjects = useMemo(() => {
+    if (!data) return [];
+    return filter === 'all' ? data.items : data.items.filter((project) => project.riskLevel === filter);
+  }, [data, filter]);
   return <div className="risk-board-layout"><ChatArea /><div className="risk-board">
     <div className="project-list-heading"><div><h2>项目列表</h2>{!loading && !error && <span>共 {data?.total ?? 0} 个项目</span>}</div><div className="project-list-actions"><button type="button" onClick={() => void load()} disabled={loading}>{loading ? '加载中…' : '刷新'}</button><button type="button" className="create-project-button" onClick={() => setShowCreateModal(true)}>新建项目</button></div></div>
     {loading && <div className="project-list-state" role="status">正在加载项目…</div>}
     {!loading && error && <div className="project-list-state error" role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>重新加载</button></div>}
     {!loading && !error && data?.items.length === 0 && <div className="project-list-state">暂无项目，请先通过项目接口创建项目。</div>}
-    {!loading && !error && data && data.items.length > 0 && <ProjectCardGrid projects={data.items} />}
+    {!loading && !error && data && data.items.length > 0 && <><RiskFilter blockCount={counts.block} warnCount={counts.warn} okCount={counts.ok} totalCount={counts.total} active={filter} onChange={setFilter} />{filteredProjects.length > 0 ? <ProjectCardGrid projects={filteredProjects} /> : <div className="project-list-state">当前筛选条件下暂无项目。</div>}</>}
     {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} onCreated={load} />}
   </div></div>;
 }

@@ -17,6 +17,9 @@ export interface ProjectListResponseDto { page: number; size: number; total: num
 export interface ProjectLinkCreateDto { target_project_id: number; link_type: ProjectLinkTypeDto; note?: string | null }
 export interface ProjectLinkResponseDto { id: number; source_project_id: number; target_project_id: number; link_type: ProjectLinkTypeDto; note: string | null; created_at: string }
 export interface RenewalChainResponseDto { project_id: number; depth_limit: number; items: ProjectResponseDto[] }
+export type RiskLevelDto = 'block' | 'warn' | 'ok';
+export interface ProjectRiskDto { type: string; level: RiskLevelDto; reason: string; recommendation: string }
+export interface ProjectRisksResponseDto { level: RiskLevelDto; risks: ProjectRiskDto[]; config: JsonObject }
 
 export interface CreateFileResponseDto { file_id: number; version: string; message: string }
 export interface FileVersionResponseDto { version: string; file_id: number; prev_version: string | null; storage_path: string; content_hash: string; size_bytes: number; uploaded_by: string; changelog: string; document_type: string | null; parse_status: string; is_frozen: boolean; uploaded_at: string }
