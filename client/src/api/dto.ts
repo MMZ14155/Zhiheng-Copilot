@@ -22,6 +22,9 @@ export interface ProjectRiskDto { type: string; level: RiskLevelDto; reason: str
 export interface ProjectRisksResponseDto { level: RiskLevelDto; risks: ProjectRiskDto[]; config: JsonObject }
 
 export interface CreateFileResponseDto { file_id: number; version: string; message: string }
+export interface ProjectFileLatestVersionDto { version: string; document_type: string | null; parse_status: string; size_bytes: number; uploaded_at: string }
+export interface ProjectFileResponseDto { id: number; name: string; is_deliverable: boolean; created_at: string; updated_at: string; latest_version: ProjectFileLatestVersionDto | null }
+export interface ProjectFileListResponseDto { files: ProjectFileResponseDto[] }
 export interface FileVersionResponseDto { version: string; file_id: number; prev_version: string | null; storage_path: string; content_hash: string; size_bytes: number; uploaded_by: string; changelog: string; document_type: string | null; parse_status: string; is_frozen: boolean; uploaded_at: string }
 export interface VersionListResponseDto { file_id: number; versions: FileVersionResponseDto[] }
 export interface TrackedFileCreateDto { source_file_id: number; category: DeliverableCategoryDto; required?: boolean }

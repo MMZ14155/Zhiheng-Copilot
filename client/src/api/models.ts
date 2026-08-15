@@ -19,6 +19,36 @@ export interface FileVersion {
   isCurrent: boolean;
   uploadedAt: string;
 }
+export interface ProjectFile {
+  id: number;
+  name: string;
+  isDeliverable: boolean;
+  createdAt: string;
+  updatedAt: string;
+  latestVersion: {
+    version: string;
+    documentType: string | null;
+    parseStatus: string;
+    sizeBytes: number;
+    uploadedAt: string;
+  } | null;
+}
+export interface Tag {
+  id: number;
+  name: string;
+  type: 'demo' | 'report' | 'meeting' | 'audit' | 'custom';
+  createdBy: string;
+  note: string | null;
+  createdAt: string;
+}
+export interface TagSnapshot {
+  id: number;
+  sourceFileId: number | null;
+  fileVersion: string;
+  name: string;
+  note: string | null;
+  createdAt: string;
+}
 export interface TrackedFile {
   id: string;
   sourceFileId: number | null;
