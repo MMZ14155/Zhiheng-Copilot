@@ -12,7 +12,8 @@ class LlmCall(Base):
     __tablename__ = "llm_call"
     __table_args__ = (
         CheckConstraint(
-            "num_nonnulls(task_id, file_version, summary_id) = 1",
+            "(scene = 'copilot_answer' AND num_nonnulls(task_id, file_version, summary_id, project_id) <= 1) "
+            "OR (scene <> 'copilot_answer' AND num_nonnulls(task_id, file_version, summary_id, project_id) = 1)",
             name="ck_llm_call_single_owner",
         ),
         CheckConstraint("prompt_hash ~ '^[0-9a-f]{64}$'", name="ck_llm_call_prompt_hash"),
@@ -28,6 +29,7 @@ class LlmCall(Base):
     task_id: Mapped[int | None] = mapped_column(ForeignKey("task.id", ondelete="RESTRICT"))
     file_version: Mapped[str | None] = mapped_column(ForeignKey("file_version.version", ondelete="RESTRICT"))
     summary_id: Mapped[int | None] = mapped_column(ForeignKey("summary.id", ondelete="RESTRICT"))
+    project_id: Mapped[int | None] = mapped_column(ForeignKey("project.id", ondelete="RESTRICT"))
     provider: Mapped[str] = mapped_column(String(80), nullable=False)
     model_name: Mapped[str] = mapped_column(String(120), nullable=False)
     scene: Mapped[str] = mapped_column(String(80), nullable=False)

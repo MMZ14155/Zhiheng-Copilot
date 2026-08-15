@@ -15,6 +15,7 @@ from app.schemas.ai import (
     PaymentExtractionOutput,
     SummaryGenerationOutput,
 )
+from app.schemas.copilot import CopilotAnswerOutput
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -108,6 +109,45 @@ class MockLlmProvider:
                 "content": "核心信息已汇总；合同资料已收集，开票与回款进度待确认。"
                 + (f" 已回填信息：{answer_points}。" if answer_points else ""),
             }
+        elif output_schema is CopilotAnswerOutput:
+            try:
+                prompt_data = json.loads(prompt)
+            except json.JSONDecodeError:
+                prompt_data = {}
+            projects = prompt_data.get("projects") or []
+            priority = [item for item in projects if item.get("risk_level") in {"block", "warn"}]
+            selected = priority or projects
+            references = []
+            descriptions = []
+            for item in selected:
+                identifier = f"项目 {item.get('code') or item.get('id')}"
+                risks = item.get("risks") or []
+                reasons = [risk.get("reason") for risk in risks if risk.get("reason")]
+                summary = item.get("latest_summary") or {}
+                if reasons:
+                    detail = "；".join(reasons)
+                    references.extend(f"{identifier}：{reason}" for reason in reasons)
+                elif summary.get("content"):
+                    detail = summary["content"]
+                    references.append(f"{identifier}：{detail}")
+                else:
+                    detail = f"风险等级为 {item.get('risk_level', 'ok')}"
+                    references.append(f"{identifier}：{detail}")
+                descriptions.append(f"{identifier}（{detail}）")
+            counts = prompt_data.get("risk_level_counts") or {}
+            prefix = (
+                f"当前共 {len(projects)} 个项目，阻塞 {counts.get('block', 0)} 个、"
+                f"预警 {counts.get('warn', 0)} 个、正常 {counts.get('ok', 0)} 个。"
+            )
+            recommendation = (
+                "建议优先复核" + "，".join(descriptions) + "。"
+                if descriptions
+                else "暂无可复核项目。"
+            )
+            data = {
+                "answer": prefix + recommendation,
+                "references": references,
+            }
         else:
             raise ValueError(f"不支持输出类型 {output_schema.__name__}")
         text = json.dumps(data, ensure_ascii=False)
@@ -123,7 +163,8 @@ class LoggedLlmClient:
     async def call(
         self,
         *,
-        task_id: int,
+        task_id: int | None = None,
+        project_id: int | None = None,
         scene: str,
         prompt: str,
         output_schema: type[T],
@@ -132,6 +173,7 @@ class LoggedLlmClient:
         started = time.perf_counter()
         call = LlmCall(
             task_id=task_id,
+            project_id=project_id,
             provider=self.provider.name,
             model_name=self.provider.model_name,
             scene=scene,
