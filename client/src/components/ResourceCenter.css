@@ -22,7 +22,33 @@
   color: #6b7280;
 }
 
+.resource-sidebar-heading,
+.doc-card-heading,
+.resource-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.resource-sidebar-heading button,
+.resource-actions button,
+.resource-state button {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+
 .resource-sidebar .project-item {
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
   padding: 10px 12px;
   border-radius: 8px;
   cursor: pointer;
@@ -31,6 +57,12 @@
   align-items: center;
   justify-content: space-between;
   border-left: 3px solid transparent;
+}
+
+.resource-sidebar .project-item > span,
+.resource-sidebar .project-name,
+.resource-sidebar .project-meta {
+  display: block;
 }
 
 .resource-sidebar .project-item:hover {
@@ -114,6 +146,11 @@
   background: #fafafa;
 }
 
+.doc-card.missing {
+  border-style: dashed;
+  background: #fff7f7;
+}
+
 .doc-card .icon {
   font-size: 24px;
   margin-bottom: 8px;
@@ -138,6 +175,15 @@
   border-radius: 10px;
 }
 
+.deliverable-badge {
+  flex: none;
+  border-radius: 10px;
+  background: #dbeafe;
+  color: #1d4ed8;
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
 .status.ok {
   background: #dcfce7;
   color: #166534;
@@ -151,6 +197,52 @@
 .status.old {
   background: #fef3c7;
   color: #92400e;
+}
+
+.status.pending,
+.status.processing {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status.parsed,
+.status.completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status.failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.resource-actions {
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+.resource-actions button {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.resource-state {
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 13px;
+  padding: 16px;
+  text-align: center;
+}
+
+.resource-state.error {
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.resource-state p {
+  margin: 0 0 10px;
 }
 
 .version-timeline {
