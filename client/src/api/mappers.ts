@@ -1,5 +1,5 @@
-import type { ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, TrackedFileResponseDto } from './dto';
-import type { ProjectDetail, ProjectList, ProjectListItem, ProjectRisks, TrackedFile } from './models';
+import type { AverageMetricDto, ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, StatisticsOverviewResponseDto, TrackedFileResponseDto } from './dto';
+import type { AverageMetric, ProjectDetail, ProjectList, ProjectListItem, ProjectRisks, StatisticsOverview, TrackedFile } from './models';
 
 export const mapProject = (dto: ProjectResponseDto): ProjectListItem => ({ id: String(dto.id), name: dto.name, code: dto.code, customerName: dto.customer_name, status: dto.status, progress: dto.progress, contractAmount: dto.contract_amount, signedDate: dto.signed_date, plannedDeliveryDate: dto.planned_delivery_date, updatedAt: dto.updated_at });
 export const mapProjectList = (dto: ProjectListResponseDto): ProjectList => ({ page: dto.page, size: dto.size, total: dto.total, items: dto.items.map(mapProject) });
@@ -10,6 +10,24 @@ export const mapProjectRisks = (dto: ProjectRisksResponseDto): ProjectRisks => (
     level: risk.level,
     reason: risk.reason,
     recommendation: risk.recommendation,
+  })),
+});
+const mapAverageMetric = (dto: AverageMetricDto): AverageMetric => ({ value: dto.value, sampleCount: dto.sample_count });
+export const mapStatisticsOverview = (dto: StatisticsOverviewResponseDto): StatisticsOverview => ({
+  projects: {
+    total: dto.projects.total,
+    risks: dto.projects.risks,
+    averageCostUsageRate: mapAverageMetric(dto.projects.average_cost_usage_rate),
+    averageScheduleUsageRate: mapAverageMetric(dto.projects.average_schedule_usage_rate),
+    averageSatisfaction: mapAverageMetric(dto.projects.average_satisfaction),
+  },
+  files: { workspaceFileTotal: dto.files.workspace_file_total, deliverables: dto.files.deliverables },
+  byStage: dto.by_stage.map((item) => ({
+    stage: item.stage,
+    count: item.count,
+    averageCostUsageRate: mapAverageMetric(item.average_cost_usage_rate),
+    averageScheduleUsageRate: mapAverageMetric(item.average_schedule_usage_rate),
+    averageSatisfaction: mapAverageMetric(item.average_satisfaction),
   })),
 });
 export const mapProjectDetail = (dto: ProjectDetailResponseDto): ProjectDetail => ({
