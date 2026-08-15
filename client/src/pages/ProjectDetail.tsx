@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { aiApi, ApiError, projectsApi } from '../api';
 import type { ProjectDetail as ProjectDetailModel } from '../api';
 import VersionHistory from '../components/VersionHistory';
+import ProcessFiles from '../components/ProcessFiles';
 import { useTaskPolling } from '../hooks/useTaskPolling';
 
 const statusLabels: Record<ProjectDetailModel['status'], string> = {
@@ -91,6 +92,7 @@ export default function ProjectDetail() {
           <Info label="备注" value={project.notes ?? '暂无备注'} />
         </section>
         {project.parties.length > 0 && <section className="detail-section"><h3>签约方</h3><div className="detail-list">{project.parties.map((party, index) => <article key={`${party.role}-${party.name}-${index}`}><strong>{party.role}</strong><span>{party.name}</span><small>{party.contact ?? '未填写联系方式'}</small></article>)}</div></section>}
+        <section className="detail-section"><h3>过程文件</h3><ProcessFiles projectId={projectId!} onChanged={loadProject} /></section>
         <section className="detail-section"><h3>交付物清单</h3><VersionHistory projectId={projectId!} deliverables={project.deliverables} /></section>
         <section className="detail-section">
           <h3>最新总结</h3>

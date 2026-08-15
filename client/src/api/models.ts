@@ -13,6 +13,7 @@ export interface FileVersion {
   uploadedBy: string;
   changelog: string;
   parseStatus: string;
+  documentType: string | null;
   sizeBytes: number;
   isFrozen: boolean;
   isCurrent: boolean;
@@ -20,6 +21,7 @@ export interface FileVersion {
 }
 export interface TrackedFile {
   id: string;
+  sourceFileId: number | null;
   name: string;
   category: string;
   required: boolean;

@@ -41,6 +41,7 @@ export const mapProjectDetail = (dto: ProjectDetailResponseDto): ProjectDetail =
 
 export const mapTrackedFile = (dto: TrackedFileResponseDto): TrackedFile => ({
   id: String(dto.id),
+  sourceFileId: dto.source_file_id,
   name: dto.name,
   category: dto.category,
   required: dto.required,
@@ -52,6 +53,7 @@ export const mapTrackedFile = (dto: TrackedFileResponseDto): TrackedFile => ({
     uploadedBy: version.uploaded_by,
     changelog: version.changelog,
     parseStatus: version.parse_status,
+    documentType: version.document_type,
     sizeBytes: version.size_bytes,
     isFrozen: version.is_frozen,
     isCurrent: version.version === dto.current_version,
