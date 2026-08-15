@@ -1,5 +1,13 @@
 import { jsonRequest } from './client';
-import type { ExtractionInfoResponseDto, SummaryAnswersRequestDto, SummaryAnswersTaskResponseDto, SummaryHistoryResponseDto, SummaryResponseDto, TaskCreatedResponseDto, TaskResponseDto } from './dto';
+import type { CopilotAskRequestDto, CopilotAskResponseDto, ExtractionInfoResponseDto, SummaryAnswersRequestDto, SummaryAnswersTaskResponseDto, SummaryHistoryResponseDto, SummaryResponseDto, TaskCreatedResponseDto, TaskResponseDto } from './dto';
+
+export const askCopilot = (question: string, projectId?: number) => {
+  const body: CopilotAskRequestDto = {
+    question,
+    ...(projectId === undefined ? {} : { project_id: projectId }),
+  };
+  return jsonRequest<CopilotAskResponseDto>('/copilot/ask', { method: 'POST', body });
+};
 
 export const createSummaryTask = (id: number) => jsonRequest<TaskCreatedResponseDto>(`/projects/${id}/summary`, { method: 'POST' });
 export const getLatestSummary = (id: number) => jsonRequest<SummaryResponseDto>(`/projects/${id}/summary`);

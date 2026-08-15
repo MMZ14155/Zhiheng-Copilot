@@ -4,6 +4,9 @@ export type DeliverableCategoryDto = '合同' | '成本明细' | '验收材料' 
 export type TagTypeDto = 'demo' | 'report' | 'meeting' | 'audit' | 'custom';
 export type JsonObject = Record<string, unknown>;
 
+export interface CopilotAskRequestDto { question: string; project_id?: number }
+export interface CopilotAskResponseDto { answer: string; references: string[] }
+
 export interface ProjectPartyDto { role: string; name: string; contact: string | null }
 export interface ProjectWriteDto { name: string; code: string; customer_name: string; parties?: ProjectPartyDto[]; contract_amount?: number | null; signed_date?: string | null; started_date?: string | null; planned_delivery_date?: string | null; status?: ProjectStatusDto; progress?: number; notes?: string | null }
 export type ProjectUpdateDto = Partial<ProjectWriteDto>;

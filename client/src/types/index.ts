@@ -46,5 +46,5 @@ export interface DocProject {
 export interface ChatMessage {
   role: 'bot' | 'user';
   content: string;
-  source?: string;
+  references?: string[];
 }
