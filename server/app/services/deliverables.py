@@ -61,7 +61,6 @@ class DeliverableService:
             category=category,
             required=required,
             current_version=current,
-            status="missing" if required and current is None else "ok",
         )
         session.add(tracked)
         await session.flush()

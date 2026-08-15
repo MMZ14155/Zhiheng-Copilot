@@ -27,7 +27,7 @@ class TrackedFileResponse(BaseModel):
     category: DeliverableCategory
     required: bool
     current_version: str | None
-    status: Literal["ok", "missing", "old", "conflict", "frozen"]
+    status: Literal["ok", "missing", "old", "conflict"]
     versions: list[FileVersionResponse]
     created_at: datetime
     updated_at: datetime

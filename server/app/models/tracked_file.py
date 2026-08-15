@@ -13,10 +13,6 @@ class TrackedFile(Base):
             "category IN ('合同', '成本明细', '验收材料', '检测报告', '交付成果')",
             name="ck_tracked_file_category",
         ),
-        CheckConstraint(
-            "status IN ('ok', 'missing', 'old', 'conflict', 'frozen')",
-            name="ck_tracked_file_status",
-        ),
         Index("ix_tracked_file_project", "project_id"),
         Index("ix_tracked_file_current_version", "current_version"),
         Index(
@@ -34,7 +30,6 @@ class TrackedFile(Base):
     category: Mapped[str] = mapped_column(String(40), nullable=False)
     required: Mapped[bool] = mapped_column(nullable=False, default=False)
     current_version: Mapped[str | None] = mapped_column(ForeignKey("file_version.version", ondelete="SET NULL"))
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="missing")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

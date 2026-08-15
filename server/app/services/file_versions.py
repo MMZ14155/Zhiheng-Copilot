@@ -1,12 +1,20 @@
+import asyncio
 import hashlib
 import logging
 from pathlib import Path
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased
 
-from app.api.errors import conflict, not_found, payload_too_large, unsupported_media_type
+from app.api.errors import (
+    bad_request,
+    conflict,
+    not_found,
+    payload_too_large,
+    unsupported_media_type,
+)
 from app.core.config import get_settings
 from app.models.file_version import FileVersion
 from app.models.project import Project
@@ -58,12 +66,30 @@ class FileVersionService:
         return files
 
     @staticmethod
-    def _validate_file(filename: str, size: int) -> None:
+    def _validate_file(filename: str, size: int) -> str:
+        safe_name = Path(filename).name
+        if (
+            not filename
+            or safe_name != filename
+            or filename in {".", ".."}
+            or "/" in filename
+            or "\\" in filename
+        ):
+            raise bad_request("文件名不能包含路径信息", code="INVALID_FILE_NAME")
         ext = Path(filename).suffix.lower()
         if ext not in ALLOWED_EXTENSIONS:
             raise unsupported_media_type(f"不支持的文件类型 '{ext}'")
         if size > MAX_FILE_SIZE:
             raise payload_too_large(f"文件大小 {size} 超过上限 50MB")
+        return safe_name
+
+    @staticmethod
+    def _write_file(directory: Path, filename: str, content: bytes) -> str:
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / filename
+        with path.open("wb") as file_handle:
+            file_handle.write(content)
+        return str(path)
 
     @staticmethod
     async def get_workspace_file(session: AsyncSession, file_id: int) -> WorkspaceFile:
@@ -80,7 +106,7 @@ class FileVersionService:
             await session.execute(
                 select(FileVersion)
                 .where(FileVersion.file_id == file_id)
-                .order_by(FileVersion.uploaded_at.desc())
+                .order_by(FileVersion.uploaded_at.desc(), FileVersion.version.desc())
                 .limit(1)
             )
         ).scalar_one_or_none()
@@ -95,20 +121,19 @@ class FileVersionService:
         uploaded_by: str,
         changelog: str,
     ):
-        FileVersionService._validate_file(name, len(content))
+        safe_name = FileVersionService._validate_file(name, len(content))
         vhash = VersionHashService.generate_version_hash(
-            [{"name": name, "content": content}], uploaded_by, changelog
+            [{"name": safe_name, "content": content}], uploaded_by, changelog
         )
         chash = hashlib.sha256(content).hexdigest()
-        wf = WorkspaceFile(project_id=project_id, name=name, is_deliverable=False)
+        wf = WorkspaceFile(project_id=project_id, name=safe_name, is_deliverable=False)
         session.add(wf)
         await session.flush()
         s = get_settings()
         d = Path(s.api_data_dir) / "uploads" / str(project_id) / vhash
-        d.mkdir(parents=True, exist_ok=True)
-        p = str(d / name)
-        with open(p, "wb") as f:
-            f.write(content)
+        p = await asyncio.to_thread(
+            FileVersionService._write_file, d, safe_name, content
+        )
         fv = FileVersion(
             version=vhash,
             file_id=wf.id,
@@ -134,24 +159,31 @@ class FileVersionService:
         changelog: str,
     ):
         wf = await FileVersionService.get_workspace_file(session, file_id)
-        FileVersionService._validate_file(wf.name, len(content))
+        safe_name = FileVersionService._validate_file(wf.name, len(content))
         tail = await FileVersionService.get_tail_version(session, file_id)
         if tail is None:
             raise conflict(f"文件 {file_id} 无可用版本链")
+        tail_version = tail.version
         vhash = VersionHashService.generate_version_hash(
-            [{"name": wf.name, "content": content}], uploaded_by, changelog
+            [{"name": safe_name, "content": content}], uploaded_by, changelog
         )
+        if await session.get(FileVersion, vhash) is not None:
+            logger.warning(
+                "rejected duplicate file version file_id=%s version=%s",
+                file_id,
+                vhash,
+            )
+            raise conflict("该版本已存在", code="VERSION_EXISTS")
         chash = hashlib.sha256(content).hexdigest()
         s = get_settings()
         d = Path(s.api_data_dir) / "uploads" / str(wf.project_id) / vhash
-        d.mkdir(parents=True, exist_ok=True)
-        p = str(d / wf.name)
-        with open(p, "wb") as f:
-            f.write(content)
+        p = await asyncio.to_thread(
+            FileVersionService._write_file, d, safe_name, content
+        )
         fv = FileVersion(
             version=vhash,
             file_id=file_id,
-            prev_version=tail.version,
+            prev_version=tail_version,
             storage_path=p,
             content_hash=chash,
             size_bytes=len(content),
@@ -162,6 +194,31 @@ class FileVersionService:
             is_frozen=False,
         )
         session.add(fv)
+        try:
+            await session.flush()
+        except IntegrityError as exc:
+            constraint_name = getattr(
+                getattr(exc.orig, "diag", None), "constraint_name", None
+            )
+            await session.rollback()
+            if constraint_name == "uq_file_version_file_prev":
+                logger.warning(
+                    "rejected stale version chain file_id=%s prev_version=%s",
+                    file_id,
+                    tail_version,
+                )
+                raise conflict(
+                    "版本链尾已更新，请刷新后重试",
+                    code="VERSION_CHAIN_STALE",
+                ) from exc
+            if constraint_name in {"file_version_pkey", "pk_file_version"}:
+                logger.warning(
+                    "rejected duplicate file version file_id=%s version=%s",
+                    file_id,
+                    vhash,
+                )
+                raise conflict("该版本已存在", code="VERSION_EXISTS") from exc
+            raise
         return fv
 
     @staticmethod
