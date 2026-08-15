@@ -2,12 +2,14 @@ import hashlib
 import logging
 from pathlib import Path
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.api.errors import conflict, not_found, payload_too_large, unsupported_media_type
 from app.core.config import get_settings
 from app.models.file_version import FileVersion
+from app.models.project import Project
 from app.models.workspace_file import WorkspaceFile
 from app.services.version_hash import VersionHashService
 
@@ -18,6 +20,43 @@ MAX_FILE_SIZE = 50 * 1024 * 1024
 
 
 class FileVersionService:
+    @staticmethod
+    async def list_project_files(
+        session: AsyncSession, project_id: int
+    ) -> list[tuple[WorkspaceFile, FileVersion | None]]:
+        if await session.get(Project, project_id) is None:
+            raise not_found(f"项目 {project_id} 不存在", code="PROJECT_NOT_FOUND")
+
+        latest_versions = (
+            select(
+                FileVersion,
+                func.row_number()
+                .over(
+                    partition_by=FileVersion.file_id,
+                    order_by=(
+                        FileVersion.uploaded_at.desc(),
+                        FileVersion.version.desc(),
+                    ),
+                )
+                .label("version_rank"),
+            )
+            .subquery()
+        )
+        latest_version = aliased(FileVersion, latest_versions)
+        rows = await session.execute(
+            select(WorkspaceFile, latest_version)
+            .outerjoin(
+                latest_version,
+                (latest_version.file_id == WorkspaceFile.id)
+                & (latest_versions.c.version_rank == 1),
+            )
+            .where(WorkspaceFile.project_id == project_id)
+            .order_by(WorkspaceFile.created_at, WorkspaceFile.id)
+        )
+        files = list(rows.all())
+        logger.info("listed workspace files project_id=%s count=%s", project_id, len(files))
+        return files
+
     @staticmethod
     def _validate_file(filename: str, size: int) -> None:
         ext = Path(filename).suffix.lower()

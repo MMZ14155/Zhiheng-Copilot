@@ -7,7 +7,14 @@ from starlette.responses import FileResponse
 from app.api.errors import bad_request, not_found
 from app.db.session import get_session
 from app.models.file_version import FileVersion
-from app.schemas.files import CreateFileResponse, FileVersionResponse, VersionListResponse
+from app.schemas.files import (
+    CreateFileResponse,
+    FileVersionResponse,
+    LatestFileVersionSummary,
+    VersionListResponse,
+    WorkspaceFileListResponse,
+    WorkspaceFileSummary,
+)
 from app.services.file_versions import FileVersionService
 
 logger = logging.getLogger(__name__)
@@ -28,6 +35,38 @@ def _version_to_response(fv: FileVersion) -> FileVersionResponse:
         parse_status=fv.parse_status,
         is_frozen=fv.is_frozen,
         uploaded_at=fv.uploaded_at.isoformat(),
+    )
+
+
+@router.get("/projects/{project_id}/files", response_model=WorkspaceFileListResponse)
+async def list_project_files(
+    project_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> WorkspaceFileListResponse:
+    rows = await FileVersionService.list_project_files(session, project_id)
+    return WorkspaceFileListResponse(
+        project_id=project_id,
+        files=[
+            WorkspaceFileSummary(
+                id=workspace_file.id,
+                name=workspace_file.name,
+                is_deliverable=workspace_file.is_deliverable,
+                created_at=workspace_file.created_at,
+                updated_at=workspace_file.updated_at,
+                latest_version=(
+                    LatestFileVersionSummary(
+                        version=latest_version.version,
+                        document_type=latest_version.document_type,
+                        parse_status=latest_version.parse_status,
+                        size_bytes=latest_version.size_bytes,
+                        uploaded_at=latest_version.uploaded_at,
+                    )
+                    if latest_version is not None
+                    else None
+                ),
+            )
+            for workspace_file, latest_version in rows
+        ],
     )
 
 

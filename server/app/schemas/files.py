@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -37,3 +38,25 @@ class FileVersionResponse(BaseModel):
 class VersionListResponse(BaseModel):
     file_id: int
     versions: list[FileVersionResponse]
+
+
+class LatestFileVersionSummary(BaseModel):
+    version: str
+    document_type: Optional[str]
+    parse_status: str
+    size_bytes: int
+    uploaded_at: datetime
+
+
+class WorkspaceFileSummary(BaseModel):
+    id: int
+    name: str
+    is_deliverable: bool
+    created_at: datetime
+    updated_at: datetime
+    latest_version: Optional[LatestFileVersionSummary]
+
+
+class WorkspaceFileListResponse(BaseModel):
+    project_id: int
+    files: list[WorkspaceFileSummary]
