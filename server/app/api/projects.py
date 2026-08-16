@@ -20,6 +20,7 @@ from app.models.project_member import ProjectMember
 from app.models.user import User
 from app.schemas.ai import SummaryInputResponse
 from app.schemas.projects import (
+    CollectionOverviewResponse,
     DeliverableSummary,
     LatestSummary,
     ProjectCreate,
@@ -34,6 +35,7 @@ from app.schemas.projects import (
     RenewalChainResponse,
 )
 from app.schemas.risks import RiskConfig, RiskResponse
+from app.services.collections import aggregate_collection_overview, load_collection_documents
 from app.services.deliverables import DeliverableService
 from app.services.risk_monitor import (
     DeliverableRiskState,
@@ -279,6 +281,17 @@ async def get_project(
     )
     logger.info("fetched project detail id=%s", project_id)
     return response
+
+
+@router.get("/projects/{project_id}/collection-overview", response_model=CollectionOverviewResponse)
+async def get_collection_overview(project_id: int, session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user)) -> CollectionOverviewResponse:
+    await require_project_role(session, project_id, user)
+    await _get_project_or_404(session, project_id)
+    overview = aggregate_collection_overview(await load_collection_documents(session, project_id))
+    logger.info("calculated collection overview project_id=%s status=%s", project_id, overview.data_status)
+    payload = overview.__dict__ | {"incomplete_reasons": list(overview.incomplete_reasons)}
+    return CollectionOverviewResponse(**payload)
 
 
 @router.patch("/projects/{project_id}", response_model=ProjectResponse)

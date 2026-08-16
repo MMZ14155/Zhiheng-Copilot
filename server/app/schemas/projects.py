@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from app.schemas.ai import SummaryInputResponse
 
@@ -150,6 +150,22 @@ class ProjectResponse(BaseModel):
 class ProjectDetailResponse(ProjectResponse):
     deliverables: list[DeliverableSummary] = Field(default_factory=list)
     latest_summary: LatestSummary | None = None
+
+
+class CollectionOverviewResponse(BaseModel):
+    contract_amount: Decimal | None
+    receivable_amount: Decimal | None
+    received_amount: Decimal
+    invoiced_amount: Decimal
+    overdue_amount: Decimal | None
+    collection_rate: Decimal | None
+    data_status: Literal["ok", "incomplete"]
+    incomplete_reasons: list[str]
+
+    @field_serializer("contract_amount", "receivable_amount", "received_amount",
+        "invoiced_amount", "overdue_amount", "collection_rate")
+    def serialize_decimal(self, value: Decimal | None) -> str | None:
+        return str(value) if value is not None else None
 
 
 class ProjectListResponse(BaseModel):
