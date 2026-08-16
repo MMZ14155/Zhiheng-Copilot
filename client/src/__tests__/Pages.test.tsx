@@ -45,7 +45,7 @@ describe('页面', () => {
 
   it('RiskBoard 加载、筛选项目并打开弹窗', async () => {
     vi.mocked(projectsApi.listProjects).mockResolvedValue({ page: 1, size: 100, total: 1, items: [{ id: '1', name: 'Alpha', code: 'A', customerName: '客户', projectType: '软件销售', status: 'active', progress: 10, contractAmount: null, signedDate: null, plannedDeliveryDate: null, updatedAt: '' }] }); vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({ level: 'warn', risks: [] })
-    render(<MemoryRouter><RiskBoard /></MemoryRouter>); await screen.findByText('Alpha'); expect(screen.getByText('共 1 个项目')).toBeTruthy(); await userEvent.click(screen.getByTitle('点击只看阻塞级项目')); expect(screen.getByText('当前筛选条件下暂无项目。')).toBeTruthy(); await userEvent.click(screen.getByText('新建项目')); expect(screen.getByText('创建弹窗')).toBeTruthy(); await userEvent.click(screen.getByText('关闭弹窗'))
+    render(<MemoryRouter><RiskBoard /></MemoryRouter>); await screen.findByText('Alpha'); expect(screen.getByText('共 1 个项目')).toBeTruthy(); expect(screen.queryByText('A')).toBeNull(); await userEvent.click(screen.getByTitle('点击只看阻塞级项目')); expect(screen.getByText('未找到匹配项目')).toBeTruthy(); await userEvent.click(screen.getByText('新建项目')); expect(screen.getByText('创建弹窗')).toBeTruthy(); await userEvent.click(screen.getByText('关闭弹窗'))
   })
 
   it('RiskBoard 容忍单个风险失败并处理列表错误', async () => {
@@ -58,7 +58,6 @@ describe('页面', () => {
   it('ProjectDetail 挂载并展示项目核心条件', async () => {
     vi.mocked(projectsApi.getProject).mockResolvedValue({ id: '1', name: '详情项目', code: 'P', customerName: '客户', projectType: '软件销售', parties: [], contractAmount: null, signedDate: null, startedDate: null, plannedDeliveryDate: null, status: 'active', progress: 10, notes: null, deliverables: [], latestSummary: null })
     vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({ level: 'warn', risks: [{ type: 'delivery-deadline', level: 'warn', reason: '即将到期', recommendation: '跟进', remainingDays: 8, overdueDays: null, overdueAmount: null, dataStatus: 'complete' }] })
-    render(<MemoryRouter initialEntries={['/projects/1']}><Routes><Route path="/projects/:id" element={<ProjectDetail />} /></Routes></MemoryRouter>); await waitFor(() => expect(screen.getAllByText('详情项目')).toHaveLength(2)); expect(screen.getByText('版本历史')).toBeTruthy(); expect(screen.getByText('标签面板')).toBeTruthy()
-    expect(screen.getByText('距交付 8 天')).toBeTruthy(); expect(screen.getByText('本项目回款进度')).toBeTruthy()
+    render(<MemoryRouter initialEntries={['/projects/1']}><Routes><Route path="/projects/:id" element={<ProjectDetail />} /></Routes></MemoryRouter>); await waitFor(() => expect(screen.getAllByText('详情项目')).toHaveLength(2)); expect(screen.queryByText('P')).toBeNull(); expect(screen.getByText('交付节点 剩余 8 天')).toBeTruthy(); await userEvent.click(screen.getByRole('tab', { name: '交付物' })); expect(screen.getByText('版本历史')).toBeTruthy(); expect(screen.getByText('距交付 8 天')).toBeTruthy(); expect(screen.getByText('本项目回款进度')).toBeTruthy(); await userEvent.click(screen.getByRole('tab', { name: '标签' })); expect(screen.getByText('标签面板')).toBeTruthy()
   })
 })

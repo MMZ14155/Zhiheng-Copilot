@@ -11,7 +11,7 @@ describe('App 登录守卫', () => {
 
   it('无令牌时渲染登录页并提示刷新后需重新登录', () => {
     const html = renderToString(createElement(MemoryRouter, { initialEntries: ['/login'] }, createElement(App)))
-    expect(html).toContain('智衡Copilot')
+    expect(html).toContain('智衡 Copilot')
     expect(html).toContain('登录')
     expect(html).toContain('刷新页面后需重新登录')
   })
@@ -25,6 +25,6 @@ describe('App 登录守卫', () => {
     setAuthToken('token-1', { id: 2, login: 'demo', name: '演示用户', isAdmin: false })
     const html = renderToString(createElement(MemoryRouter, { initialEntries: ['/risk-board'] }, createElement(App)))
     expect(html).toContain('app-header')
-    expect(html).toContain('风险看板')
+    expect(html).toContain('项目首页')
   })
 })

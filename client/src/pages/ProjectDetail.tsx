@@ -7,6 +7,7 @@ import ProcessFiles from '../components/ProcessFiles';
 import TagPanel from '../components/TagPanel';
 import { useTaskPolling } from '../hooks/useTaskPolling';
 import { PROJECT_TYPE_COLORS } from '../constants/projectTypes';
+import { Alert, Tabs } from '../components/ui';
 
 const statusLabels: Record<ProjectDetailModel['status'], string> = {
   active: '进行中',
@@ -27,6 +28,7 @@ export default function ProjectDetail() {
   const [questions, setQuestions] = useState<string[]>([]);
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const loadQuestions = useCallback(async () => {
     if (projectId === null) return;
@@ -90,15 +92,15 @@ export default function ProjectDetail() {
   return (
     <div className="page-container">
       <div className="detail-header">
-        <div><h2 className="page-title">{project.name}</h2><span className="project-code">{project.code}</span></div>
+        <div><div className="breadcrumbs"><Link to="/risk-board">项目首页</Link><span>/</span><span>项目详情</span></div><h2 className="page-title">{project.name}</h2></div>
         <Link to="/risk-board" className="back-link">← 返回项目列表</Link>
       </div>
       <div className="detail-card">
-        <section className="detail-section">
+        <Tabs active={activeTab} onChange={setActiveTab} tabs={[{key:'overview',label:'概览'},{key:'deliverables',label:'交付物'},{key:'files',label:'过程文件'},{key:'tags',label:'标签'},{key:'risks',label:'风险列表'}]} />
+        {activeTab === 'overview' && <><section className="detail-section">
           <h3>基础信息</h3>
           <div className="detail-grid">
             <Info label="项目名称" value={project.name} />
-            <Info label="项目编号" value={project.code} />
             <Info label="客户" value={project.customerName} />
             <Info label="项目类型" value={project.projectType ?? '未填写'} valueColor={project.projectType ? PROJECT_TYPE_COLORS[project.projectType] : undefined} />
             <Info label="状态" value={statusLabels[project.status]} />
@@ -110,10 +112,9 @@ export default function ProjectDetail() {
           <div className="detail-progress" aria-label={`项目进度 ${project.progress}%`}><div><span>项目进度</span><strong>{project.progress}%</strong></div><div className="detail-progress-track"><span style={{ width: `${project.progress}%` }} /></div></div>
           <Info label="备注" value={project.notes ?? '暂无备注'} />
         </section>
+        {remainingDays !== null && remainingDays !== undefined && <Alert tone={remainingDays < 0 ? 'danger' : 'warning'}>交付节点 {remainingDays < 0 ? `已逾期 ${Math.abs(remainingDays)} 天` : `剩余 ${remainingDays} 天`}</Alert>}
+        {paymentRisk && <Alert>回款已逾期 {paymentRisk.overdueDays ?? 0} 天，逾期金额 {money.format(paymentRisk.overdueAmount ?? 0)} 元</Alert>}
         {project.parties.length > 0 && <section className="detail-section"><h3>签约方</h3><div className="detail-list">{project.parties.map((party, index) => <article key={`${party.role}-${party.name}-${index}`}><strong>{party.role}</strong><span>{party.name}</span><small>{party.contact ?? '未填写联系方式'}</small></article>)}</div></section>}
-        <section className="detail-section"><h3>过程文件</h3><ProcessFiles projectId={projectId!} onChanged={loadProject} /></section>
-        <section className="detail-section"><h3>标签</h3><TagPanel projectId={projectId!} /></section>
-        <section className="detail-section deliverable-payment-section"><div className="deliverable-heading"><h3>交付物清单</h3><div className="deadline-countdown">{remainingDays === null || remainingDays === undefined ? '暂无到期预警' : remainingDays < 0 ? `已逾期 ${Math.abs(remainingDays)} 天` : `距交付 ${remainingDays} 天`}</div></div><div className="payment-progress-panel"><div><span>本项目回款进度</span><strong>{paymentRisk ? `逾期 ${money.format(paymentRisk.overdueAmount ?? 0)} 元` : paymentIncomplete ? '数据不完整' : '已收金额待接口提供'}</strong></div><div className="detail-progress-track payment-track" aria-label="本项目回款进度暂缺已收金额"><span style={{ width: '0%' }} /></div><small>{project.contractAmount === null ? '合同额未填写' : `合同额 ${money.format(project.contractAmount)} 元`} · 当前项目详情与风险接口未返回已收金额</small>{riskError && <p className="inline-risk-error" role="alert">{riskError}</p>}</div><VersionHistory projectId={projectId!} deliverables={project.deliverables} /></section>
         <section className="detail-section">
           <h3>最新总结</h3>
           {project.latestSummary === null ? <p className="detail-empty">暂无总结</p> : <>
@@ -130,7 +131,11 @@ export default function ProjectDetail() {
             {!questionsLoading && questionsError && <div className="questions-state questions-error" role="alert"><span>{questionsError}</span><button type="button" onClick={() => void loadQuestions()}>重试</button></div>}
             {!questionsLoading && !questionsError && questions.length > 0 && <div className="questions-panel"><h4>待确认问题</h4>{questions.map((question) => <SummaryQuestion key={question} projectId={projectId!} question={question} onCompleted={loadProject} />)}</div>}
           </>}
-        </section>
+        </section></>}
+        {activeTab === 'deliverables' && <section className="detail-section deliverable-payment-section"><div className="deliverable-heading"><h3>交付物清单</h3><div className="deadline-countdown">{remainingDays === null || remainingDays === undefined ? '暂无到期预警' : remainingDays < 0 ? `已逾期 ${Math.abs(remainingDays)} 天` : `距交付 ${remainingDays} 天`}</div></div><div className="payment-progress-panel"><div><span>本项目回款进度</span><strong>{paymentRisk ? `逾期 ${money.format(paymentRisk.overdueAmount ?? 0)} 元` : paymentIncomplete ? '数据不完整' : '已收金额待接口提供'}</strong></div><div className="detail-progress-track payment-track" aria-label="本项目回款进度暂缺已收金额"><span style={{ width: '0%' }} /></div><small>{project.contractAmount === null ? '合同额未填写' : `合同额 ${money.format(project.contractAmount)} 元`} · 当前项目详情与风险接口未返回已收金额</small>{riskError && <p className="inline-risk-error" role="alert">{riskError}</p>}</div><VersionHistory projectId={projectId!} deliverables={project.deliverables} /></section>}
+        {activeTab === 'files' && <section className="detail-section"><h3>过程文件</h3><ProcessFiles projectId={projectId!} onChanged={loadProject} /></section>}
+        {activeTab === 'tags' && <section className="detail-section"><h3>标签</h3><TagPanel projectId={projectId!} /></section>}
+        {activeTab === 'risks' && <section className="detail-section"><h3>风险列表</h3>{riskError ? <Alert>{riskError}</Alert> : !projectRisks?.risks.length ? <p className="detail-empty">当前没有风险项</p> : <div className="risk-list">{projectRisks.risks.map((risk,index)=><article key={`${risk.type}-${index}`}><span className={`badge ${risk.level}`}>{risk.level === 'block' ? '阻塞' : risk.level === 'warn' ? '预警' : '健康'}</span><div><strong>{risk.reason}</strong><p>{risk.recommendation}</p></div></article>)}</div>}</section>}
       </div>
     </div>
   );

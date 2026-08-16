@@ -14,7 +14,10 @@
   cursor: pointer;
   transition: all 0.15s;
   border: 2px solid transparent;
+  color:inherit;
+  text-align:left;
 }
+@media(max-width:767px){.risk-filter{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.stat-card{min-width:0;padding:12px}}
 
 .stat-card:hover {
   transform: translateY(-2px);

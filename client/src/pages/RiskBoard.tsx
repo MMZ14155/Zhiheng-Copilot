@@ -8,6 +8,7 @@ import ProjectCardGrid from '../components/ProjectCardGrid';
 import RiskFilter from '../components/RiskFilter';
 import type { RiskBoardFilter } from '../components/RiskFilter';
 import { PROJECT_TYPES, PROJECT_TYPE_LABELS } from '../constants/projectTypes';
+import { Alert, Button, Empty, Input, Select, Skeleton } from '../components/ui';
 
 // ==================== 风险评级逻辑（暂时注释禁用，待服务端风险接口接入后恢复） ====================
 // 原实现基于本地 mock 与 RiskMonitor 在浏览器端计算每个项目的风险等级，
@@ -101,6 +102,8 @@ export default function RiskBoard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [search, setSearch] = useState('');
+  const [chatOpen, setChatOpen] = useState(true);
   const requestedFilter = searchParams.get('filter');
   const [filter, setFilterState] = useState<RiskBoardFilter>(
     requestedFilter === 'block' || requestedFilter === 'warn' || requestedFilter === 'ok' || requestedFilter === 'delivery' || requestedFilter === 'payment' || requestedFilter === 'incomplete' ? requestedFilter : 'all',
@@ -153,21 +156,23 @@ export default function RiskBoard() {
         || ((filter === 'block' || filter === 'warn') && project.riskLevel === filter)
         || (filter === 'ok' && project.riskLevel === 'ok' && !hasRisk('payment-data-incomplete'));
       const matchType = projectTypeFilter === 'all' || project.projectType === projectTypeFilter;
-      return matchRisk && matchType;
+      const query = search.trim().toLocaleLowerCase('zh-CN');
+      const matchSearch = !query || project.name.toLocaleLowerCase('zh-CN').includes(query) || project.customerName.toLocaleLowerCase('zh-CN').includes(query);
+      return matchRisk && matchType && matchSearch;
     });
-  }, [data, filter, projectTypeFilter]);
+  }, [data, filter, projectTypeFilter, search]);
   const setFilter = (next: RiskBoardFilter) => {
     setFilterState(next);
     const params = new URLSearchParams(searchParams);
     if (next === 'all') params.delete('filter'); else params.set('filter', next);
     setSearchParams(params, { replace: true });
   };
-  return <div className="risk-board-layout"><ChatArea /><div className="risk-board">
-    <div className="project-list-heading"><div><h2>项目列表</h2>{!loading && !error && <span>共 {data?.total ?? 0} 个项目</span>}</div><div className="project-list-actions"><button type="button" onClick={() => void load()} disabled={loading}>{loading ? '加载中…' : '刷新'}</button><button type="button" className="create-project-button" onClick={() => setShowCreateModal(true)}>新建项目</button></div></div>
-    {loading && <div className="project-list-state" role="status">正在加载项目…</div>}
-    {!loading && error && <div className="project-list-state error" role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>重新加载</button></div>}
-    {!loading && !error && data?.items.length === 0 && <div className="project-list-state">暂无项目，请先通过项目接口创建项目。</div>}
-    {!loading && !error && data && data.items.length > 0 && <><RiskFilter blockCount={counts.block} warnCount={counts.warn} okCount={counts.ok} totalCount={counts.total} deliveryCount={counts.delivery} paymentCount={counts.payment} incompleteCount={counts.incomplete} active={filter} onChange={setFilter} /><div className="project-type-filter"><label htmlFor="project-type-filter">项目类型</label><select id="project-type-filter" value={projectTypeFilter} onChange={(e) => setProjectTypeFilter(e.target.value as ProjectType | 'all')}>{PROJECT_TYPES.map((type) => <option key={type} value={type}>{PROJECT_TYPE_LABELS[type]}</option>)}<option value="all">全部</option></select></div>{filteredProjects.length > 0 ? <ProjectCardGrid projects={filteredProjects} /> : <div className="project-list-state">当前筛选条件下暂无项目。</div>}</>}
+  return <div className={`risk-board-layout${chatOpen ? '' : ' chat-collapsed'}`}><aside className="board-chat"><button type="button" className="chat-collapse" onClick={() => setChatOpen(value => !value)}>{chatOpen ? '收起对话' : '展开对话'}</button>{chatOpen && <ChatArea />}</aside><div className="risk-board">
+    <div className="project-list-heading"><div><h2>项目工作台</h2>{!loading && !error && <span>共 {data?.total ?? 0} 个项目</span>}</div><div className="project-list-actions"><Input aria-label="搜索项目" placeholder="搜索项目或客户" value={search} onChange={event => setSearch(event.target.value)} /><Select aria-label="项目类型" value={projectTypeFilter} onChange={(e) => setProjectTypeFilter(e.target.value as ProjectType | 'all')}><option value="all">全部类型</option>{PROJECT_TYPES.map((type) => <option key={type} value={type}>{PROJECT_TYPE_LABELS[type]}</option>)}</Select><Button variant="secondary" type="button" onClick={() => void load()} disabled={loading}>{loading ? '加载中…' : '刷新'}</Button><Button type="button" onClick={() => setShowCreateModal(true)}>新建项目</Button></div></div>
+    {loading && <Skeleton rows={4} />}
+    {!loading && error && <Alert action={<Button variant="secondary" type="button" onClick={() => void load()}>重试</Button>}>{error}</Alert>}
+    {!loading && !error && data?.items.length === 0 && <Empty title="还没有项目" description="创建第一个项目后，即可在这里跟踪进度与风险。" action={<Button onClick={() => setShowCreateModal(true)}>创建项目</Button>} />}
+    {!loading && !error && data && data.items.length > 0 && <><div className="risk-filter-panel"><h3>风险概览</h3><RiskFilter blockCount={counts.block} warnCount={counts.warn} okCount={counts.ok} totalCount={counts.total} deliveryCount={counts.delivery} paymentCount={counts.payment} incompleteCount={counts.incomplete} active={filter} onChange={setFilter} /></div>{filteredProjects.length > 0 ? <ProjectCardGrid projects={filteredProjects} /> : <Empty title="未找到匹配项目" description="请尝试调整搜索词或筛选条件。" />}</>}
     {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} onCreated={load} />}
   </div></div>;
 }

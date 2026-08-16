@@ -49,7 +49,7 @@ export default function RiskFilter({
   return (
     <div className="risk-filter">
       {items.map((item) => (
-        <div
+        <button type="button"
           key={item.key}
           className={`stat-card ${active === item.key ? 'active ' + item.riskClass : ''}`}
           onClick={() => handleClick(item.key)}
@@ -57,7 +57,7 @@ export default function RiskFilter({
         >
           <div className="label">{item.label}</div>
           <div className={`value ${item.riskClass || ''}`}>{item.count}</div>
-        </div>
+        </button>
       ))}
     </div>
   );

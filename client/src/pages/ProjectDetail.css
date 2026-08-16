@@ -25,6 +25,7 @@
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
+.breadcrumbs{display:flex;gap:7px;margin-bottom:7px;color:var(--muted);font-size:12px}.breadcrumbs a{color:var(--primary);text-decoration:none}.detail-card>.ui-alert{margin:16px 0}.risk-list{display:grid;gap:10px}.risk-list article{display:flex;align-items:flex-start;gap:12px;padding:14px;border:1px solid var(--border);border-radius:9px;background:var(--neutral-50)}.risk-list article strong{font-size:13px}.risk-list article p{margin-top:4px;color:var(--muted)}
 
 .detail-section {
   padding: 20px 0;

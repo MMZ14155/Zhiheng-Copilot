@@ -29,8 +29,8 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h2>智衡Copilot</h2>
-        <p className="login-subtitle">项目风险与经营分析助手</p>
+        <div className="login-brand"><span>智</span><div><h2>智衡 Copilot</h2><p className="login-subtitle">项目风险与经营分析助手</p></div></div>
+        <div className="login-welcome"><h1>欢迎回来</h1><p>登录后继续管理项目、资料与经营风险</p></div>
         <form onSubmit={(e) => void handleSubmit(e)}>
           <div className="login-field">
             <label>账号</label>
@@ -59,7 +59,7 @@ export default function Login() {
             {submitting ? '登录中…' : '登录'}
           </button>
         </form>
-        <p className="login-hint">登录状态仅保存在内存中，刷新页面后需重新登录</p>
+        <p className="login-hint">安全提示 · 登录状态仅保存在内存中，刷新页面后需重新登录</p>
       </div>
     </div>
   );

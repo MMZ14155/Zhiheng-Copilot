@@ -18,7 +18,7 @@ const route = (node: React.ReactNode) => render(<MemoryRouter>{node}</MemoryRout
 describe('核心组件', () => {
   it('Header 展示默认与自定义副标题并退出', async () => {
     setAuthToken('t', { id: 1, login: 'u', name: 'U', isAdmin: false }); const { rerender } = route(<Header />)
-    expect(screen.getByText(/项目风险与经营分析助手/)).toBeTruthy(); await userEvent.click(screen.getByText('退出'))
+    expect(screen.getByText(/项目风险与经营分析助手/)).toBeTruthy(); await userEvent.click(screen.getByRole('button', { name: /U/ })); await userEvent.click(screen.getByText('退出登录'))
     rerender(<MemoryRouter><Header subtitle="自定义" /></MemoryRouter>); expect(screen.getByText('自定义')).toBeTruthy()
   })
 
