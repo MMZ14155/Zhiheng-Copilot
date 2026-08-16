@@ -8,6 +8,7 @@ from app.schemas.ai import SummaryInputResponse
 
 
 ProjectStatus = Literal["active", "archived", "completed"]
+ProjectType = Literal["软件销售", "正版化服务", "正版化服务+软件销售"]
 ProjectLinkType = Literal["renewal", "related"]
 ProjectStage = Literal["init", "planning", "executing", "accepting", "closed"]
 AcceptanceResult = Literal["pending", "passed", "failed", "partial"]
@@ -22,6 +23,7 @@ class ProjectParty(BaseModel):
 class ProjectBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=200)
     code: str = Field(..., min_length=1, max_length=80)
+    project_type: ProjectType | None = None
     customer_name: str = Field(..., min_length=1, max_length=200)
     parties: list[ProjectParty] = Field(default_factory=list)
     contract_amount: Decimal | None = Field(default=None, gt=0)
@@ -46,12 +48,13 @@ class ProjectBase(BaseModel):
 
 
 class ProjectCreate(ProjectBase):
-    pass
+    code: str | None = Field(default=None, min_length=1, max_length=80)
 
 
 class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     code: str | None = Field(default=None, min_length=1, max_length=80)
+    project_type: ProjectType | None = None
     customer_name: str | None = Field(default=None, min_length=1, max_length=200)
     parties: list[ProjectParty] | None = None
     contract_amount: Decimal | None = Field(default=None, gt=0)
@@ -119,6 +122,7 @@ class ProjectResponse(BaseModel):
     id: int
     name: str
     code: str
+    project_type: ProjectType | None
     stage: ProjectStage | None
     budget: Decimal | None
     cost: Decimal | None

@@ -16,6 +16,10 @@ class Project(Base):
             name="ck_project_status",
         ),
         CheckConstraint("progress >= 0 AND progress <= 100", name="ck_project_progress"),
+        CheckConstraint(
+            "project_type IN ('软件销售', '正版化服务', '正版化服务+软件销售')",
+            name="ck_project_type",
+        ),
         Index("ix_project_customer_name", "customer_name"),
         Index("ix_project_status", "status"),
         Index("ix_project_code", "code"),
@@ -24,6 +28,7 @@ class Project(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     code: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    project_type: Mapped[str | None] = mapped_column(String(20))
     customer_name: Mapped[str] = mapped_column(String(200), nullable=False)
     parties: Mapped[list[dict[str, str]]] = mapped_column(JSONB, nullable=False, default=list)
     contract_amount: Mapped[Decimal | None] = mapped_column(Numeric(18, 2))

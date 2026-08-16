@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock
 
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from app.api import projects
 from app.models.project import Project
@@ -16,6 +17,7 @@ from tests.conftest import Result
 
 def project(now, ident=1):
     return Project(id=ident, name=f"项目{ident}", code=f"P{ident}", customer_name="客户",
+        project_type=None,
         parties=[], contract_amount=None, signed_date=None, started_date=None,
         planned_delivery_date=None, status="active", progress=20, stage="executing",
         budget=None, cost=None, planned_days=None, used_days=None, quality_issues=None,
@@ -39,14 +41,16 @@ def test_list_projects_admin_and_member(fake_session, users, now):
     p = project(now)
     fake_session.scalar.return_value = 1
     fake_session.execute.return_value = Result([p])
-    response = asyncio.run(projects.list_projects(1, 20, "客户", "active", "客", None, fake_session, users.member))
+    response = asyncio.run(projects.list_projects(1, 20, "客户", "active", "客", None, "软件销售", fake_session, users.member))
     assert response.total == 1 and response.items[0].code == "P1"
-    response = asyncio.run(projects.list_projects(2, 5, None, None, None, None, fake_session, users.admin))
+    list_sql = str(fake_session.execute.call_args.args[0])
+    assert "project.project_type" in list_sql and "project_member.user_id" in list_sql
+    response = asyncio.run(projects.list_projects(2, 5, None, None, None, None, None, fake_session, users.admin))
     assert response.page == 2
 
 
 def test_create_update_project(fake_session, users, now, monkeypatch):
-    payload = ProjectCreate(name="新项目", code="NEW", customer_name="客户",
+    payload = ProjectCreate(name="新项目", project_type="正版化服务", customer_name="客户",
         parties=[ProjectParty(role="甲方", name="客户")], signed_date=date(2026, 1, 1),
         started_date=date(2026, 1, 2), planned_delivery_date=date(2026, 2, 1))
     async def refresh(obj):
@@ -55,13 +59,20 @@ def test_create_update_project(fake_session, users, now, monkeypatch):
         obj.quality_issues = obj.satisfaction = obj.acceptance_result = None
     fake_session.refresh.side_effect = refresh
     created = asyncio.run(projects.create_project(payload, fake_session, users.admin))
-    assert created.code == "NEW"
+    assert created.code and created.project_type == "正版化服务"
 
     existing = project(now, 3)
     fake_session.get.return_value = existing
     monkeypatch.setattr(projects, "require_project_role", AsyncMock())
     updated = asyncio.run(projects.update_project(3, ProjectUpdate(name="已更新", parties=[]), fake_session, users.member))
     assert updated.name == "已更新" and updated.parties == []
+
+
+def test_project_type_validation():
+    payload = ProjectCreate(name="项目", code="P", customer_name="客户", project_type="软件销售")
+    assert payload.project_type == "软件销售"
+    with pytest.raises(ValidationError):
+        ProjectCreate(name="项目", code="P", customer_name="客户", project_type="其他")
 
 
 def test_project_detail_and_risks(fake_session, users, now, monkeypatch):

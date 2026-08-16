@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Iterable
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import String, and_, cast, func, or_, select, text
@@ -28,6 +28,7 @@ from app.schemas.projects import (
     ProjectLinkResponse,
     ProjectListResponse,
     ProjectResponse,
+    ProjectType,
     ProjectUpdate,
     RelatedProjectSummary,
     RenewalChainResponse,
@@ -144,12 +145,15 @@ async def list_projects(
     status: str | None = Query(default=None, pattern="^(active|archived|completed)$"),
     client_name: str | None = Query(default=None, min_length=1, max_length=200),
     expand: str | None = Query(default=None, pattern="^links$"),
+    project_type: ProjectType | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> ProjectListResponse:
     filters = []
     if status:
         filters.append(Project.status == status)
+    if project_type:
+        filters.append(Project.project_type == project_type)
     if client_name:
         filters.append(Project.customer_name.ilike(f"%{client_name}%"))
     if company:
@@ -193,9 +197,11 @@ async def create_project(
         from app.api.errors import forbidden
         manager = await session.scalar(select(ProjectMember.id).where(ProjectMember.user_id == user.id, ProjectMember.role == "manager").limit(1))
         if manager is None: raise forbidden()
+    code = payload.code or str(int(datetime.now(timezone.utc).timestamp() * 1000))
     project = Project(
         name=payload.name,
-        code=payload.code,
+        code=code,
+        project_type=payload.project_type,
         customer_name=payload.customer_name,
         parties=_serialize_parties(payload.parties),
         contract_amount=payload.contract_amount,
@@ -213,7 +219,7 @@ async def create_project(
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
-        logger.warning("project create conflict code=%s error=%s", payload.code, exc)
+        logger.warning("project create conflict code=%s error=%s", code, exc)
         raise conflict("项目编码已存在", code="PROJECT_CODE_EXISTS") from exc
     await session.refresh(project)
     logger.info("created project id=%s code=%s", project.id, project.code)
