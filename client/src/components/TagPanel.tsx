@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ApiError, filesApi, tagsApi } from '../api';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { ApiError, filesApi, tagsApi, getAuthUser, subscribeAuth } from '../api';
 import type { ProjectFile, Tag, TagSnapshot, TagTypeDto } from '../api';
 
 const tagTypes: Array<{ value: TagTypeDto; label: string }> = [
@@ -11,6 +11,7 @@ const errorMessage = (reason: unknown, fallback: string) => reason instanceof Ap
 const formatDate = (value: string) => new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
 
 export default function TagPanel({ projectId }: { projectId: number }) {
+  const currentUser = useSyncExternalStore(subscribeAuth, getAuthUser, getAuthUser);
   const [tags, setTags] = useState<Tag[]>([]);
   const [files, setFiles] = useState<ProjectFile[]>([]);
   const [name, setName] = useState('');
@@ -31,7 +32,7 @@ export default function TagPanel({ projectId }: { projectId: number }) {
   const create = async () => {
     if (!name.trim()) return setError('请输入标签名称');
     setSubmitting(true); setError(null);
-    try { await tagsApi.createTag(projectId, { name: name.trim(), type, created_by: 'web-user', note: note.trim() || undefined }); setName(''); setNote(''); await load(); }
+    try { await tagsApi.createTag(projectId, { name: name.trim(), type, note: note.trim() || undefined }); setName(''); setNote(''); await load(); }
     catch (reason) { console.error('标签创建失败', reason); setError(errorMessage(reason, '标签创建失败，请稍后重试')); }
     finally { setSubmitting(false); }
   };
@@ -40,7 +41,7 @@ export default function TagPanel({ projectId }: { projectId: number }) {
     <div className="tag-create-form">
       <label>标签名称<input value={name} disabled={submitting} onChange={(event) => setName(event.target.value)} /></label>
       <label>标签类型<select value={type} disabled={submitting} onChange={(event) => setType(event.target.value as TagTypeDto)}>{tagTypes.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>
-      <label>创建人<input value="web-user" disabled /></label>
+      <label>创建人<input value={currentUser?.name ?? '加载中…'} disabled /></label>
       <label>备注<input value={note} disabled={submitting} onChange={(event) => setNote(event.target.value)} placeholder="选填" /></label>
       <button type="button" disabled={submitting} onClick={() => void create()}>{submitting ? '创建中…' : '新建标签'}</button>
     </div>

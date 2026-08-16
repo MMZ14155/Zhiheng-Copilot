@@ -1,4 +1,5 @@
-export { ApiError } from './client';
+export { ApiError, getAuthToken, getAuthUser, setAuthToken, setAuthUser, subscribeAuth } from './client';
+export * as authApi from './auth';
 export * as projectsApi from './projects';
 export * as filesApi from './files';
 export * as deliverablesApi from './deliverables';

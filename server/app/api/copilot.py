@@ -6,9 +6,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.errors import bad_request, not_found
+from app.api.dependencies import get_current_user, require_project_role
 from app.db.session import get_session
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 from app.models.summary import Summary
+from app.models.user import User
 from app.schemas.copilot import CopilotAnswerOutput, CopilotAskRequest
 from app.services.deliverables import DeliverableService
 from app.services.llm import LoggedLlmClient
@@ -61,6 +64,7 @@ async def _project_context(session: AsyncSession, project: Project) -> dict:
 async def ask_copilot(
     payload: CopilotAskRequest,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> CopilotAnswerOutput:
     if not payload.question.strip():
         raise bad_request("问题不能为空", code="QUESTION_EMPTY")
@@ -69,9 +73,17 @@ async def ask_copilot(
         project = await session.get(Project, payload.project_id)
         if project is None:
             raise not_found("项目不存在", code="PROJECT_NOT_FOUND")
+        await require_project_role(session, project.id, user)
         projects = [project]
     else:
-        projects = list((await session.scalars(select(Project).order_by(Project.id))).all())
+        stmt = select(Project).order_by(Project.id)
+        if not user.is_admin:
+            stmt = stmt.where(
+                Project.id.in_(
+                    select(ProjectMember.project_id).where(ProjectMember.user_id == user.id)
+                )
+            )
+        projects = list((await session.scalars(stmt)).all())
 
     contexts = [await _project_context(session, project) for project in projects]
     counts = {"ok": 0, "warn": 0, "block": 0}

@@ -1,3 +1,4 @@
+export interface CurrentUser { id: number; login: string; name: string; isAdmin: boolean }
 export type RiskLevel = 'block' | 'warn' | 'ok';
 export interface ProjectRisk { type: string; level: RiskLevel; reason: string; recommendation: string }
 export interface ProjectRisks { level: RiskLevel; risks: ProjectRisk[] }

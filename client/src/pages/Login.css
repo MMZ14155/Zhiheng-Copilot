@@ -66,3 +66,21 @@
 .login-button:hover {
   background: #1d4ed8;
 }
+
+.login-button:disabled {
+  background: #93c5fd;
+  cursor: not-allowed;
+}
+
+.login-error {
+  color: #dc2626;
+  font-size: 13px;
+  margin: 0 0 12px;
+}
+
+.login-hint {
+  margin: 16px 0 0;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 12px;
+}

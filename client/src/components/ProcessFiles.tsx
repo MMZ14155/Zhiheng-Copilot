@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ApiError, deliverablesApi, filesApi } from '../api';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { ApiError, deliverablesApi, filesApi, getAuthUser, subscribeAuth } from '../api';
 import type { DeliverableCategoryDto, ProjectFile } from '../api';
 
 const categories: DeliverableCategoryDto[] = ['合同', '成本明细', '验收材料', '检测报告', '交付成果'];
@@ -7,6 +7,7 @@ const accept = '.pdf,.docx,.xlsx,.jpg,.jpeg,.png';
 const message = (reason: unknown, fallback: string) => reason instanceof ApiError ? reason.message : fallback;
 
 export default function ProcessFiles({ projectId, onChanged }: { projectId: number; onChanged: () => Promise<void> }) {
+  const currentUser = useSyncExternalStore(subscribeAuth, getAuthUser, getAuthUser);
   const [items, setItems] = useState<ProjectFile[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [name, setName] = useState('');
@@ -29,7 +30,7 @@ export default function ProcessFiles({ projectId, onChanged }: { projectId: numb
     if (!file) return setError('请选择需要上传的文件');
     setBusy(true); setError(null);
     try {
-      await filesApi.createFile(projectId, { name: name.trim() || file.name, file, uploadedBy: 'web-user', changelog: note.trim() || undefined, docType: docType || undefined });
+      await filesApi.createFile(projectId, { name: name.trim() || file.name, file, changelog: note.trim() || undefined, docType: docType || undefined });
       setFile(null); setName(''); setNote(''); setDocType('');
       await loadFiles();
     } catch (reason) { console.error('过程文件上传失败', reason); setError(message(reason, '文件上传失败，请稍后重试')); }
@@ -40,7 +41,7 @@ export default function ProcessFiles({ projectId, onChanged }: { projectId: numb
     <div className="process-upload-form">
       <label>选择文件<input type="file" accept={accept} disabled={busy} onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
       <label>文件名称<input value={name} disabled={busy} placeholder={file?.name ?? '默认使用所选文件名'} onChange={(e) => setName(e.target.value)} /></label>
-      <label>上传人<input value="web-user" disabled /></label>
+      <label>上传人<input value={currentUser?.name ?? '加载中…'} disabled /></label>
       <label>材料类型<select value={docType} disabled={busy} onChange={(e) => setDocType(e.target.value)}><option value="">普通材料</option><option value="contract">合同</option><option value="invoice">发票</option><option value="payment">付款材料</option></select></label>
       <label className="process-wide">变更说明<textarea rows={2} value={note} disabled={busy} onChange={(e) => setNote(e.target.value)} /></label>
       <button type="button" disabled={busy} onClick={() => void upload()}>{busy ? '上传中…' : '上传新文件'}</button>
@@ -62,7 +63,7 @@ function FileItem({ projectId, item, refresh, onChanged }: { projectId: number; 
   const append = async () => {
     if (!file) return setError('请选择新版本文件');
     setBusy('append'); setError(null);
-    try { await filesApi.appendFileVersion(item.id, { file, uploadedBy: 'web-user', changelog: note.trim() || undefined }); setFile(null); setNote(''); await refresh(); }
+    try { await filesApi.appendFileVersion(item.id, { file, changelog: note.trim() || undefined }); setFile(null); setNote(''); await refresh(); }
     catch (reason) { console.error('追加版本失败', reason); setError(message(reason, '追加版本失败，请稍后重试')); }
     finally { setBusy(null); }
   };

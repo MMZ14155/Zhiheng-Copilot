@@ -6,10 +6,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.api.dependencies import get_current_user
 from app.models.contract_info import ContractInfo
 from app.models.file_version import FileVersion
 from app.models.project import Project
+from app.models.project_member import ProjectMember
 from app.models.tracked_file import TrackedFile
+from app.models.user import User
 from app.models.workspace_file import WorkspaceFile
 from app.schemas.statistics import (
     DeliverableStatusCounts,
@@ -33,8 +36,12 @@ router = APIRouter(tags=["statistics"])
 
 async def _load_deliverable_states(
     session: AsyncSession,
+    project_ids: list[int] | None = None,
 ) -> dict[int, list[DeliverableRiskState]]:
-    tracked_files = list((await session.execute(select(TrackedFile))).scalars())
+    tracked_stmt = select(TrackedFile)
+    if project_ids is not None:
+        tracked_stmt = tracked_stmt.where(TrackedFile.project_id.in_(project_ids))
+    tracked_files = list((await session.execute(tracked_stmt)).scalars())
     source_ids = [item.source_file_id for item in tracked_files if item.source_file_id is not None]
 
     versions: dict[int, list[FileVersion]] = defaultdict(list)
@@ -82,10 +89,26 @@ async def _load_deliverable_states(
 @router.get("/statistics/overview", response_model=StatisticsOverviewResponse)
 async def get_statistics_overview(
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> StatisticsOverviewResponse:
-    projects = list((await session.execute(select(Project))).scalars())
-    workspace_file_total = await session.scalar(select(func.count()).select_from(WorkspaceFile)) or 0
-    deliverables = await _load_deliverable_states(session)
+    project_ids: list[int] | None = None
+    if not user.is_admin:
+        project_ids = list(
+            (
+                await session.scalars(
+                    select(ProjectMember.project_id).where(ProjectMember.user_id == user.id)
+                )
+            ).all()
+        )
+    project_stmt = select(Project)
+    if project_ids is not None:
+        project_stmt = project_stmt.where(Project.id.in_(project_ids))
+    projects = list((await session.execute(project_stmt)).scalars())
+    file_count_stmt = select(func.count()).select_from(WorkspaceFile)
+    if project_ids is not None:
+        file_count_stmt = file_count_stmt.where(WorkspaceFile.project_id.in_(project_ids))
+    workspace_file_total = await session.scalar(file_count_stmt) or 0
+    deliverables = await _load_deliverable_states(session, project_ids)
 
     risk_counts = Counter({"block": 0, "warn": 0, "ok": 0})
     deliverable_counts = empty_status_counts()

@@ -7,6 +7,10 @@ export type JsonObject = Record<string, unknown>;
 export interface CopilotAskRequestDto { question: string; project_id?: number }
 export interface CopilotAskResponseDto { answer: string; references: string[] }
 
+// 与后端 UserResponse 对齐：实际字段为 is_admin（布尔），非云端初稿的 role。
+export interface UserDto { id: number; login: string; name: string; is_admin: boolean }
+export interface LoginResponseDto { token: string; expires_at: string; user: UserDto }
+
 export interface ProjectPartyDto { role: string; name: string; contact: string | null }
 export interface ProjectWriteDto { name: string; code: string; customer_name: string; parties?: ProjectPartyDto[]; contract_amount?: number | null; signed_date?: string | null; started_date?: string | null; planned_delivery_date?: string | null; status?: ProjectStatusDto; progress?: number; notes?: string | null }
 export type ProjectUpdateDto = Partial<ProjectWriteDto>;
@@ -42,7 +46,7 @@ export interface VersionListResponseDto { file_id: number; versions: FileVersion
 export interface TrackedFileCreateDto { source_file_id: number; category: DeliverableCategoryDto; required?: boolean }
 export interface TrackedFileResponseDto { id: number; project_id: number; source_file_id: number | null; name: string; category: DeliverableCategoryDto; required: boolean; current_version: string | null; status: 'ok' | 'missing' | 'old' | 'conflict' | 'frozen'; versions: FileVersionResponseDto[]; created_at: string; updated_at: string }
 export interface TrackedFileListResponseDto { items: TrackedFileResponseDto[] }
-export interface TagCreateDto { name: string; type: TagTypeDto; created_by: string; note?: string | null }
+export interface TagCreateDto { name: string; type: TagTypeDto; created_by?: string; note?: string | null }
 export interface TagResponseDto { id: number; project_id: number; name: string; type: TagTypeDto; created_by: string; note: string | null; created_at: string }
 export interface TagListResponseDto { items: TagResponseDto[] }
 export interface TagSnapshotCreateDto { source_file_id: number; version: string; note?: string | null }

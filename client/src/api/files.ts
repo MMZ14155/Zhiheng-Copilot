@@ -2,18 +2,19 @@ import { jsonRequest, multipartRequest, queryString } from './client';
 import type { CreateFileResponseDto, ProjectFileListResponseDto, VersionListResponseDto } from './dto';
 import type { ProjectFile } from './models';
 
-export interface FileUpload { file: File; uploadedBy: string; changelog?: string }
+export interface FileUpload { file: File; changelog?: string }
 export interface CreateFileUpload extends FileUpload { name: string; docType?: string }
 
+// 上传人由服务端根据当前登录用户写入，客户端不再传 uploaded_by。
 export function createFile(projectId: number, input: CreateFileUpload): Promise<CreateFileResponseDto> {
   const data = new FormData();
   data.append('file', input.file);
-  return multipartRequest(`/projects/${projectId}/files${queryString({ name: input.name, uploaded_by: input.uploadedBy, changelog: input.changelog, doc_type: input.docType })}`, data);
+  return multipartRequest(`/projects/${projectId}/files${queryString({ name: input.name, changelog: input.changelog, doc_type: input.docType })}`, data);
 }
 export function appendFileVersion(fileId: number, input: FileUpload): Promise<CreateFileResponseDto> {
   const data = new FormData();
   data.append('file', input.file);
-  return multipartRequest(`/files/${fileId}/versions${queryString({ uploaded_by: input.uploadedBy, changelog: input.changelog })}`, data);
+  return multipartRequest(`/files/${fileId}/versions${queryString({ changelog: input.changelog })}`, data);
 }
 export const listFileVersions = (id: number) => jsonRequest<VersionListResponseDto>(`/files/${id}/versions`);
 export const listFileVersionOptions = async (id: number): Promise<string[]> => (await listFileVersions(id)).versions.map((item) => item.version);
