@@ -23,8 +23,8 @@ describe('核心组件', () => {
   })
 
   it('ProjectCard 映射状态、缺省字段、风险与进度', () => {
-    route(<ProjectCard project={{ id: '2', name: 'Alpha', code: 'A', customerName: '客户', status: 'active', progress: 42, contractAmount: null, signedDate: null, plannedDeliveryDate: null, updatedAt: '', riskLevel: 'warn' }} />)
-    expect(screen.getByText('Alpha')).toBeTruthy(); expect(screen.getByText('预警')).toBeTruthy(); expect(screen.getByText(/合同金额：未填写/).textContent?.match(/未填写/g)).toHaveLength(3); expect(screen.getByLabelText('项目进度 42%')).toBeTruthy()
+    route(<ProjectCard project={{ id: '2', name: 'Alpha', code: 'A', customerName: '客户', projectType: '软件销售', status: 'active', progress: 42, contractAmount: null, signedDate: null, plannedDeliveryDate: null, updatedAt: '', riskLevel: 'warn' }} />)
+    expect(screen.getByText('Alpha')).toBeTruthy(); expect(screen.getByText('软件销售')).toBeTruthy(); expect(screen.getByText('预警')).toBeTruthy(); expect(screen.getByText(/合同金额：未填写/).textContent?.match(/未填写/g)).toHaveLength(3); expect(screen.getByLabelText('项目进度 42%')).toBeTruthy()
   })
 
   it('RiskFilter 点击筛选并再次点击恢复全部', async () => {

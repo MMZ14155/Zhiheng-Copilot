@@ -6,6 +6,7 @@ import VersionHistory from '../components/VersionHistory';
 import ProcessFiles from '../components/ProcessFiles';
 import TagPanel from '../components/TagPanel';
 import { useTaskPolling } from '../hooks/useTaskPolling';
+import { PROJECT_TYPE_COLORS } from '../constants/projectTypes';
 
 const statusLabels: Record<ProjectDetailModel['status'], string> = {
   active: '进行中',
@@ -83,6 +84,7 @@ export default function ProjectDetail() {
             <Info label="项目名称" value={project.name} />
             <Info label="项目编号" value={project.code} />
             <Info label="客户" value={project.customerName} />
+            <Info label="项目类型" value={project.projectType ?? '未填写'} valueColor={project.projectType ? PROJECT_TYPE_COLORS[project.projectType] : undefined} />
             <Info label="状态" value={statusLabels[project.status]} />
             <Info label="合同金额" value={project.contractAmount === null ? '未填写' : `${project.contractAmount} 元`} />
             <Info label="签约日期" value={project.signedDate ?? '未填写'} />
@@ -154,8 +156,8 @@ function SummaryQuestion({ projectId, question, onCompleted }: { projectId: numb
   </article>;
 }
 
-function Info({ label, value }: { label: string; value: string }) {
-  return <div className="detail-info"><span>{label}</span><strong>{value}</strong></div>;
+function Info({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
+  return <div className="detail-info"><span>{label}</span><strong style={valueColor ? { color: valueColor } : undefined}>{value}</strong></div>;
 }
 
 function ProjectNotFound() {

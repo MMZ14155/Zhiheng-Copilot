@@ -2,10 +2,10 @@ import { jsonRequest, queryString } from './client';
 import { mapProjectDetail, mapProjectList, mapProjectRisks } from './mappers';
 import type { ProjectDetailResponseDto, ProjectLinkCreateDto, ProjectLinkResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, ProjectUpdateDto, ProjectWriteDto, RenewalChainResponseDto } from './dto';
 
-export interface ProjectListParams { page?: number; size?: number; company?: string; status?: string; clientName?: string; expand?: 'links' }
+export interface ProjectListParams { page?: number; size?: number; company?: string; status?: string; projectType?: string; clientName?: string; expand?: 'links' }
 
 export async function listProjects(params: ProjectListParams = {}) {
-  const query = queryString({ page: params.page, size: params.size, company: params.company, status: params.status, client_name: params.clientName, expand: params.expand });
+  const query = queryString({ page: params.page, size: params.size, company: params.company, status: params.status, project_type: params.projectType, client_name: params.clientName, expand: params.expand });
   return mapProjectList(await jsonRequest<ProjectListResponseDto>(`/projects${query}`));
 }
 export const createProject = (body: ProjectWriteDto) => jsonRequest<ProjectResponseDto>('/projects', { method: 'POST', body });

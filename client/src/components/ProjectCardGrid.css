@@ -20,6 +20,7 @@
 .project-status.active { background:#dcfce7; color:#166534; }
 .project-status.completed { background:#dbeafe; color:#1e40af; }
 .project-status.archived { background:#e2e8f0; color:#475569; }
+.project-type { font-size: 12px; padding: 2px 8px; border-radius: 999px; }
 .project-progress { margin-top:14px; }
 .project-progress-label { display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px; }
 .project-progress-track { height:7px; overflow:hidden; border-radius:999px; background:#e2e8f0; }

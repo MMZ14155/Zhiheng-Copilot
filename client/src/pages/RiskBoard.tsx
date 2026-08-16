@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiError, projectsApi } from '../api';
-import type { ProjectList, RiskLevel } from '../api';
+import type { ProjectList, ProjectType, RiskLevel } from '../api';
 import ChatArea from '../components/ChatArea';
 import CreateProjectModal from '../components/CreateProjectModal';
 import ProjectCardGrid from '../components/ProjectCardGrid';
 import RiskFilter from '../components/RiskFilter';
+import { PROJECT_TYPES, PROJECT_TYPE_LABELS } from '../constants/projectTypes';
 
 // ==================== 风险评级逻辑（暂时注释禁用，待服务端风险接口接入后恢复） ====================
 // 原实现基于本地 mock 与 RiskMonitor 在浏览器端计算每个项目的风险等级，
@@ -98,11 +99,12 @@ export default function RiskBoard() {
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [filter, setFilter] = useState<RiskLevel | 'all'>('all');
+  const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const projects = await projectsApi.listProjects({ page: 1, size: 100 });
+      const projects = await projectsApi.listProjects({ page: 1, size: 100, projectType: projectTypeFilter === 'all' ? undefined : projectTypeFilter });
       const riskResults = await Promise.allSettled(
         projects.items.map((project) => projectsApi.getProjectRisks(project.id)),
       );
@@ -123,7 +125,7 @@ export default function RiskBoard() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [projectTypeFilter]);
   useEffect(() => { void load(); }, [load]);
   const counts = useMemo(() => ({
     block: data?.items.filter((project) => project.riskLevel === 'block').length ?? 0,
@@ -133,14 +135,18 @@ export default function RiskBoard() {
   }), [data]);
   const filteredProjects = useMemo(() => {
     if (!data) return [];
-    return filter === 'all' ? data.items : data.items.filter((project) => project.riskLevel === filter);
-  }, [data, filter]);
+    return data.items.filter((project) => {
+      const matchRisk = filter === 'all' || project.riskLevel === filter;
+      const matchType = projectTypeFilter === 'all' || project.projectType === projectTypeFilter;
+      return matchRisk && matchType;
+    });
+  }, [data, filter, projectTypeFilter]);
   return <div className="risk-board-layout"><ChatArea /><div className="risk-board">
     <div className="project-list-heading"><div><h2>项目列表</h2>{!loading && !error && <span>共 {data?.total ?? 0} 个项目</span>}</div><div className="project-list-actions"><button type="button" onClick={() => void load()} disabled={loading}>{loading ? '加载中…' : '刷新'}</button><button type="button" className="create-project-button" onClick={() => setShowCreateModal(true)}>新建项目</button></div></div>
     {loading && <div className="project-list-state" role="status">正在加载项目…</div>}
     {!loading && error && <div className="project-list-state error" role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>重新加载</button></div>}
     {!loading && !error && data?.items.length === 0 && <div className="project-list-state">暂无项目，请先通过项目接口创建项目。</div>}
-    {!loading && !error && data && data.items.length > 0 && <><RiskFilter blockCount={counts.block} warnCount={counts.warn} okCount={counts.ok} totalCount={counts.total} active={filter} onChange={setFilter} />{filteredProjects.length > 0 ? <ProjectCardGrid projects={filteredProjects} /> : <div className="project-list-state">当前筛选条件下暂无项目。</div>}</>}
+    {!loading && !error && data && data.items.length > 0 && <><RiskFilter blockCount={counts.block} warnCount={counts.warn} okCount={counts.ok} totalCount={counts.total} active={filter} onChange={setFilter} /><div className="project-type-filter"><label htmlFor="project-type-filter">项目类型</label><select id="project-type-filter" value={projectTypeFilter} onChange={(e) => setProjectTypeFilter(e.target.value as ProjectType | 'all')}>{PROJECT_TYPES.map((type) => <option key={type} value={type}>{PROJECT_TYPE_LABELS[type]}</option>)}<option value="all">全部</option></select></div>{filteredProjects.length > 0 ? <ProjectCardGrid projects={filteredProjects} /> : <div className="project-list-state">当前筛选条件下暂无项目。</div>}</>}
     {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} onCreated={load} />}
   </div></div>;
 }

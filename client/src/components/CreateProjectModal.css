@@ -8,9 +8,9 @@
 .project-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
 .project-form-field{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;color:#334155;font-size:13px;font-weight:500}
 .project-form-field b,.project-form-field small{color:#b91c1c}
-.project-form-field input,.project-form-field textarea,.party-row input{box-sizing:border-box;width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:9px 10px;font:inherit;outline:none}
-.project-form-field input:focus,.project-form-field textarea:focus,.party-row input:focus{border-color:#2563eb;box-shadow:0 0 0 3px #2563eb1f}
-.project-form-field.invalid input{border-color:#dc2626}
+.project-form-field input,.project-form-field select,.project-form-field textarea,.party-row input{box-sizing:border-box;width:100%;border:1px solid #cbd5e1;border-radius:7px;padding:9px 10px;font:inherit;outline:none;background:#fff}
+.project-form-field input:focus,.project-form-field select:focus,.project-form-field textarea:focus,.party-row input:focus{border-color:#2563eb;box-shadow:0 0 0 3px #2563eb1f}
+.project-form-field.invalid input,.project-form-field.invalid select{border-color:#dc2626}
 .form-submit-error{margin-bottom:18px;padding:11px 13px;border:1px solid #fecaca;border-radius:7px;background:#fef2f2;color:#b91c1c}
 .parties-section{margin:4px 0 18px;padding:16px;border:1px solid #e2e8f0;border-radius:9px;background:#f8fafc}
 .section-heading{display:flex;align-items:center;justify-content:space-between}

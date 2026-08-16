@@ -1,4 +1,5 @@
 export interface CurrentUser { id: number; login: string; name: string; isAdmin: boolean }
+export type ProjectType = '软件销售' | '正版化服务' | '正版化服务+软件销售';
 export type RiskLevel = 'block' | 'warn' | 'ok';
 export interface ProjectRisk { type: string; level: RiskLevel; reason: string; recommendation: string }
 export interface ProjectRisks { level: RiskLevel; risks: ProjectRisk[] }
@@ -10,7 +11,7 @@ export interface StatisticsOverview {
   files: { workspaceFileTotal: number; deliverables: { missing: number; old: number; conflict: number; ok: number } };
   byStage: StageStatistics[];
 }
-export interface ProjectListItem { id: string; name: string; code: string; customerName: string; status: 'active' | 'archived' | 'completed'; progress: number; contractAmount: number | null; signedDate: string | null; plannedDeliveryDate: string | null; updatedAt: string; riskLevel?: RiskLevel | null }
+export interface ProjectListItem { id: string; name: string; code: string; customerName: string; projectType: ProjectType | null; status: 'active' | 'archived' | 'completed'; progress: number; contractAmount: number | null; signedDate: string | null; plannedDeliveryDate: string | null; updatedAt: string; riskLevel?: RiskLevel | null }
 export interface ProjectList { page: number; size: number; total: number; items: ProjectListItem[] }
 export interface ProjectParty { role: string; name: string; contact: string | null }
 export interface ProjectDeliverable { id: string; name: string; createdAt: string; updatedAt: string }
@@ -73,6 +74,7 @@ export interface ProjectDetail {
   name: string;
   code: string;
   customerName: string;
+  projectType: ProjectType | null;
   parties: ProjectParty[];
   contractAmount: number | null;
   signedDate: string | null;

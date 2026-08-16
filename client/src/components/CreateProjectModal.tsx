@@ -1,11 +1,12 @@
 import { useEffect, useId, useState, type ReactNode, type FormEvent } from 'react';
-import { ApiError, projectsApi, type ProjectPartyDto, type ProjectWriteDto } from '../api';
+import { ApiError, projectsApi, type ProjectPartyDto, type ProjectTypeDto, type ProjectWriteDto } from '../api';
+import { PROJECT_TYPES } from '../constants/projectTypes';
 import './CreateProjectModal.css';
 
-type Field = 'name' | 'code' | 'customerName' | 'contractAmount' | 'signedDate' | 'startedDate' | 'deliveryDate' | 'progress' | 'notes';
+type Field = 'name' | 'code' | 'customerName' | 'projectType' | 'contractAmount' | 'signedDate' | 'startedDate' | 'deliveryDate' | 'progress' | 'notes';
 type Values = Record<Field, string>;
 type Errors = Partial<Record<Field, string>>;
-const initial: Values = { name:'', code:'', customerName:'', contractAmount:'', signedDate:'', startedDate:'', deliveryDate:'', progress:'', notes:'' };
+const initial: Values = { name:'', code:'', customerName:'', projectType:'', contractAmount:'', signedDate:'', startedDate:'', deliveryDate:'', progress:'', notes:'' };
 
 function validate(v: Values): Errors {
   const e: Errors = {};
@@ -37,6 +38,7 @@ export default function CreateProjectModal({ onClose, onCreated }: { onClose:()=
     event.preventDefault(); const next = validate(values); setErrors(next); setApiError(null); if (Object.keys(next).length) return;
     const body: ProjectWriteDto = {
       name:values.name.trim(), code:values.code.trim(), customer_name:values.customerName.trim(),
+      project_type: (values.projectType as ProjectTypeDto) || null,
       contract_amount:values.contractAmount ? Number(values.contractAmount) : null,
       signed_date:values.signedDate || null, started_date:values.startedDate || null,
       planned_delivery_date:values.deliveryDate || null, progress:values.progress ? Number(values.progress) : 0,
@@ -57,6 +59,7 @@ export default function CreateProjectModal({ onClose, onCreated }: { onClose:()=
           <Field label="项目名称" required error={errors.name}><input autoFocus maxLength={200} value={values.name} onChange={e=>set('name',e.target.value)}/></Field>
           <Field label="项目编号" required error={errors.code}><input maxLength={80} value={values.code} onChange={e=>set('code',e.target.value)}/></Field>
           <Field label="客户名称" required error={errors.customerName}><input maxLength={200} value={values.customerName} onChange={e=>set('customerName',e.target.value)}/></Field>
+          <Field label="项目类型"><select value={values.projectType} onChange={e=>set('projectType',e.target.value)}><option value="">请选择</option>{PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></Field>
           <Field label="合同金额" error={errors.contractAmount}><input type="number" min="0" step="0.01" value={values.contractAmount} onChange={e=>set('contractAmount',e.target.value)}/></Field>
           <Field label="签约日期"><input type="date" value={values.signedDate} onChange={e=>set('signedDate',e.target.value)}/></Field>
           <Field label="启动日期" error={errors.startedDate}><input type="date" value={values.startedDate} onChange={e=>set('startedDate',e.target.value)}/></Field>

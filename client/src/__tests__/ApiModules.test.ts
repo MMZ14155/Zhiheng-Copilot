@@ -12,7 +12,7 @@ import { projects as legacyProjects } from '../data/projects'
 import { docProjects } from '../data/docs'
 
 const response = (body: unknown, status = 200) => ({ ok: status >= 200 && status < 300, status, json: vi.fn().mockResolvedValue(body) }) as unknown as Response
-const project = { id: 1, name: '项目', code: 'P1', customer_name: '客户', parties: [], contract_amount: 10, signed_date: null, started_date: null, planned_delivery_date: null, status: 'active', progress: 30, notes: null, created_at: 'x', updated_at: 'y', links: null }
+const project = { id: 1, name: '项目', code: 'P1', customer_name: '客户', project_type: '软件销售', parties: [], contract_amount: 10, signed_date: null, started_date: null, planned_delivery_date: null, status: 'active', progress: 30, notes: null, created_at: 'x', updated_at: 'y', links: null }
 
 describe('API client', () => {
   beforeEach(() => { setAuthToken(null); vi.stubGlobal('fetch', vi.fn()) })
@@ -69,8 +69,8 @@ describe('API domain modules', () => {
   })
 
   it('序列化项目参数并映射列表、详情与风险', async () => {
-    next({ page: 1, size: 20, total: 1, items: [project] }); const list = await projects.listProjects({ page: 1, size: 20, clientName: '客户', expand: 'links' })
-    expect(list.items[0]).toMatchObject({ id: '1', customerName: '客户' }); expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain('client_name=')
+    next({ page: 1, size: 20, total: 1, items: [project] }); const list = await projects.listProjects({ page: 1, size: 20, clientName: '客户', projectType: '软件销售', expand: 'links' })
+    expect(list.items[0]).toMatchObject({ id: '1', customerName: '客户', projectType: '软件销售' }); expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain('client_name='); expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain('project_type=')
     next({ ...project, deliverables: [{ id: 9, name: '合同', created_at: 'x', updated_at: 'y' }], latest_summary: null }); expect((await projects.getProject(1)).deliverables[0].id).toBe('9')
     next({ level: 'warn', risks: [{ type: 'cost', level: 'warn', reason: 'r', recommendation: 'do' }], config: {} }); expect((await projects.getProjectRisks('1')).level).toBe('warn')
   })

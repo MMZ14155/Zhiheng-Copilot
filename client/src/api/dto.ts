@@ -1,4 +1,5 @@
 export type ProjectStatusDto = 'active' | 'archived' | 'completed';
+export type ProjectTypeDto = '软件销售' | '正版化服务' | '正版化服务+软件销售';
 export type ProjectLinkTypeDto = 'renewal' | 'related';
 export type DeliverableCategoryDto = '合同' | '成本明细' | '验收材料' | '检测报告' | '交付成果';
 export type TagTypeDto = 'demo' | 'report' | 'meeting' | 'audit' | 'custom';
@@ -12,9 +13,9 @@ export interface UserDto { id: number; login: string; name: string; is_admin: bo
 export interface LoginResponseDto { token: string; expires_at: string; user: UserDto }
 
 export interface ProjectPartyDto { role: string; name: string; contact: string | null }
-export interface ProjectWriteDto { name: string; code: string; customer_name: string; parties?: ProjectPartyDto[]; contract_amount?: number | null; signed_date?: string | null; started_date?: string | null; planned_delivery_date?: string | null; status?: ProjectStatusDto; progress?: number; notes?: string | null }
+export interface ProjectWriteDto { name: string; code: string; customer_name: string; project_type?: ProjectTypeDto | null; parties?: ProjectPartyDto[]; contract_amount?: number | null; signed_date?: string | null; started_date?: string | null; planned_delivery_date?: string | null; status?: ProjectStatusDto; progress?: number; notes?: string | null }
 export type ProjectUpdateDto = Partial<ProjectWriteDto>;
-export interface ProjectResponseDto { id: number; name: string; code: string; customer_name: string; parties: ProjectPartyDto[]; contract_amount: number | null; signed_date: string | null; started_date: string | null; planned_delivery_date: string | null; status: ProjectStatusDto; progress: number; notes: string | null; created_at: string; updated_at: string; links: RelatedProjectSummaryDto[] | null }
+export interface ProjectResponseDto { id: number; name: string; code: string; customer_name: string; project_type: ProjectTypeDto | null; parties: ProjectPartyDto[]; contract_amount: number | null; signed_date: string | null; started_date: string | null; planned_delivery_date: string | null; status: ProjectStatusDto; progress: number; notes: string | null; created_at: string; updated_at: string; links: RelatedProjectSummaryDto[] | null }
 export interface RelatedProjectSummaryDto { id: number; name: string; code: string; customer_name: string; status: ProjectStatusDto; signed_date: string | null; link_id: number; link_type: ProjectLinkTypeDto }
 export interface DeliverableSummaryDto { id: number; name: string; created_at: string; updated_at: string }
 export interface SummaryInputDto { tracked_file_id: number | null; tracked_file_name: string | null; file_version: string }

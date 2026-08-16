@@ -1,7 +1,7 @@
 import type { AverageMetricDto, ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, StatisticsOverviewResponseDto, TrackedFileResponseDto } from './dto';
 import type { AverageMetric, ProjectDetail, ProjectList, ProjectListItem, ProjectRisks, StatisticsOverview, TrackedFile } from './models';
 
-export const mapProject = (dto: ProjectResponseDto): ProjectListItem => ({ id: String(dto.id), name: dto.name, code: dto.code, customerName: dto.customer_name, status: dto.status, progress: dto.progress, contractAmount: dto.contract_amount, signedDate: dto.signed_date, plannedDeliveryDate: dto.planned_delivery_date, updatedAt: dto.updated_at });
+export const mapProject = (dto: ProjectResponseDto): ProjectListItem => ({ id: String(dto.id), name: dto.name, code: dto.code, customerName: dto.customer_name, projectType: dto.project_type, status: dto.status, progress: dto.progress, contractAmount: dto.contract_amount, signedDate: dto.signed_date, plannedDeliveryDate: dto.planned_delivery_date, updatedAt: dto.updated_at });
 export const mapProjectList = (dto: ProjectListResponseDto): ProjectList => ({ page: dto.page, size: dto.size, total: dto.total, items: dto.items.map(mapProject) });
 export const mapProjectRisks = (dto: ProjectRisksResponseDto): ProjectRisks => ({
   level: dto.level,
@@ -35,6 +35,7 @@ export const mapProjectDetail = (dto: ProjectDetailResponseDto): ProjectDetail =
   name: dto.name,
   code: dto.code,
   customerName: dto.customer_name,
+  projectType: dto.project_type,
   parties: dto.parties.map((party) => ({ role: party.role, name: party.name, contact: party.contact })),
   contractAmount: dto.contract_amount,
   signedDate: dto.signed_date,
