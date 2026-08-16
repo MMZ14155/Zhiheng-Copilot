@@ -3,7 +3,7 @@ client/node_modules/
 client/dist/
 client/coverage/
 client/package-lock.json
-docs/
+docs-internal/
 README.md
 docker-build.log
 __pycache__/
