@@ -8,3 +8,6 @@ def test_token_hash(): assert len(hash_token("opaque")) == 64 and "opaque" not i
 def test_unauthorized_shape():
     response=TestClient(app).get("/api/v1/projects")
     assert response.status_code == 401 and response.json() == {"detail":"请先登录","code":"UNAUTHORIZED"}
+def test_download_rejects_anonymous():
+    response=TestClient(app).get("/api/v1/versions/unknown/download")
+    assert response.status_code == 401 and response.json() == {"detail":"请先登录","code":"UNAUTHORIZED"}

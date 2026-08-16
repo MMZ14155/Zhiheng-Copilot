@@ -23,7 +23,6 @@ from app.services.file_versions import FileVersionService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["files"])
-public_router = APIRouter(tags=["files"])
 
 
 def _version_to_response(fv: FileVersion) -> FileVersionResponse:
@@ -155,9 +154,24 @@ async def list_versions(file_id: int, session: AsyncSession = Depends(get_sessio
     )
 
 
-@public_router.get("/versions/{version}/download")
-async def download_version(version: str, session: AsyncSession = Depends(get_session)):
+@router.get("/versions/{version}/download")
+async def download_version(
+    version: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
     fv = await FileVersionService.get_version(session, version)
+    project_id = await session.scalar(
+        select(WorkspaceFile.project_id).where(WorkspaceFile.id == fv.file_id)
+    )
+    if project_id is None:
+        logger.error(
+            "version references missing workspace file version=%s file_id=%s",
+            version,
+            fv.file_id,
+        )
+        raise not_found(f"版本 {version} 所属文件不存在", code="FILE_NOT_FOUND")
+    await require_project_role(session, project_id, user)
     from pathlib import Path as PPath
 
     path = PPath(fv.storage_path)

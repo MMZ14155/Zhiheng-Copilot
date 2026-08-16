@@ -62,10 +62,23 @@ def test_files_endpoints(fake_session, users, now, monkeypatch, tmp_path):
 
     path = tmp_path / "a.pdf"; path.write_bytes(b"pdf"); fv.storage_path = str(path)
     monkeypatch.setattr(files.FileVersionService, "get_version", AsyncMock(return_value=fv))
-    download = asyncio.run(files.download_version(fv.version, fake_session))
+    fake_session.scalar.return_value = 1
+    download = asyncio.run(files.download_version(fv.version, fake_session, users.member))
     assert download.media_type == "application/pdf"
+    assert download.path == str(path)
+    files.require_project_role.assert_awaited_with(fake_session, 1, users.member)
+
+    files.require_project_role.side_effect = HTTPException(
+        status_code=403,
+        detail={"detail": "无权执行此操作", "code": "FORBIDDEN"},
+    )
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(files.download_version(fv.version, fake_session, users.member))
+    assert exc.value.status_code == 403
+    files.require_project_role.side_effect = None
     fv.storage_path = str(tmp_path / "missing.pdf")
-    with pytest.raises(HTTPException): asyncio.run(files.download_version(fv.version, fake_session))
+    with pytest.raises(HTTPException):
+        asyncio.run(files.download_version(fv.version, fake_session, users.member))
 
 
 def test_deliverable_endpoints(fake_session, users, now, monkeypatch):

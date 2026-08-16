@@ -24,7 +24,7 @@ from app.services.version_hash import VersionHashService
 logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".jpg", ".png"}
-MAX_FILE_SIZE = 50 * 1024 * 1024
+MAX_FILE_SIZE = 100 * 1024 * 1024
 
 
 class FileVersionService:
@@ -79,8 +79,19 @@ class FileVersionService:
         ext = Path(filename).suffix.lower()
         if ext not in ALLOWED_EXTENSIONS:
             raise unsupported_media_type(f"不支持的文件类型 '{ext}'")
-        if size > MAX_FILE_SIZE:
-            raise payload_too_large(f"文件大小 {size} 超过上限 50MB")
+        max_file_size = getattr(
+            get_settings(), "max_upload_file_size_bytes", MAX_FILE_SIZE
+        )
+        if size > max_file_size:
+            logger.warning(
+                "rejected oversized upload filename=%s size=%s limit=%s",
+                safe_name,
+                size,
+                max_file_size,
+            )
+            raise payload_too_large(
+                f"文件大小 {size} 字节超过上限 {max_file_size} 字节"
+            )
         return safe_name
 
     @staticmethod

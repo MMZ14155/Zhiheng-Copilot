@@ -12,7 +12,7 @@ from app.services.file_versions import FileVersionService, MAX_FILE_SIZE
 from tests.conftest import Result
 
 
-def test_validate_file_boundaries():
+def test_validate_file_boundaries(monkeypatch):
     assert FileVersionService._validate_file("A.PDF", 1) == "A.PDF"
     for name in ("", "../a.pdf", "a\\b.pdf", ".", ".."):
         with pytest.raises(HTTPException) as exc:
@@ -24,6 +24,18 @@ def test_validate_file_boundaries():
     with pytest.raises(HTTPException) as exc:
         FileVersionService._validate_file("a.pdf", MAX_FILE_SIZE + 1)
     assert exc.value.status_code == 413
+    assert exc.value.detail["code"] == "PAYLOAD_TOO_LARGE"
+
+    monkeypatch.setenv("MAX_UPLOAD_FILE_SIZE_BYTES", "2")
+    from app.core.config import get_settings
+
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(HTTPException) as exc:
+            FileVersionService._validate_file("a.pdf", 3)
+        assert exc.value.status_code == 413
+    finally:
+        get_settings.cache_clear()
 
 
 def test_lookup_tail_chain_and_missing(fake_session):
