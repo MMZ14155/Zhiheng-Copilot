@@ -11,7 +11,7 @@ import VersionHistory from '../components/VersionHistory'
 import TagPanel from '../components/TagPanel'
 import { aiApi, deliverablesApi, filesApi, setAuthToken, tagsApi } from '../api'
 
-vi.mock('../api', async (original) => { const actual = await original<typeof import('../api')>(); return { ...actual, aiApi: { ...actual.aiApi, askCopilot: vi.fn(), getTask: vi.fn(), getExtraction: vi.fn(), createExtractionTask: vi.fn() }, deliverablesApi: { ...actual.deliverablesApi, listTrackedFiles: vi.fn() }, filesApi: { ...actual.filesApi, listProjectFiles: vi.fn(), listFileVersionOptions: vi.fn(), getVersionDownloadUrl: actual.filesApi.getVersionDownloadUrl }, tagsApi: { ...actual.tagsApi, listTags: vi.fn(), createTag: vi.fn(), listTagSnapshots: vi.fn(), createTagSnapshot: vi.fn() } } })
+vi.mock('../api', async (original) => { const actual = await original<typeof import('../api')>(); return { ...actual, aiApi: { ...actual.aiApi, askCopilot: vi.fn(), getTask: vi.fn(), getExtraction: vi.fn(), createExtractionTask: vi.fn() }, deliverablesApi: { ...actual.deliverablesApi, listTrackedFiles: vi.fn() }, filesApi: { ...actual.filesApi, listProjectFiles: vi.fn(), listFileVersionOptions: vi.fn(), downloadVersion: vi.fn() }, tagsApi: { ...actual.tagsApi, listTags: vi.fn(), createTag: vi.fn(), listTagSnapshots: vi.fn(), createTagSnapshot: vi.fn() } } })
 afterEach(() => { cleanup(); vi.clearAllMocks() })
 const route = (node: React.ReactNode) => render(<MemoryRouter>{node}</MemoryRouter>)
 
@@ -55,6 +55,24 @@ describe('核心组件', () => {
     vi.mocked(deliverablesApi.listTrackedFiles).mockRejectedValueOnce(new Error()); route(<VersionHistory projectId={1} deliverables={[{ id: '5', name: '合同', createdAt: '', updatedAt: '2026-01-01T00:00:00Z' }]} />)
     await userEvent.click(screen.getByText('展开')); await screen.findByText('版本历史加载失败，请稍后重试')
     vi.mocked(deliverablesApi.listTrackedFiles).mockResolvedValueOnce([]); await userEvent.click(screen.getByText('重试')); await screen.findByText('暂无版本历史')
+  })
+
+  it('VersionHistory 通过 blob 下载版本并处理失败', async () => {
+    vi.mocked(deliverablesApi.listTrackedFiles).mockResolvedValue([{ id: '1', sourceFileId: 5, name: '合同', category: '合同', required: true, currentVersion: 'abcdefghijk', status: 'ok', versions: [{ version: 'abcdefghijk', previousVersion: null, uploadedBy: '', changelog: '', parseStatus: 'done', documentType: null, sizeBytes: 2048, isFrozen: true, isCurrent: true, uploadedAt: '2026-01-01T00:00:00Z' }] }])
+    vi.mocked(filesApi.downloadVersion).mockResolvedValueOnce({ blob: new Blob(['x']), filename: 'report.pdf' })
+    const createObjectURL = vi.spyOn(globalThis.URL, 'createObjectURL').mockReturnValue('blob:mock')
+    const revokeObjectURL = vi.spyOn(globalThis.URL, 'revokeObjectURL').mockImplementation(() => {})
+    render(<VersionHistory projectId={1} deliverables={[{ id: '5', name: '合同', createdAt: '', updatedAt: '2026-01-01T00:00:00Z' }]} />)
+    await userEvent.click(screen.getByText('展开'))
+    await screen.findByText('当前生效')
+    await userEvent.click(screen.getByText('下载'))
+    await waitFor(() => expect(filesApi.downloadVersion).toHaveBeenCalledWith('abcdefghijk'))
+    expect(createObjectURL).toHaveBeenCalled()
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:mock')
+    createObjectURL.mockRestore(); revokeObjectURL.mockRestore()
+    vi.mocked(filesApi.downloadVersion).mockRejectedValueOnce(new Error('下载失败'))
+    await userEvent.click(screen.getByText('下载'))
+    await screen.findByText('下载失败，请稍后重试')
   })
 
   it('TagPanel 加载空状态、校验并创建标签', async () => {

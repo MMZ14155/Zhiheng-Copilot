@@ -35,7 +35,11 @@ export function subscribeAuth(listener: () => void) {
   return () => { authListeners.delete(listener); };
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  init: RequestInit = {},
+  parseResponse: (response: Response) => Promise<T> = (response) => response.json() as Promise<T>,
+): Promise<T> {
   const { headers, ...rest } = init;
   const mergedHeaders = {
     ...(headers as Record<string, string> | undefined),
@@ -55,7 +59,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     );
   }
   if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
+  return parseResponse(response);
 }
 
 export function jsonRequest<T>(path: string, init: Omit<RequestInit, 'body'> & { body?: unknown } = {}) {
@@ -65,6 +69,13 @@ export function jsonRequest<T>(path: string, init: Omit<RequestInit, 'body'> & {
 
 export function multipartRequest<T>(path: string, formData: FormData) {
   return request<T>(path, { method: 'POST', body: formData });
+}
+
+export function blobRequest(path: string, init: RequestInit = {}) {
+  return request(path, init, async (response) => ({
+    blob: await response.blob(),
+    headers: response.headers,
+  }));
 }
 
 export function queryString(params: Record<string, string | number | undefined>) {

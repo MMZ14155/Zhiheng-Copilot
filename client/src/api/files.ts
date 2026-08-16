@@ -1,4 +1,4 @@
-import { jsonRequest, multipartRequest, queryString } from './client';
+import { blobRequest, jsonRequest, multipartRequest, queryString } from './client';
 import type { CreateFileResponseDto, ProjectFileListResponseDto, VersionListResponseDto } from './dto';
 import type { ProjectFile } from './models';
 
@@ -35,4 +35,10 @@ export async function listProjectFiles(projectId: number): Promise<ProjectFile[]
     },
   }));
 }
-export const getVersionDownloadUrl = (version: string) => `/api/v1/versions/${encodeURIComponent(version)}/download`;
+export async function downloadVersion(version: string): Promise<{ blob: Blob; filename: string }> {
+  const { blob, headers } = await blobRequest(`/versions/${encodeURIComponent(version)}/download`);
+  const header = headers.get('content-disposition') ?? '';
+  const match = /filename\*?=UTF-8''([^;]+)/i.exec(header) ?? /filename="?([^";]+)"?/i.exec(header);
+  const filename = match ? decodeURIComponent(match[1]) : `${version.slice(0, 8)}`;
+  return { blob, filename };
+}

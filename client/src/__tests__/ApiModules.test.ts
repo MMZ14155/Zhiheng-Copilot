@@ -12,6 +12,7 @@ import { projects as legacyProjects } from '../data/projects'
 import { docProjects } from '../data/docs'
 
 const response = (body: unknown, status = 200) => ({ ok: status >= 200 && status < 300, status, json: vi.fn().mockResolvedValue(body) }) as unknown as Response
+const blobResponse = (blob: Blob, headers: Record<string, string> = {}) => ({ ok: true, status: 200, blob: vi.fn().mockResolvedValue(blob), headers: new Headers(headers) }) as unknown as Response
 const project = { id: 1, name: '项目', code: 'P1', customer_name: '客户', project_type: '软件销售', parties: [], contract_amount: 10, signed_date: null, started_date: null, planned_delivery_date: null, status: 'active', progress: 30, notes: null, created_at: 'x', updated_at: 'y', links: null }
 
 describe('API client', () => {
@@ -85,7 +86,12 @@ describe('API domain modules', () => {
     next({ file_id: 1, version: 'v2', message: 'ok' }); await files.appendFileVersion(1, { file })
     next({ file_id: 1, versions: [{ version: 'v1' }, { version: 'v2' }] }); expect(await files.listFileVersionOptions(1)).toEqual(['v1', 'v2'])
     next({ files: [{ id: 1, name: 'A', is_deliverable: true, created_at: 'c', updated_at: 'u', latest_version: { version: 'v', document_type: null, parse_status: 'done', size_bytes: 3, uploaded_at: 'u' } }, { id: 2, name: 'B', is_deliverable: false, created_at: 'c', updated_at: 'u', latest_version: null }] }); expect((await files.listProjectFiles(2))[1].latestVersion).toBeNull()
-    expect(files.getVersionDownloadUrl('a/b')).toBe('/api/v1/versions/a%2Fb/download')
+    const data = new Blob(['content'])
+    vi.mocked(fetch).mockResolvedValueOnce(blobResponse(data, { 'content-disposition': 'attachment; filename="report.pdf"' }))
+    const downloaded = await files.downloadVersion('abc123')
+    expect(downloaded.blob).toBe(data); expect(downloaded.filename).toBe('report.pdf')
+    vi.mocked(fetch).mockResolvedValueOnce(blobResponse(data))
+    expect((await files.downloadVersion('xyz789')).filename).toBe('xyz789')
   })
 
   it('映射交付物与标签', async () => {

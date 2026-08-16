@@ -24,6 +24,8 @@ export default function VersionHistory({ projectId, deliverables }: VersionHisto
   const [trackedFiles, setTrackedFiles] = useState<TrackedFile[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingVersion, setDownloadingVersion] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const loadTrackedFiles = useCallback(async () => {
     setLoading(true);
@@ -37,6 +39,27 @@ export default function VersionHistory({ projectId, deliverables }: VersionHisto
       setLoading(false);
     }
   }, [projectId]);
+
+  const download = useCallback(async (version: string) => {
+    setDownloadingVersion(version);
+    setDownloadError(null);
+    try {
+      const { blob, filename } = await filesApi.downloadVersion(version);
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (reason) {
+      console.error('版本下载失败', reason);
+      setDownloadError(reason instanceof ApiError ? reason.message : '下载失败，请稍后重试');
+    } finally {
+      setDownloadingVersion(null);
+    }
+  }, []);
 
   const toggle = (deliverableId: string) => {
     const nextId = expandedId === deliverableId ? null : deliverableId;
@@ -67,8 +90,11 @@ export default function VersionHistory({ projectId, deliverables }: VersionHisto
                 <code title={version.version}>{version.version.slice(0, 8)}</code>
                 {version.isCurrent && <span className="version-badge current">当前生效</span>}
                 {version.isFrozen && <span className="version-badge frozen">已冻结</span>}
-                <a href={filesApi.getVersionDownloadUrl(version.version)} target="_blank" rel="noreferrer">下载</a>
+                <button type="button" onClick={() => void download(version.version)} disabled={downloadingVersion === version.version}>
+                  {downloadingVersion === version.version ? '下载中…' : '下载'}
+                </button>
               </div>
+              {downloadError && downloadingVersion === null && <div className="version-state version-error" role="alert">{downloadError}</div>}
               <dl className="version-meta">
                 <div><dt>上传人</dt><dd>{version.uploadedBy || '未知'}</dd></div>
                 <div><dt>上传时间</dt><dd>{formatDateTime(version.uploadedAt)}</dd></div>
