@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ApiError, projectsApi } from '../api';
-import type { ProjectList, ProjectType, RiskLevel } from '../api';
+import type { ProjectList, ProjectType } from '../api';
 import ChatArea from '../components/ChatArea';
 import CreateProjectModal from '../components/CreateProjectModal';
 import ProjectCardGrid from '../components/ProjectCardGrid';
 import RiskFilter from '../components/RiskFilter';
+import type { RiskBoardFilter } from '../components/RiskFilter';
 import { PROJECT_TYPES, PROJECT_TYPE_LABELS } from '../constants/projectTypes';
 
 // ==================== 风险评级逻辑（暂时注释禁用，待服务端风险接口接入后恢复） ====================
@@ -94,11 +96,15 @@ import { PROJECT_TYPES, PROJECT_TYPE_LABELS } from '../constants/projectTypes';
 // }
 
 export default function RiskBoard() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<ProjectList | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [filter, setFilter] = useState<RiskLevel | 'all'>('all');
+  const requestedFilter = searchParams.get('filter');
+  const [filter, setFilterState] = useState<RiskBoardFilter>(
+    requestedFilter === 'block' || requestedFilter === 'warn' || requestedFilter === 'ok' || requestedFilter === 'delivery' || requestedFilter === 'payment' || requestedFilter === 'incomplete' ? requestedFilter : 'all',
+  );
   const [projectTypeFilter, setProjectTypeFilter] = useState<ProjectType | 'all'>('all');
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,7 +122,7 @@ export default function RiskBoard() {
             console.error(`项目 ${project.id} 风险数据加载失败`, result.reason);
             return { ...project, riskLevel: null };
           }
-          return { ...project, riskLevel: result.value.level };
+          return { ...project, riskLevel: result.value.level, risks: result.value.risks };
         }),
       });
     } catch (reason) {
@@ -130,23 +136,38 @@ export default function RiskBoard() {
   const counts = useMemo(() => ({
     block: data?.items.filter((project) => project.riskLevel === 'block').length ?? 0,
     warn: data?.items.filter((project) => project.riskLevel === 'warn').length ?? 0,
-    ok: data?.items.filter((project) => project.riskLevel === 'ok').length ?? 0,
+    ok: data?.items.filter((project) => project.riskLevel === 'ok' && !project.risks?.some((risk) => risk.type === 'payment-data-incomplete')).length ?? 0,
+    delivery: data?.items.filter((project) => project.risks?.some((risk) => risk.type === 'delivery-deadline')).length ?? 0,
+    payment: data?.items.filter((project) => project.risks?.some((risk) => risk.type === 'payment-overdue')).length ?? 0,
+    incomplete: data?.items.filter((project) => project.risks?.some((risk) => risk.type === 'payment-data-incomplete')).length ?? 0,
     total: data?.total ?? 0,
   }), [data]);
   const filteredProjects = useMemo(() => {
     if (!data) return [];
     return data.items.filter((project) => {
-      const matchRisk = filter === 'all' || project.riskLevel === filter;
+      const hasRisk = (type: string) => project.risks?.some((risk) => risk.type === type) ?? false;
+      const matchRisk = filter === 'all'
+        || (filter === 'delivery' && hasRisk('delivery-deadline'))
+        || (filter === 'payment' && hasRisk('payment-overdue'))
+        || (filter === 'incomplete' && hasRisk('payment-data-incomplete'))
+        || ((filter === 'block' || filter === 'warn') && project.riskLevel === filter)
+        || (filter === 'ok' && project.riskLevel === 'ok' && !hasRisk('payment-data-incomplete'));
       const matchType = projectTypeFilter === 'all' || project.projectType === projectTypeFilter;
       return matchRisk && matchType;
     });
   }, [data, filter, projectTypeFilter]);
+  const setFilter = (next: RiskBoardFilter) => {
+    setFilterState(next);
+    const params = new URLSearchParams(searchParams);
+    if (next === 'all') params.delete('filter'); else params.set('filter', next);
+    setSearchParams(params, { replace: true });
+  };
   return <div className="risk-board-layout"><ChatArea /><div className="risk-board">
     <div className="project-list-heading"><div><h2>项目列表</h2>{!loading && !error && <span>共 {data?.total ?? 0} 个项目</span>}</div><div className="project-list-actions"><button type="button" onClick={() => void load()} disabled={loading}>{loading ? '加载中…' : '刷新'}</button><button type="button" className="create-project-button" onClick={() => setShowCreateModal(true)}>新建项目</button></div></div>
     {loading && <div className="project-list-state" role="status">正在加载项目…</div>}
     {!loading && error && <div className="project-list-state error" role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>重新加载</button></div>}
     {!loading && !error && data?.items.length === 0 && <div className="project-list-state">暂无项目，请先通过项目接口创建项目。</div>}
-    {!loading && !error && data && data.items.length > 0 && <><RiskFilter blockCount={counts.block} warnCount={counts.warn} okCount={counts.ok} totalCount={counts.total} active={filter} onChange={setFilter} /><div className="project-type-filter"><label htmlFor="project-type-filter">项目类型</label><select id="project-type-filter" value={projectTypeFilter} onChange={(e) => setProjectTypeFilter(e.target.value as ProjectType | 'all')}>{PROJECT_TYPES.map((type) => <option key={type} value={type}>{PROJECT_TYPE_LABELS[type]}</option>)}<option value="all">全部</option></select></div>{filteredProjects.length > 0 ? <ProjectCardGrid projects={filteredProjects} /> : <div className="project-list-state">当前筛选条件下暂无项目。</div>}</>}
+    {!loading && !error && data && data.items.length > 0 && <><RiskFilter blockCount={counts.block} warnCount={counts.warn} okCount={counts.ok} totalCount={counts.total} deliveryCount={counts.delivery} paymentCount={counts.payment} incompleteCount={counts.incomplete} active={filter} onChange={setFilter} /><div className="project-type-filter"><label htmlFor="project-type-filter">项目类型</label><select id="project-type-filter" value={projectTypeFilter} onChange={(e) => setProjectTypeFilter(e.target.value as ProjectType | 'all')}>{PROJECT_TYPES.map((type) => <option key={type} value={type}>{PROJECT_TYPE_LABELS[type]}</option>)}<option value="all">全部</option></select></div>{filteredProjects.length > 0 ? <ProjectCardGrid projects={filteredProjects} /> : <div className="project-list-state">当前筛选条件下暂无项目。</div>}</>}
     {showCreateModal && <CreateProjectModal onClose={() => setShowCreateModal(false)} onCreated={load} />}
   </div></div>;
 }

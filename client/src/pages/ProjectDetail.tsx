@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { aiApi, ApiError, projectsApi } from '../api';
-import type { ProjectDetail as ProjectDetailModel } from '../api';
+import type { ProjectDetail as ProjectDetailModel, ProjectRisks } from '../api';
 import VersionHistory from '../components/VersionHistory';
 import ProcessFiles from '../components/ProcessFiles';
 import TagPanel from '../components/TagPanel';
@@ -13,11 +13,14 @@ const statusLabels: Record<ProjectDetailModel['status'], string> = {
   archived: '已归档',
   completed: '已完成',
 };
+const money = new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const projectId = id !== undefined && /^\d+$/.test(id) ? Number(id) : null;
   const [project, setProject] = useState<ProjectDetailModel | null>(null);
+  const [projectRisks, setProjectRisks] = useState<ProjectRisks | null>(null);
+  const [riskError, setRiskError] = useState<string | null>(null);
   const [loading, setLoading] = useState(projectId !== null);
   const [notFound, setNotFound] = useState(projectId === null);
   const [error, setError] = useState<string | null>(null);
@@ -46,9 +49,18 @@ export default function ProjectDetail() {
     setLoading(true);
     setNotFound(false);
     setError(null);
+    setRiskError(null);
     try {
-      const detail = await projectsApi.getProject(projectId);
+      const [detail, risks] = await Promise.all([
+        projectsApi.getProject(projectId),
+        projectsApi.getProjectRisks(projectId).catch((reason: unknown) => {
+          console.error('项目风险数据加载失败', reason);
+          setRiskError(reason instanceof ApiError ? reason.message : '回款与到期信息暂时无法加载');
+          return null;
+        }),
+      ]);
       setProject(detail);
+      setProjectRisks(risks);
       if (detail.latestSummary !== null) void loadQuestions();
       else {
         setQuestions([]);
@@ -70,6 +82,10 @@ export default function ProjectDetail() {
   if (loading) return <div className="page-container detail-state" role="status">正在加载项目详情…</div>;
   if (error) return <div className="page-container detail-state error" role="alert"><p>{error}</p><button type="button" onClick={() => void loadProject()}>重试</button></div>;
   if (!project) return <div className="page-container detail-state">暂无项目详情</div>;
+  const deadlineRisk = projectRisks?.risks.find((risk) => risk.type === 'delivery-deadline');
+  const paymentRisk = projectRisks?.risks.find((risk) => risk.type === 'payment-overdue');
+  const paymentIncomplete = projectRisks?.risks.find((risk) => risk.type === 'payment-data-incomplete');
+  const remainingDays = deadlineRisk?.remainingDays;
 
   return (
     <div className="page-container">
@@ -86,7 +102,7 @@ export default function ProjectDetail() {
             <Info label="客户" value={project.customerName} />
             <Info label="项目类型" value={project.projectType ?? '未填写'} valueColor={project.projectType ? PROJECT_TYPE_COLORS[project.projectType] : undefined} />
             <Info label="状态" value={statusLabels[project.status]} />
-            <Info label="合同金额" value={project.contractAmount === null ? '未填写' : `${project.contractAmount} 元`} />
+            <Info label="合同金额" value={project.contractAmount === null ? '未填写' : `${money.format(project.contractAmount)} 元`} />
             <Info label="签约日期" value={project.signedDate ?? '未填写'} />
             <Info label="启动日期" value={project.startedDate ?? '未填写'} />
             <Info label="计划交付日期" value={project.plannedDeliveryDate ?? '未填写'} />
@@ -97,7 +113,7 @@ export default function ProjectDetail() {
         {project.parties.length > 0 && <section className="detail-section"><h3>签约方</h3><div className="detail-list">{project.parties.map((party, index) => <article key={`${party.role}-${party.name}-${index}`}><strong>{party.role}</strong><span>{party.name}</span><small>{party.contact ?? '未填写联系方式'}</small></article>)}</div></section>}
         <section className="detail-section"><h3>过程文件</h3><ProcessFiles projectId={projectId!} onChanged={loadProject} /></section>
         <section className="detail-section"><h3>标签</h3><TagPanel projectId={projectId!} /></section>
-        <section className="detail-section"><h3>交付物清单</h3><VersionHistory projectId={projectId!} deliverables={project.deliverables} /></section>
+        <section className="detail-section deliverable-payment-section"><div className="deliverable-heading"><h3>交付物清单</h3><div className="deadline-countdown">{remainingDays === null || remainingDays === undefined ? '暂无到期预警' : remainingDays < 0 ? `已逾期 ${Math.abs(remainingDays)} 天` : `距交付 ${remainingDays} 天`}</div></div><div className="payment-progress-panel"><div><span>本项目回款进度</span><strong>{paymentRisk ? `逾期 ${money.format(paymentRisk.overdueAmount ?? 0)} 元` : paymentIncomplete ? '数据不完整' : '已收金额待接口提供'}</strong></div><div className="detail-progress-track payment-track" aria-label="本项目回款进度暂缺已收金额"><span style={{ width: '0%' }} /></div><small>{project.contractAmount === null ? '合同额未填写' : `合同额 ${money.format(project.contractAmount)} 元`} · 当前项目详情与风险接口未返回已收金额</small>{riskError && <p className="inline-risk-error" role="alert">{riskError}</p>}</div><VersionHistory projectId={projectId!} deliverables={project.deliverables} /></section>
         <section className="detail-section">
           <h3>最新总结</h3>
           {project.latestSummary === null ? <p className="detail-empty">暂无总结</p> : <>

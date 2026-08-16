@@ -23,14 +23,19 @@ describe('核心组件', () => {
   })
 
   it('ProjectCard 映射状态、缺省字段、风险与进度', () => {
-    route(<ProjectCard project={{ id: '2', name: 'Alpha', code: 'A', customerName: '客户', projectType: '软件销售', status: 'active', progress: 42, contractAmount: null, signedDate: null, plannedDeliveryDate: null, updatedAt: '', riskLevel: 'warn' }} />)
-    expect(screen.getByText('Alpha')).toBeTruthy(); expect(screen.getByText('软件销售')).toBeTruthy(); expect(screen.getByText('预警')).toBeTruthy(); expect(screen.getByText(/合同金额：未填写/).textContent?.match(/未填写/g)).toHaveLength(3); expect(screen.getByLabelText('项目进度 42%')).toBeTruthy()
+    route(<ProjectCard project={{ id: '2', name: 'Alpha', code: 'A', customerName: '客户', projectType: '软件销售', status: 'active', progress: 42, contractAmount: null, signedDate: null, plannedDeliveryDate: null, updatedAt: '', riskLevel: 'warn', risks: [{ type: 'delivery-deadline', level: 'warn', reason: '', recommendation: '', remainingDays: 9, overdueDays: null, overdueAmount: null, dataStatus: 'complete' }, { type: 'payment-overdue', level: 'warn', reason: '', recommendation: '', remainingDays: null, overdueDays: 5, overdueAmount: 1234.5, dataStatus: 'complete' }] }} />)
+    expect(screen.getByText('Alpha')).toBeTruthy(); expect(screen.getByText('软件销售')).toBeTruthy(); expect(screen.getByText('预警')).toBeTruthy(); expect(screen.getByText(/合同金额：未填写/).textContent?.match(/未填写/g)).toHaveLength(3); expect(screen.getByLabelText('项目进度 42%')).toBeTruthy(); expect(screen.getByText('距交付 9 天')).toBeTruthy(); expect(screen.getByText(/1,234.50 元/)).toBeTruthy()
+  })
+
+  it('ProjectCard 将数据不完整单独标识', () => {
+    route(<ProjectCard project={{ id: '3', name: 'Beta', code: 'B', customerName: '客户', projectType: null, status: 'active', progress: 0, contractAmount: 1000, signedDate: null, plannedDeliveryDate: null, updatedAt: '', riskLevel: 'warn', risks: [{ type: 'payment-data-incomplete', level: 'warn', reason: '', recommendation: '', remainingDays: null, overdueDays: null, overdueAmount: null, dataStatus: 'incomplete' }] }} />)
+    expect(screen.getByText('数据不完整')).toBeTruthy(); expect(screen.queryByText('预警')).toBeNull()
   })
 
   it('RiskFilter 点击筛选并再次点击恢复全部', async () => {
-    const change = vi.fn(); const { rerender } = render(<RiskFilter blockCount={1} warnCount={2} okCount={3} totalCount={6} active="all" onChange={change} />)
+    const change = vi.fn(); const { rerender } = render(<RiskFilter blockCount={1} warnCount={2} okCount={3} totalCount={6} deliveryCount={1} paymentCount={1} incompleteCount={1} active="all" onChange={change} />)
     await userEvent.click(screen.getByTitle('点击只看阻塞级项目')); expect(change).toHaveBeenCalledWith('block')
-    rerender(<RiskFilter blockCount={1} warnCount={2} okCount={3} totalCount={6} active="block" onChange={change} />); await userEvent.click(screen.getByTitle('点击只看阻塞级项目')); expect(change).toHaveBeenLastCalledWith('all')
+    rerender(<RiskFilter blockCount={1} warnCount={2} okCount={3} totalCount={6} deliveryCount={1} paymentCount={1} incompleteCount={1} active="block" onChange={change} />); await userEvent.click(screen.getByTitle('点击只看阻塞级项目')); expect(change).toHaveBeenLastCalledWith('all')
   })
 
   it('ChatArea 加载欢迎答复并发送输入与快捷问题', async () => {

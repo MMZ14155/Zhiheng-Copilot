@@ -38,6 +38,14 @@
   color: #111827;
   margin: 0 0 16px;
 }
+.deliverable-heading, .payment-progress-panel > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.deadline-countdown { padding:6px 10px; border-radius:999px; color:#92400e; background:#fef3c7; font-size:12px; font-weight:600; }
+.payment-progress-panel { margin-bottom:16px; padding:14px; border:1px solid #dbeafe; border-radius:10px; background:#eff6ff; }
+.payment-progress-panel span, .payment-progress-panel small { color:#64748b; font-size:12px; }
+.payment-progress-panel strong { color:#1e3a8a; font-size:13px; }
+.payment-track { margin:8px 0; }
+.payment-track span { background:#16a34a; }
+.inline-risk-error { margin:8px 0 0; color:#b91c1c; }
 
 .detail-section p,
 .detail-section li {

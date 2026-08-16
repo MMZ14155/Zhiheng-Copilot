@@ -1,7 +1,9 @@
 import type { RiskLevel } from '../types';
 
+export type RiskBoardFilter = RiskLevel | 'delivery' | 'payment' | 'incomplete' | 'all';
+
 interface FilterItem {
-  key: RiskLevel | 'all';
+  key: RiskBoardFilter;
   label: string;
   count: number;
   riskClass: string;
@@ -12,8 +14,11 @@ interface RiskFilterProps {
   warnCount: number;
   okCount: number;
   totalCount: number;
-  active: RiskLevel | 'all';
-  onChange: (risk: RiskLevel | 'all') => void;
+  deliveryCount: number;
+  paymentCount: number;
+  incompleteCount: number;
+  active: RiskBoardFilter;
+  onChange: (risk: RiskBoardFilter) => void;
 }
 
 export default function RiskFilter({
@@ -21,6 +26,9 @@ export default function RiskFilter({
   warnCount,
   okCount,
   totalCount,
+  deliveryCount,
+  paymentCount,
+  incompleteCount,
   active,
   onChange,
 }: RiskFilterProps) {
@@ -28,10 +36,13 @@ export default function RiskFilter({
     { key: 'block', label: '阻塞级项目', count: blockCount, riskClass: 'block' },
     { key: 'warn', label: '预警级项目', count: warnCount, riskClass: 'warn' },
     { key: 'ok', label: '健康级项目', count: okCount, riskClass: 'ok' },
+    { key: 'delivery', label: '到期预警', count: deliveryCount, riskClass: 'delivery' },
+    { key: 'payment', label: '回款逾期', count: paymentCount, riskClass: 'payment' },
+    { key: 'incomplete', label: '数据不完整', count: incompleteCount, riskClass: 'incomplete' },
     { key: 'all', label: '项目总数', count: totalCount, riskClass: '' },
   ];
 
-  const handleClick = (key: RiskLevel | 'all') => {
+  const handleClick = (key: RiskBoardFilter) => {
     onChange(active === key ? 'all' : key);
   };
 

@@ -1,5 +1,6 @@
 .risk-filter {
   display: flex;
+  flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -33,6 +34,17 @@
 .stat-card.active.ok {
   border-color: #16a34a;
   background: #f0fdf4;
+}
+
+.stat-card.active.delivery,
+.stat-card.active.payment {
+  border-color: #dc2626;
+  background: #fef2f2;
+}
+
+.stat-card.active.incomplete {
+  border-color: #7c3aed;
+  background: #f5f3ff;
 }
 
 .stat-card .label {

@@ -73,7 +73,7 @@ describe('API domain modules', () => {
     next({ page: 1, size: 20, total: 1, items: [project] }); const list = await projects.listProjects({ page: 1, size: 20, clientName: '客户', projectType: '软件销售', expand: 'links' })
     expect(list.items[0]).toMatchObject({ id: '1', customerName: '客户', projectType: '软件销售' }); expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain('client_name='); expect(String(vi.mocked(fetch).mock.calls[0][0])).toContain('project_type=')
     next({ ...project, deliverables: [{ id: 9, name: '合同', created_at: 'x', updated_at: 'y' }], latest_summary: null }); expect((await projects.getProject(1)).deliverables[0].id).toBe('9')
-    next({ level: 'warn', risks: [{ type: 'cost', level: 'warn', reason: 'r', recommendation: 'do' }], config: {} }); expect((await projects.getProjectRisks('1')).level).toBe('warn')
+    next({ level: 'warn', risks: [{ type: 'payment-overdue', level: 'warn', reason: 'r', recommendation: 'do', remaining_days: null, overdue_days: 7, overdue_amount: 1234.5, data_status: 'complete' }], config: {} }); expect((await projects.getProjectRisks('1')).risks[0]).toMatchObject({ overdueDays: 7, overdueAmount: 1234.5 })
   })
 
   it('覆盖项目写操作', async () => {
@@ -110,8 +110,8 @@ describe('API domain modules', () => {
   })
 
   it('映射统计数据并透传 ApiError', async () => {
-    const metric = { value: 12, sample_count: 2 }; next({ projects: { total: 1, risks: { block: 0, warn: 1, ok: 0 }, average_cost_usage_rate: metric, average_schedule_usage_rate: metric, average_satisfaction: metric }, files: { workspace_file_total: 2, deliverables: { missing: 0, old: 0, conflict: 0, ok: 1 } }, by_stage: [{ stage: 'executing', count: 1, average_cost_usage_rate: metric, average_schedule_usage_rate: metric, average_satisfaction: metric }] })
-    expect((await statistics.getStatisticsOverview()).byStage[0].averageCostUsageRate.sampleCount).toBe(2)
+    const metric = { value: 12, sample_count: 2 }; next({ projects: { total: 1, risks: { block: 0, warn: 1, ok: 0 }, average_cost_usage_rate: metric, average_schedule_usage_rate: metric, average_satisfaction: metric }, files: { workspace_file_total: 2, deliverables: { missing: 0, old: 0, conflict: 0, ok: 1 } }, by_stage: [{ stage: 'executing', count: 1, average_cost_usage_rate: metric, average_schedule_usage_rate: metric, average_satisfaction: metric }], project_type_distribution: { 软件销售: 1 }, delivery_deadline_distribution: { due_soon: 1 }, payment: { contract_amount: 100, invoiced_amount: 80, receivable_amount: 50, received_amount: 40, outstanding_amount: 60, overdue_amount: 10, collection_rate: 0.8, data_incomplete_projects: 0 } })
+    const overview = await statistics.getStatisticsOverview(); expect(overview.byStage[0].averageCostUsageRate.sampleCount).toBe(2); expect(overview.payment.receivedAmount).toBe(40); expect(overview.projectTypeDistribution).toEqual({ 软件销售: 1 })
     next({ detail: '禁止', code: 'NO' }, 403); await expect(projects.listProjects()).rejects.toBeInstanceOf(ApiError)
   })
 })

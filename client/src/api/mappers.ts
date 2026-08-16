@@ -10,6 +10,10 @@ export const mapProjectRisks = (dto: ProjectRisksResponseDto): ProjectRisks => (
     level: risk.level,
     reason: risk.reason,
     recommendation: risk.recommendation,
+    remainingDays: risk.remaining_days,
+    overdueDays: risk.overdue_days,
+    overdueAmount: risk.overdue_amount,
+    dataStatus: risk.data_status,
   })),
 });
 const mapAverageMetric = (dto: AverageMetricDto): AverageMetric => ({ value: dto.value, sampleCount: dto.sample_count });
@@ -29,6 +33,18 @@ export const mapStatisticsOverview = (dto: StatisticsOverviewResponseDto): Stati
     averageScheduleUsageRate: mapAverageMetric(item.average_schedule_usage_rate),
     averageSatisfaction: mapAverageMetric(item.average_satisfaction),
   })),
+  projectTypeDistribution: dto.project_type_distribution,
+  deliveryDeadlineDistribution: dto.delivery_deadline_distribution,
+  payment: {
+    contractAmount: dto.payment.contract_amount,
+    invoicedAmount: dto.payment.invoiced_amount,
+    receivableAmount: dto.payment.receivable_amount,
+    receivedAmount: dto.payment.received_amount,
+    outstandingAmount: dto.payment.outstanding_amount,
+    overdueAmount: dto.payment.overdue_amount,
+    collectionRate: dto.payment.collection_rate,
+    dataIncompleteProjects: dto.payment.data_incomplete_projects,
+  },
 });
 export const mapProjectDetail = (dto: ProjectDetailResponseDto): ProjectDetail => ({
   id: String(dto.id),

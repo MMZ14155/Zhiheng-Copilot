@@ -18,6 +18,8 @@ vi.mock('../components/VersionHistory', () => ({ default: () => <div>版本历�
 vi.mock('../components/TagPanel', () => ({ default: () => <div>标签面板</div> }))
 vi.mock('../components/ProcessFiles', () => ({ default: () => <div>过程文件内容</div> }))
 afterEach(() => { cleanup(); vi.clearAllMocks() })
+const statisticsExtras = { projectTypeDistribution: { 软件销售: 1 }, deliveryDeadlineDistribution: { overdue: 0, due_soon: 0, normal: 1, excluded: 0 }, payment: { contractAmount: 100, invoicedAmount: 80, receivableAmount: 50, receivedAmount: 40, outstandingAmount: 60, overdueAmount: 10, collectionRate: 0.8, dataIncompleteProjects: 0 } }
+const emptyProjectList = { page: 1, size: 100, total: 0, items: [] }
 
 describe('页面', () => {
   it('Login 成功登录并导航', async () => {
@@ -32,13 +34,13 @@ describe('页面', () => {
   })
 
   it('Statistics 展示统计值、空指标和阶段', async () => {
-    vi.mocked(statisticsApi.getStatisticsOverview).mockResolvedValue({ projects: { total: 1, risks: { block: 1, warn: 0, ok: 0 }, averageCostUsageRate: { value: 20, sampleCount: 1 }, averageScheduleUsageRate: { value: null, sampleCount: 0 }, averageSatisfaction: { value: 5, sampleCount: 1 } }, files: { workspaceFileTotal: 2, deliverables: { missing: 1, old: 0, conflict: 0, ok: 1 } }, byStage: [{ stage: null, count: 1, averageCostUsageRate: { value: 20, sampleCount: 1 }, averageScheduleUsageRate: { value: null, sampleCount: 0 }, averageSatisfaction: { value: 5, sampleCount: 1 } }] })
-    render(<Statistics />); await screen.findByText('项目总数'); expect(screen.getAllByText('20%').length).toBeGreaterThan(0); expect(screen.getByText('暂无数据')).toBeTruthy(); expect(screen.getByText('未填写')).toBeTruthy()
+    vi.mocked(statisticsApi.getStatisticsOverview).mockResolvedValue({ projects: { total: 1, risks: { block: 1, warn: 0, ok: 0 }, averageCostUsageRate: { value: 20, sampleCount: 1 }, averageScheduleUsageRate: { value: null, sampleCount: 0 }, averageSatisfaction: { value: 5, sampleCount: 1 } }, files: { workspaceFileTotal: 2, deliverables: { missing: 1, old: 0, conflict: 0, ok: 1 } }, byStage: [{ stage: null, count: 1, averageCostUsageRate: { value: 20, sampleCount: 1 }, averageScheduleUsageRate: { value: null, sampleCount: 0 }, averageSatisfaction: { value: 5, sampleCount: 1 } }], ...statisticsExtras }); vi.mocked(projectsApi.listProjects).mockResolvedValue(emptyProjectList)
+    render(<MemoryRouter initialEntries={['/']}><Routes><Route path="/" element={<Statistics />} /><Route path="/risk-board" element={<div>风险下钻</div>} /></Routes></MemoryRouter>); await screen.findByText('项目总数'); expect(screen.getAllByText('20%').length).toBeGreaterThan(0); expect(screen.getByText('暂无数据')).toBeTruthy(); expect(screen.getByText('未填写')).toBeTruthy(); expect(screen.getByText('回款率')).toBeTruthy(); expect(screen.getByText('软件销售')).toBeTruthy(); await userEvent.click(screen.getByRole('button', { name: /逾期金额/ })); await screen.findByText('风险下钻')
   })
 
   it('Statistics 处理空数据、错误和重试', async () => {
-    vi.mocked(statisticsApi.getStatisticsOverview).mockRejectedValueOnce(new Error()).mockResolvedValueOnce({ projects: { total: 0, risks: { block: 0, warn: 0, ok: 0 }, averageCostUsageRate: { value: null, sampleCount: 0 }, averageScheduleUsageRate: { value: null, sampleCount: 0 }, averageSatisfaction: { value: null, sampleCount: 0 } }, files: { workspaceFileTotal: 0, deliverables: { missing: 0, old: 0, conflict: 0, ok: 0 } }, byStage: [] })
-    render(<Statistics />); await screen.findByText('统计数据加载失败，请稍后重试'); await userEvent.click(screen.getByText('重新加载')); await screen.findByText(/暂无统计数据/); expect(screen.getByText('暂无项目阶段统计数据。')).toBeTruthy()
+    vi.mocked(statisticsApi.getStatisticsOverview).mockRejectedValueOnce(new Error()).mockResolvedValueOnce({ projects: { total: 0, risks: { block: 0, warn: 0, ok: 0 }, averageCostUsageRate: { value: null, sampleCount: 0 }, averageScheduleUsageRate: { value: null, sampleCount: 0 }, averageSatisfaction: { value: null, sampleCount: 0 } }, files: { workspaceFileTotal: 0, deliverables: { missing: 0, old: 0, conflict: 0, ok: 0 } }, byStage: [], projectTypeDistribution: {}, deliveryDeadlineDistribution: {}, payment: { ...statisticsExtras.payment, contractAmount: 0, invoicedAmount: 0, receivableAmount: 0, receivedAmount: 0, outstandingAmount: 0, overdueAmount: 0, collectionRate: null } }); vi.mocked(projectsApi.listProjects).mockResolvedValue(emptyProjectList)
+    render(<MemoryRouter><Statistics /></MemoryRouter>); await screen.findByText('统计数据加载失败，请稍后重试'); await userEvent.click(screen.getByText('重新加载')); await screen.findByText(/暂无统计数据/); expect(screen.getByText('暂无项目阶段统计数据。')).toBeTruthy()
   })
 
   it('RiskBoard 加载、筛选项目并打开弹窗', async () => {
@@ -55,6 +57,8 @@ describe('页面', () => {
 
   it('ProjectDetail 挂载并展示项目核心条件', async () => {
     vi.mocked(projectsApi.getProject).mockResolvedValue({ id: '1', name: '详情项目', code: 'P', customerName: '客户', projectType: '软件销售', parties: [], contractAmount: null, signedDate: null, startedDate: null, plannedDeliveryDate: null, status: 'active', progress: 10, notes: null, deliverables: [], latestSummary: null })
+    vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({ level: 'warn', risks: [{ type: 'delivery-deadline', level: 'warn', reason: '即将到期', recommendation: '跟进', remainingDays: 8, overdueDays: null, overdueAmount: null, dataStatus: 'complete' }] })
     render(<MemoryRouter initialEntries={['/projects/1']}><Routes><Route path="/projects/:id" element={<ProjectDetail />} /></Routes></MemoryRouter>); await waitFor(() => expect(screen.getAllByText('详情项目')).toHaveLength(2)); expect(screen.getByText('版本历史')).toBeTruthy(); expect(screen.getByText('标签面板')).toBeTruthy()
+    expect(screen.getByText('距交付 8 天')).toBeTruthy(); expect(screen.getByText('本项目回款进度')).toBeTruthy()
   })
 })

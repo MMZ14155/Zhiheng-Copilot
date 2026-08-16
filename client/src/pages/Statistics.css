@@ -33,6 +33,28 @@
   background: #f5f3ff;
 }
 
+.stats-card.incomplete { border-color:#7c3aed; background:#f5f3ff; }
+.money-value { font-size:20px; }
+.drilldown-card { display:flex; flex-direction:column; align-items:flex-start; font:inherit; text-align:left; cursor:pointer; }
+.drilldown-card small { margin-top:6px; color:#991b1b; }
+.distribution-list { display:grid; gap:12px; margin-bottom:20px; padding:18px; border-radius:12px; background:#fff; }
+.distribution-list > div > div:first-child { display:flex; justify-content:space-between; font-size:13px; }
+.distribution-track { height:8px; margin-top:7px; overflow:hidden; border-radius:999px; background:#e5e7eb; }
+.distribution-track span { display:block; height:100%; border-radius:inherit; background:#2563eb; }
+.deadline-layout { display:grid; grid-template-columns:minmax(260px, .8fr) minmax(320px, 1.2fr); gap:16px; }
+.distribution-row { display:flex; justify-content:space-between; width:100%; border:0; padding:9px 10px; border-radius:7px; background:#f9fafb; color:#374151; font:inherit; }
+.distribution-row.actionable { cursor:pointer; }
+.distribution-row.actionable:hover { color:#1d4ed8; background:#eff6ff; }
+.deadline-projects { margin-bottom:20px; padding:18px; border-radius:12px; background:#fff; }
+.deadline-projects h4 { margin:0 0 12px; }
+.deadline-projects p { color:#6b7280; font-size:13px; }
+.deadline-projects .deadline-error { color:#b91c1c; }
+.deadline-projects ul { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+.deadline-projects button { display:flex; justify-content:space-between; width:100%; border:0; padding:10px; border-radius:7px; background:#fffbeb; color:#374151; cursor:pointer; }
+.deadline-projects button strong { color:#b45309; }
+
+@media (max-width: 720px) { .deadline-layout { grid-template-columns:1fr; } }
+
 .stats-label {
   font-size: 12px;
   color: #6b7280;

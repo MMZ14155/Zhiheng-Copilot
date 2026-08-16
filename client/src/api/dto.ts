@@ -26,16 +26,20 @@ export interface ProjectLinkCreateDto { target_project_id: number; link_type: Pr
 export interface ProjectLinkResponseDto { id: number; source_project_id: number; target_project_id: number; link_type: ProjectLinkTypeDto; note: string | null; created_at: string }
 export interface RenewalChainResponseDto { project_id: number; depth_limit: number; items: ProjectResponseDto[] }
 export type RiskLevelDto = 'block' | 'warn' | 'ok';
-export interface ProjectRiskDto { type: string; level: RiskLevelDto; reason: string; recommendation: string }
+export interface ProjectRiskDto { type: string; level: RiskLevelDto; reason: string; recommendation: string; remaining_days: number | null; overdue_days: number | null; overdue_amount: number | null; data_status: 'complete' | 'incomplete' | null }
 export interface ProjectRisksResponseDto { level: RiskLevelDto; risks: ProjectRiskDto[]; config: JsonObject }
 
 export type ProjectStageDto = 'init' | 'planning' | 'executing' | 'accepting' | 'closed';
 export interface AverageMetricDto { value: number | null; sample_count: number }
 export interface StageStatisticsDto { stage: ProjectStageDto | null; count: number; average_cost_usage_rate: AverageMetricDto; average_schedule_usage_rate: AverageMetricDto; average_satisfaction: AverageMetricDto }
+export interface PaymentStatisticsDto { contract_amount: number; invoiced_amount: number; receivable_amount: number; received_amount: number; outstanding_amount: number; overdue_amount: number; collection_rate: number | null; data_incomplete_projects: number }
 export interface StatisticsOverviewResponseDto {
   projects: { total: number; risks: Record<RiskLevelDto, number>; average_cost_usage_rate: AverageMetricDto; average_schedule_usage_rate: AverageMetricDto; average_satisfaction: AverageMetricDto };
   files: { workspace_file_total: number; deliverables: { missing: number; old: number; conflict: number; ok: number } };
   by_stage: StageStatisticsDto[];
+  project_type_distribution: Record<string, number>;
+  delivery_deadline_distribution: Record<string, number>;
+  payment: PaymentStatisticsDto;
 }
 
 export interface CreateFileResponseDto { file_id: number; version: string; message: string }
