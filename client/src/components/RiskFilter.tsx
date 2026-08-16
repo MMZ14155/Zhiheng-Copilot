@@ -33,13 +33,13 @@ export default function RiskFilter({
   onChange,
 }: RiskFilterProps) {
   const items: FilterItem[] = [
-    { key: 'block', label: '阻塞级项目', count: blockCount, riskClass: 'block' },
-    { key: 'warn', label: '预警级项目', count: warnCount, riskClass: 'warn' },
-    { key: 'ok', label: '健康级项目', count: okCount, riskClass: 'ok' },
-    { key: 'delivery', label: '到期预警', count: deliveryCount, riskClass: 'delivery' },
-    { key: 'payment', label: '回款逾期', count: paymentCount, riskClass: 'payment' },
-    { key: 'incomplete', label: '数据不完整', count: incompleteCount, riskClass: 'incomplete' },
-    { key: 'all', label: '项目总数', count: totalCount, riskClass: '' },
+    { key: 'all', label: '全部', count: totalCount, riskClass: '' },
+    { key: 'block', label: '阻塞', count: blockCount, riskClass: 'block' },
+    { key: 'warn', label: '预警', count: warnCount, riskClass: 'warn' },
+    { key: 'ok', label: '健康', count: okCount, riskClass: 'ok' },
+    { key: 'delivery', label: '到期', count: deliveryCount, riskClass: 'delivery' },
+    { key: 'payment', label: '逾期', count: paymentCount, riskClass: 'payment' },
+    { key: 'incomplete', label: '缺数据', count: incompleteCount, riskClass: 'incomplete' },
   ];
 
   const handleClick = (key: RiskBoardFilter) => {

@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import type { ProjectListItem } from '../api';
-import { PROJECT_TYPE_COLORS } from '../constants/projectTypes';
 
 const labels: Record<ProjectListItem['status'], string> = { active: '进行中', archived: '已归档', completed: '已完成' };
 const riskLabels = { block: '阻塞', warn: '预警', ok: '健康' } as const;
@@ -14,11 +13,15 @@ export default function ProjectCard({ project }: { project: ProjectListItem }) {
   const remainingDays = deadlineRisk?.remainingDays;
   const deadlineText = remainingDays === null || remainingDays === undefined ? null : remainingDays < 0 ? `交付已逾期 ${Math.abs(remainingDays)} 天` : `距交付 ${remainingDays} 天`;
   return <Link to={`/projects/${project.id}`} className="project-card project-card-real" style={{ borderLeftColor: project.riskLevel ? riskColors[project.riskLevel] : undefined }}>
-    <div className="card-header"><div><div className="card-title">{project.name}</div><div className="card-customer">{project.customerName}</div></div><div className="card-actions"><div className={`badge project-status ${project.status}`}>{labels[project.status]}</div>{project.projectType && <div className="badge project-type" style={{ backgroundColor: PROJECT_TYPE_COLORS[project.projectType], color: '#fff' }}>{project.projectType}</div>}{incomplete ? <div className="badge data-incomplete">数据不完整</div> : project.riskLevel && <div className={`badge project-risk ${project.riskLevel}`}>{riskLabels[project.riskLevel]}</div>}</div></div>
-    <div className="card-meta">合同金额：{project.contractAmount === null ? '未填写' : `${money.format(project.contractAmount)} 元`}<br />签约日期：{project.signedDate ?? '未填写'}<br />计划交付：{project.plannedDeliveryDate ?? '未填写'}</div>
+    <div className="card-header"><div><div className="card-title">{project.name}</div><div className="card-customer">{project.customerName}</div></div><div className="card-actions"><div className={`badge project-status ${project.status}`}>{labels[project.status]}</div>{incomplete ? <div className="badge data-incomplete">数据不完整</div> : project.riskLevel && <div className={`badge project-risk ${project.riskLevel}`}>{riskLabels[project.riskLevel]}</div>}</div></div>
     {project.risks?.[0] && <p className="risk-summary">{project.risks[0].reason || project.risks[0].recommendation}</p>}
     {(deadlineText || paymentRisk) && <div className="risk-highlights">{deadlineText && <span className={remainingDays !== null && remainingDays !== undefined && remainingDays < 0 ? 'block' : 'warn'}>{deadlineText}</span>}{paymentRisk && <span className="block">逾期 {paymentRisk.overdueDays ?? 0} 天 · {money.format(paymentRisk.overdueAmount ?? 0)} 元</span>}</div>}
-    <div className="project-progress" aria-label={`项目进度 ${project.progress}%`}><div className="project-progress-label"><span>项目进度</span><strong>{project.progress}%</strong></div><div className="project-progress-track"><span style={{ width: `${project.progress}%` }} /></div></div>
+    <div className="card-meta-line">
+      {project.contractAmount !== null && <span>¥{money.format(project.contractAmount)}</span>}
+      {project.signedDate && <span>{project.signedDate}</span>}
+      {project.plannedDeliveryDate && <span>交付 {project.plannedDeliveryDate}</span>}
+    </div>
+    <div className="project-progress" aria-label={`项目进度 ${project.progress}%`}><div className="project-progress-track"><span style={{ width: `${project.progress}%` }} /></div><strong>{project.progress}%</strong></div>
   </Link>;
 }
 

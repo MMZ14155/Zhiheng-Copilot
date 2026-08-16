@@ -67,32 +67,29 @@ export default function Statistics() {
     {!loading && error && <div className="statistics-state error" role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>重新加载</button></div>}
     {!loading && !error && data && <>
       {data.projects.total === 0 && data.files.workspaceFileTotal === 0 && data.byStage.length === 0 && <div className="statistics-empty">暂无统计数据，项目和资料录入后将在此展示。</div>}
-      <div className="stats-grid">
+      <div className="stats-grid stats-row-primary">
         <div className="stats-card"><div className="stats-label">项目总数</div><div className="stats-value">{data.projects.total}</div></div>
         <div className="stats-card block"><div className="stats-label">阻塞级</div><div className="stats-value">{data.projects.risks.block}</div></div>
         <div className="stats-card warn"><div className="stats-label">预警级</div><div className="stats-value">{data.projects.risks.warn}</div></div>
         <div className="stats-card ok"><div className="stats-label">健康级</div><div className="stats-value">{data.projects.risks.ok}</div></div>
+        <div className="stats-card delivery"><div className="stats-label">到期预警</div><div className="stats-value">{data.deliveryDeadlineDistribution.overdue + data.deliveryDeadlineDistribution.due_soon}</div></div>
+        <div className="stats-card payment"><div className="stats-label">回款逾期</div><div className="stats-value">{data.payment.overdueAmount > 0 ? `¥${money.format(data.payment.overdueAmount)}` : '0'}</div></div>
+        <div className="stats-card incomplete"><div className="stats-label">数据不完整</div><div className="stats-value">{data.payment.dataIncompleteProjects + data.files.deliverables.missing + data.files.deliverables.old + data.files.deliverables.conflict}</div></div>
       </div>
-      <div className="stats-grid">
+      <div className="stats-grid stats-row-secondary">
         <div className="stats-card"><div className="stats-label">平均成本使用率</div><MetricValue metric={data.projects.averageCostUsageRate} percent /></div>
         <div className="stats-card"><div className="stats-label">平均周期使用率</div><MetricValue metric={data.projects.averageScheduleUsageRate} percent /></div>
         <div className="stats-card"><div className="stats-label">平均客户满意度</div><MetricValue metric={data.projects.averageSatisfaction} /></div>
-      </div>
-      <div className="stats-grid">
         <div className="stats-card"><div className="stats-label">资料总数</div><div className="stats-value">{data.files.workspaceFileTotal}</div></div>
-        <div className="stats-card block"><div className="stats-label">交付物缺失</div><div className="stats-value">{data.files.deliverables.missing}</div></div>
-        <div className="stats-card warn"><div className="stats-label">交付物旧版</div><div className="stats-value">{data.files.deliverables.old}</div></div>
-        <div className="stats-card conflict"><div className="stats-label">交付物冲突</div><div className="stats-value">{data.files.deliverables.conflict}</div></div>
         <div className="stats-card ok"><div className="stats-label">交付物正常</div><div className="stats-value">{data.files.deliverables.ok}</div></div>
       </div>
       <h3 className="section-title">回款概览</h3>
-      <div className="stats-grid payment-grid">
+      <div className="stats-grid payment-grid compact">
         <div className="stats-card"><div className="stats-label">合同金额</div><div className="stats-value money-value">¥ {money.format(data.payment.contractAmount)}</div></div>
         <div className="stats-card"><div className="stats-label">应收金额</div><div className="stats-value money-value">¥ {money.format(data.payment.receivableAmount)}</div></div>
         <div className="stats-card ok"><div className="stats-label">已收金额</div><div className="stats-value money-value">¥ {money.format(data.payment.receivedAmount)}</div></div>
-        <button type="button" className="stats-card block drilldown-card" onClick={() => navigate('/risk-board?filter=payment')}><span className="stats-label">逾期金额</span><span className="stats-value money-value">¥ {money.format(data.payment.overdueAmount)}</span><small>点击查看逾期项目</small></button>
-        <div className="stats-card"><div className="stats-label">回款率</div><div className="stats-value">{data.payment.collectionRate === null ? '暂无数据' : `${(data.payment.collectionRate * 100).toFixed(2)}%`}</div></div>
-        <div className="stats-card incomplete"><div className="stats-label">回款数据不完整</div><div className="stats-value">{data.payment.dataIncompleteProjects}</div></div>
+        <button type="button" className="stats-card block drilldown-card" onClick={() => navigate('/risk-board?filter=payment')}><span className="stats-label">逾期金额</span><span className="stats-value money-value">¥ {money.format(data.payment.overdueAmount)}</span></button>
+        <div className="stats-card"><div className="stats-label">回款率</div><div className="stats-value">{data.payment.collectionRate === null ? '-' : `${(data.payment.collectionRate * 100).toFixed(0)}%`}</div></div>
       </div>
       <h3 className="section-title">项目类型分布</h3>
       {Object.keys(data.projectTypeDistribution).length === 0 ? <div className="statistics-empty">暂无项目类型数据。</div> : <div className="distribution-list">{Object.entries(data.projectTypeDistribution).map(([label, count]) => <div key={label}><div><span>{label}</span><strong>{count}</strong></div><div className="distribution-track"><span style={{ width: `${data.projects.total > 0 ? count / data.projects.total * 100 : 0}%` }} /></div></div>)}</div>}

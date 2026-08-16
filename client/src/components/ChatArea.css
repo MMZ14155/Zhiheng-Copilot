@@ -1,5 +1,6 @@
 .chat-area {
-  width: 360px;
+  width: 100%;
+  min-width: 0;
   background: #fff;
   border-right: 1px solid #e5e7eb;
   display: flex;
