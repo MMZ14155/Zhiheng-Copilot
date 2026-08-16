@@ -84,6 +84,7 @@ def test_project_detail_and_risks(fake_session, users, now, monkeypatch):
     assert detail.id == 1 and detail.latest_summary is None
 
     monkeypatch.setattr(projects.DeliverableService, "list_with_state", AsyncMock(return_value=[]))
+    monkeypatch.setattr(projects, "load_financial_documents", AsyncMock(return_value={}))
     risk = asyncio.run(projects.get_project_risks(1, fake_session, users.member))
     assert risk.level in {"ok", "warn", "block"}
     config = asyncio.run(projects.get_project_risk_config(1, fake_session, users.member))

@@ -1,5 +1,7 @@
 import logging
 from collections import Counter, defaultdict
+from datetime import date
+from decimal import Decimal
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
@@ -18,6 +20,7 @@ from app.schemas.statistics import (
     DeliverableStatusCounts,
     FileStatistics,
     ProjectStatistics,
+    PaymentStatistics,
     RiskCounts,
     StatisticsOverviewResponse,
 )
@@ -28,7 +31,10 @@ from app.services.risk_monitor import (
     evaluate_project,
     load_risk_config,
 )
-from app.services.statistics import empty_status_counts, group_by_stage, project_averages
+from app.services.statistics import (
+    aggregate_project_finance, empty_status_counts, group_by_stage,
+    load_financial_documents, project_averages,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["statistics"])
@@ -109,20 +115,46 @@ async def get_statistics_overview(
         file_count_stmt = file_count_stmt.where(WorkspaceFile.project_id.in_(project_ids))
     workspace_file_total = await session.scalar(file_count_stmt) or 0
     deliverables = await _load_deliverable_states(session, project_ids)
+    financial_documents = await load_financial_documents(session, project_ids)
 
     risk_counts = Counter({"block": 0, "warn": 0, "ok": 0})
     deliverable_counts = empty_status_counts()
+    type_counts: Counter[str] = Counter()
+    deadline_counts = Counter({"overdue": 0, "due_soon": 0, "normal": 0, "excluded": 0})
+    contract_total = invoiced = receivable = received = overdue = Decimal("0")
+    incomplete_projects = 0
     for project in projects:
         states = deliverables.get(project.id, [])
-        risk_counts[aggregate_risk(evaluate_project(project, states, load_risk_config(project)))] += 1
+        finance = aggregate_project_finance(financial_documents.get(project.id, []))
+        risk_counts[aggregate_risk(evaluate_project(
+            project, states, load_risk_config(project), finance,
+        ))] += 1
         deliverable_counts.update(item.status for item in states)
+        type_counts[project.project_type or "未分类"] += 1
+        if project.status in {"completed", "archived"} or project.planned_delivery_date is None:
+            deadline_counts["excluded"] += 1
+        else:
+            remaining = (project.planned_delivery_date - date.today()).days
+            key = "overdue" if remaining < 0 else "due_soon" if remaining <= load_risk_config(project).thresholds.delivery_warn_days else "normal"
+            deadline_counts[key] += 1
+        receivable += finance.receivable_amount
+        contract_total += finance.contract_amount
+        invoiced += finance.invoiced_amount
+        received += finance.received_amount
+        overdue += finance.overdue_amount
+        incomplete_projects += int(finance.data_incomplete)
 
     cost, schedule, satisfaction = project_averages(projects)
     logger.info(
-        "calculated statistics overview projects=%s workspace_files=%s deliverables=%s",
+        "calculated statistics overview projects=%s workspace_files=%s deliverables=%s "
+        "receivable=%s received=%s overdue=%s incomplete_projects=%s",
         len(projects),
         workspace_file_total,
         sum(deliverable_counts.values()),
+        receivable,
+        received,
+        overdue,
+        incomplete_projects,
     )
     return StatisticsOverviewResponse(
         projects=ProjectStatistics(
@@ -137,4 +169,13 @@ async def get_statistics_overview(
             deliverables=DeliverableStatusCounts(**deliverable_counts),
         ),
         by_stage=group_by_stage(projects),
+        project_type_distribution=dict(type_counts),
+        delivery_deadline_distribution=dict(deadline_counts),
+        payment=PaymentStatistics(
+            contract_amount=contract_total, invoiced_amount=invoiced,
+            receivable_amount=receivable, received_amount=received, overdue_amount=overdue,
+            outstanding_amount=max(contract_total - received, Decimal("0")),
+            collection_rate=(received / receivable if receivable > 0 else None),
+            data_incomplete_projects=incomplete_projects,
+        ),
     )

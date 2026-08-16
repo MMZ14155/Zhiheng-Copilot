@@ -41,6 +41,7 @@ from app.services.risk_monitor import (
     evaluate_project,
     load_risk_config,
 )
+from app.services.statistics import aggregate_project_finance, load_financial_documents
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["projects"])
@@ -336,7 +337,11 @@ async def get_project_risks(
     await require_project_role(session, project_id, user)
     project = await _get_project_or_404(session, project_id)
     config = load_risk_config(project)
-    risks = evaluate_project(project, await _risk_deliverables(session, project_id), config)
+    documents = await load_financial_documents(session, [project_id])
+    finance = aggregate_project_finance(documents.get(project_id, []))
+    risks = evaluate_project(
+        project, await _risk_deliverables(session, project_id), config, finance,
+    )
     level = aggregate_risk(risks)
     logger.info("evaluated project risks id=%s level=%s count=%s", project_id, level, len(risks))
     return RiskResponse(level=level, risks=risks, config=config)

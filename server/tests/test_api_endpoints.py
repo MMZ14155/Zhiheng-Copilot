@@ -1,4 +1,5 @@
 import asyncio
+from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -18,6 +19,7 @@ from app.models.workspace_file import WorkspaceFile
 from app.schemas.ai import SummaryAnswer, SummaryAnswersRequest
 from app.schemas.copilot import CopilotAnswerOutput, CopilotAskRequest
 from app.schemas.deliverables import CurrentVersionUpdate, TagCreate, TagSnapshotCreate, TrackedFileCreate
+from app.services.statistics import FinancialDocument
 from tests.conftest import Result
 
 
@@ -157,13 +159,24 @@ def test_auth_login_and_me(fake_session, users, monkeypatch):
 
 def test_statistics_member_filter(fake_session, users, monkeypatch):
     project = Project(id=1, stage="executing", budget=Decimal("100"), cost=Decimal("50"), planned_days=10,
-        used_days=5, satisfaction=Decimal("4"), progress=50, quality_issues=0, acceptance_result="pending")
+        used_days=5, satisfaction=Decimal("4"), progress=50, quality_issues=0,
+        acceptance_result="pending", status="active", project_type="软件销售",
+        planned_delivery_date=date(2026, 9, 30))
     fake_session.scalars.return_value = Result([1]).scalars()
     fake_session.execute.return_value = Result([project])
     fake_session.scalar.return_value = 2
     monkeypatch.setattr(statistics, "_load_deliverable_states", AsyncMock(return_value={}))
+    load_finance = AsyncMock(return_value={1: [FinancialDocument(
+        project_id=1, file_id=1, version="v1", kind="contract", amount=Decimal("100"),
+        created_at="2026-01-01", contract_no="C1", signed_date=date(2026, 1, 1),
+        payment_terms=({"stage": "签订", "ratio": "100%"},),
+    )]})
+    monkeypatch.setattr(statistics, "load_financial_documents", load_finance)
     response = asyncio.run(statistics.get_statistics_overview(fake_session, users.member))
     assert response.projects.total == 1 and response.files.workspace_file_total == 2
+    assert response.project_type_distribution == {"软件销售": 1}
+    assert response.payment.contract_amount == Decimal("100")
+    load_finance.assert_awaited_once_with(fake_session, [1])
 
 
 def test_copilot_aggregate_and_access(fake_session, users, monkeypatch):

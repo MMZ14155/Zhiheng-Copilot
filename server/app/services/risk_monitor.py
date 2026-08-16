@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import date
 from decimal import Decimal
 
 from app.models.project import Project
@@ -12,6 +13,18 @@ class DeliverableRiskState:
     required: bool
     status: str
     unfrozen_versions: int
+
+
+@dataclass(frozen=True)
+class PaymentRiskState:
+    contract_amount: Decimal = Decimal("0")
+    invoiced_amount: Decimal = Decimal("0")
+    received_amount: Decimal = Decimal("0")
+    receivable_amount: Decimal = Decimal("0")
+    overdue_amount: Decimal = Decimal("0")
+    overdue_days: int = 0
+    data_incomplete: bool = False
+    incomplete_reasons: tuple[str, ...] = ()
 
 
 def get_default_risk_config(project_id: int | str) -> RiskConfig:
@@ -38,6 +51,8 @@ def evaluate_project(
     project: Project,
     deliverables: list[DeliverableRiskState],
     config: RiskConfig,
+    payment: PaymentRiskState | None = None,
+    today: date | None = None,
 ) -> list[RiskItem]:
     risks: list[RiskItem] = []
     thresholds = config.thresholds
@@ -57,12 +72,48 @@ def evaluate_project(
                 reason=f"项目临近超期：已用 {project.used_days} 天，计划 {project.planned_days} 天，进度使用率 {ratio * 100:.1f}%。",
                 recommendation="梳理关键路径，确认剩余任务资源投入，提前触发预警沟通。",
             ))
+    current_date = today or date.today()
+    delivery_date = getattr(project, "planned_delivery_date", None)
+    project_status = getattr(project, "status", "active")
+    if (config.enabled_rules.delivery_deadline and delivery_date is not None
+            and project_status not in {"completed", "archived"}):
+        remaining_days = (delivery_date - current_date).days
+        if remaining_days < -thresholds.delivery_block_days:
+            risks.append(RiskItem(
+                type="delivery-deadline", level="block", remaining_days=remaining_days,
+                reason=f"项目已逾期 {-remaining_days} 天，计划交付日期为 {delivery_date.isoformat()}。",
+                recommendation="立即确认延期原因与剩余工作，制定补救计划并同步客户。",
+            ))
+        elif remaining_days <= thresholds.delivery_warn_days:
+            risks.append(RiskItem(
+                type="delivery-deadline", level="warn", remaining_days=remaining_days,
+                reason=f"距计划交付仅剩 {remaining_days} 天，计划交付日期为 {delivery_date.isoformat()}。",
+                recommendation="倒排里程碑并按周跟踪关键节点，提前处理交付阻塞。",
+            ))
+    elif delivery_date is None and project.planned_days is not None and project.used_days is not None:
+        # Backward-compatible fallback for legacy projects without a delivery date.
         remaining = project.planned_days - project.used_days
         if remaining < 90:
             risks.append(RiskItem(
                 type="schedule-remaining", level="warn",
                 reason=f"项目结束时间不足90天（剩余 {remaining} 天），需注意推进速度。",
-                recommendation="倒排里程碑计划，按周跟踪关键节点完成率，避免收尾被动。",
+                recommendation="补录计划交付日期，并倒排里程碑计划跟踪关键节点。",
+            ))
+
+    if config.enabled_rules.payment_collection and payment is not None:
+        if payment.data_incomplete:
+            risks.append(RiskItem(
+                type="payment-data-incomplete", level="warn", data_status="incomplete",
+                reason="回款数据不完整：" + "、".join(payment.incomplete_reasons),
+                recommendation="补齐合同号、付款条款及金额信息后重新评估回款风险。",
+            ))
+        elif payment.overdue_amount > 0 and payment.overdue_days >= thresholds.payment_warn_days:
+            level = "block" if payment.overdue_days >= thresholds.payment_block_days else "warn"
+            risks.append(RiskItem(
+                type="payment-overdue", level=level, overdue_days=payment.overdue_days,
+                overdue_amount=payment.overdue_amount, data_status="complete",
+                reason=f"应收款逾期 {payment.overdue_days} 天，逾期金额 {_number(payment.overdue_amount)} 元。",
+                recommendation="核对付款节点并立即跟进客户回款，记录催收进展。",
             ))
 
     if config.enabled_rules.cost and project.budget is not None and project.cost is not None:

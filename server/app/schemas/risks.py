@@ -1,3 +1,4 @@
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -15,6 +16,8 @@ class RiskRuleSwitches(BaseModel):
     document_missing: bool = Field(default=True, alias="documentMissing")
     version_conflict: bool = Field(default=True, alias="versionConflict")
     rule_conflict: bool = Field(default=True, alias="ruleConflict")
+    delivery_deadline: bool = Field(default=True, alias="deliveryDeadline")
+    payment_collection: bool = Field(default=True, alias="paymentCollection")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -28,6 +31,10 @@ class RiskThresholds(BaseModel):
     quality_block: float = Field(default=3, alias="qualityBlock", ge=0)
     sat_warn: float = Field(default=3.5, alias="satWarn", ge=0)
     sat_block: float = Field(default=3.0, alias="satBlock", ge=0)
+    delivery_warn_days: int = Field(default=30, alias="deliveryWarnDays", ge=0)
+    delivery_block_days: int = Field(default=0, alias="deliveryBlockDays", ge=0)
+    payment_warn_days: int = Field(default=0, alias="paymentWarnDays", ge=0)
+    payment_block_days: int = Field(default=30, alias="paymentBlockDays", ge=0)
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -41,6 +48,8 @@ class RiskThresholds(BaseModel):
             raise ValueError("qualityWarn must not exceed qualityBlock")
         if self.sat_block > self.sat_warn:
             raise ValueError("satBlock must not exceed satWarn")
+        if self.payment_warn_days > self.payment_block_days:
+            raise ValueError("paymentWarnDays must not exceed paymentBlockDays")
         return self
 
 
@@ -58,10 +67,15 @@ class RiskItem(BaseModel):
     type: Literal[
         "schedule-overrun", "schedule-remaining", "cost-overrun",
         "document-missing", "version-conflict", "rule-conflict",
+        "delivery-deadline", "payment-overdue", "payment-data-incomplete",
     ]
     level: RiskLevel
     reason: str
     recommendation: str
+    remaining_days: int | None = None
+    overdue_days: int | None = None
+    overdue_amount: Decimal | None = None
+    data_status: Literal["complete", "incomplete"] | None = None
 
 
 class RiskResponse(BaseModel):

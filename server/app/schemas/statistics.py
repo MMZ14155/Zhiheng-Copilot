@@ -1,6 +1,7 @@
+from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class AverageMetric(BaseModel):
@@ -42,7 +43,21 @@ class StageStatistics(BaseModel):
     average_satisfaction: AverageMetric
 
 
+class PaymentStatistics(BaseModel):
+    contract_amount: Decimal = Decimal("0")
+    invoiced_amount: Decimal = Decimal("0")
+    receivable_amount: Decimal = Decimal("0")
+    received_amount: Decimal = Decimal("0")
+    outstanding_amount: Decimal = Decimal("0")
+    overdue_amount: Decimal = Decimal("0")
+    collection_rate: Decimal | None = None
+    data_incomplete_projects: int = 0
+
+
 class StatisticsOverviewResponse(BaseModel):
     projects: ProjectStatistics
     files: FileStatistics
     by_stage: list[StageStatistics]
+    project_type_distribution: dict[str, int] = Field(default_factory=dict)
+    delivery_deadline_distribution: dict[str, int] = Field(default_factory=dict)
+    payment: PaymentStatistics = Field(default_factory=PaymentStatistics)

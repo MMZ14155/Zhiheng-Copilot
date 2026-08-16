@@ -48,6 +48,8 @@ def test_default_config_matches_reference():
         "schedule_warn": 0.95, "schedule_block": 1.0,
         "quality_warn": 2, "quality_block": 3,
         "sat_warn": 3.5, "sat_block": 3.0,
+        "delivery_warn_days": 30, "delivery_block_days": 0, "payment_warn_days": 0,
+        "payment_block_days": 30,
     }
 
 
