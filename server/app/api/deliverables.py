@@ -6,11 +6,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.errors import conflict
+from app.api.dependencies import get_current_user, require_project_role
 from app.api.files import _version_to_response
 from app.db.session import get_session
 from app.models.tag import Tag
 from app.models.tag_snapshot import TagSnapshot
 from app.models.tracked_file import TrackedFile
+from app.models.user import User
 from app.schemas.deliverables import (
     CurrentVersionUpdate,
     TagCreate,
@@ -64,7 +66,9 @@ async def promote_tracked_file(
     project_id: int,
     payload: TrackedFileCreate,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
+    await require_project_role(session, project_id, user, {"manager"})
     try:
         tracked = await DeliverableService.promote(
             session,
@@ -87,8 +91,9 @@ async def promote_tracked_file(
     "/projects/{project_id}/tracked-files", response_model=TrackedFileListResponse
 )
 async def list_tracked_files(
-    project_id: int, session: AsyncSession = Depends(get_session)
+    project_id: int, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)
 ):
+    await require_project_role(session, project_id, user)
     return TrackedFileListResponse(
         items=[
             _serialize(*row)
@@ -105,7 +110,10 @@ async def switch_current_version(
     tracked_file_id: int,
     payload: CurrentVersionUpdate,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
+    tracked_access = await session.get(TrackedFile, tracked_file_id)
+    if tracked_access: await require_project_role(session, tracked_access.project_id, user, {"manager"})
     try:
         tracked = await DeliverableService.switch_current_version(
             session, tracked_file_id, payload.version
@@ -119,8 +127,9 @@ async def switch_current_version(
 
 @router.post("/projects/{project_id}/tags", response_model=TagResponse, status_code=201)
 async def create_tag(
-    project_id: int, payload: TagCreate, session: AsyncSession = Depends(get_session)
+    project_id: int, payload: TagCreate, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)
 ):
+    await require_project_role(session, project_id, user, {"manager"})
     await DeliverableService.require_project(session, project_id)
     tag = Tag(project_id=project_id, **payload.model_dump())
     session.add(tag)
@@ -131,7 +140,8 @@ async def create_tag(
 
 
 @router.get("/projects/{project_id}/tags", response_model=TagListResponse)
-async def list_tags(project_id: int, session: AsyncSession = Depends(get_session)):
+async def list_tags(project_id: int, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
+    await require_project_role(session, project_id, user)
     await DeliverableService.require_project(session, project_id)
     tags = (
         await session.execute(
@@ -150,7 +160,10 @@ async def create_tag_snapshot(
     tag_id: int,
     payload: TagSnapshotCreate,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
+    tag_access = await session.get(Tag, tag_id)
+    if tag_access: await require_project_role(session, tag_access.project_id, user, {"manager"})
     try:
         snapshot = await TagService.create_snapshot(
             session, tag_id, payload.source_file_id, payload.version, payload.note
@@ -167,7 +180,9 @@ async def create_tag_snapshot(
 
 
 @router.get("/tags/{tag_id}/snapshots", response_model=TagSnapshotListResponse)
-async def list_tag_snapshots(tag_id: int, session: AsyncSession = Depends(get_session)):
+async def list_tag_snapshots(tag_id: int, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
+    tag_access = await session.get(Tag, tag_id)
+    if tag_access: await require_project_role(session, tag_access.project_id, user)
     await TagService.require_tag(session, tag_id)
     rows = (
         await session.execute(

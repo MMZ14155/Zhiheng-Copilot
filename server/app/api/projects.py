@@ -8,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.errors import bad_request, conflict, not_found
+from app.api.dependencies import get_current_user, require_project_role
 from app.db.session import get_session
 from app.models.project import Project
 from app.models.project_link import ProjectLink
@@ -15,6 +16,8 @@ from app.models.summary import Summary
 from app.models.summary_input import SummaryInput
 from app.models.tracked_file import TrackedFile
 from app.models.workspace_file import WorkspaceFile
+from app.models.project_member import ProjectMember
+from app.models.user import User
 from app.schemas.ai import SummaryInputResponse
 from app.schemas.projects import (
     DeliverableSummary,
@@ -142,6 +145,7 @@ async def list_projects(
     client_name: str | None = Query(default=None, min_length=1, max_length=200),
     expand: str | None = Query(default=None, pattern="^links$"),
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> ProjectListResponse:
     filters = []
     if status:
@@ -156,6 +160,8 @@ async def list_projects(
                 cast(Project.parties, String).ilike(company_filter),
             )
         )
+    if not user.is_admin:
+        filters.append(Project.id.in_(select(ProjectMember.project_id).where(ProjectMember.user_id == user.id)))
 
     total_stmt = select(func.count()).select_from(Project)
     list_stmt = select(Project).order_by(Project.created_at.desc(), Project.id.desc())
@@ -181,7 +187,12 @@ async def list_projects(
 async def create_project(
     payload: ProjectCreate,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> ProjectResponse:
+    if not user.is_admin:
+        from app.api.errors import forbidden
+        manager = await session.scalar(select(ProjectMember.id).where(ProjectMember.user_id == user.id, ProjectMember.role == "manager").limit(1))
+        if manager is None: raise forbidden()
     project = Project(
         name=payload.name,
         code=payload.code,
@@ -197,6 +208,8 @@ async def create_project(
     )
     session.add(project)
     try:
+        await session.flush()
+        if not user.is_admin: session.add(ProjectMember(project_id=project.id, user_id=user.id, role="manager"))
         await session.commit()
     except IntegrityError as exc:
         await session.rollback()
@@ -211,7 +224,9 @@ async def create_project(
 async def get_project(
     project_id: int,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> ProjectDetailResponse:
+    await require_project_role(session, project_id, user)
     project = await _get_project_or_404(session, project_id)
     deliverables_result = await session.execute(
         select(WorkspaceFile)
@@ -264,7 +279,9 @@ async def update_project(
     project_id: int,
     payload: ProjectUpdate,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> ProjectResponse:
+    await require_project_role(session, project_id, user, {"manager"})
     project = await _get_project_or_404(session, project_id)
     update_data = payload.model_dump(exclude_unset=True)
     signed_date = update_data.get("signed_date", project.signed_date)
@@ -308,7 +325,9 @@ async def _risk_deliverables(
 async def get_project_risks(
     project_id: int,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> RiskResponse:
+    await require_project_role(session, project_id, user)
     project = await _get_project_or_404(session, project_id)
     config = load_risk_config(project)
     risks = evaluate_project(project, await _risk_deliverables(session, project_id), config)
@@ -321,7 +340,9 @@ async def get_project_risks(
 async def get_project_risk_config(
     project_id: int,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> RiskConfig:
+    await require_project_role(session, project_id, user)
     project = await _get_project_or_404(session, project_id)
     return load_risk_config(project)
 
@@ -331,7 +352,9 @@ async def update_project_risk_config(
     project_id: int,
     payload: RiskConfig,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> RiskConfig:
+    await require_project_role(session, project_id, user, {"manager"})
     project = await _get_project_or_404(session, project_id)
     config = payload.model_copy(update={"project_id": str(project_id)})
     project.risk_config = config.model_dump(by_alias=True, mode="json")
@@ -345,7 +368,10 @@ async def create_project_link(
     project_id: int,
     payload: ProjectLinkCreate,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> ProjectLinkResponse:
+    await require_project_role(session, project_id, user, {"manager"})
+    await require_project_role(session, payload.target_project_id, user, {"manager"})
     source_id, target_id = _canonical_pair(project_id, payload.target_project_id)
     existing_projects = await session.scalar(
         select(func.count())
@@ -381,10 +407,12 @@ async def create_project_link(
 async def delete_project_link(
     link_id: int,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> None:
     link = await session.get(ProjectLink, link_id)
     if link is None:
         raise not_found(f"项目链接 {link_id} 不存在", code="PROJECT_LINK_NOT_FOUND")
+    await require_project_role(session, link.source_project_id, user, {"manager"})
     await session.delete(link)
     await session.commit()
     logger.info("deleted project link id=%s", link_id)
@@ -394,7 +422,9 @@ async def delete_project_link(
 async def get_renewal_chain(
     project_id: int,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> RenewalChainResponse:
+    await require_project_role(session, project_id, user)
     await _get_project_or_404(session, project_id)
     result = await session.execute(
         text(

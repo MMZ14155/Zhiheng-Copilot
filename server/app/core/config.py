@@ -15,6 +15,8 @@ class Settings(BaseSettings):
         validation_alias="CORS_ORIGINS",
     )
     api_data_dir: str = Field(default="/data", validation_alias="API_DATA_DIR")
+    auth_disabled: bool = Field(default=False, validation_alias="AUTH_DISABLED")
+    auth_token_ttl_hours: int = Field(default=24, validation_alias="AUTH_TOKEN_TTL_HOURS")
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -19,3 +19,9 @@ def payload_too_large(detail: str, code: str = "PAYLOAD_TOO_LARGE") -> HTTPExcep
 
 def unsupported_media_type(detail: str, code: str = "UNSUPPORTED_MEDIA_TYPE") -> HTTPException:
     return HTTPException(status_code=415, detail={"detail": detail, "code": code})
+
+def unauthorized(detail: str = "请先登录") -> HTTPException:
+    return HTTPException(status_code=401, detail={"detail": detail, "code": "UNAUTHORIZED"})
+
+def forbidden(detail: str = "无权执行此操作") -> HTTPException:
+    return HTTPException(status_code=403, detail={"detail": detail, "code": "FORBIDDEN"})

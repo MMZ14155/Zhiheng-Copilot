@@ -1,12 +1,16 @@
 import logging
 
 from fastapi import APIRouter, Depends, UploadFile
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse
 
 from app.api.errors import bad_request, not_found
+from app.api.dependencies import get_current_user, require_project_role
 from app.db.session import get_session
 from app.models.file_version import FileVersion
+from app.models.user import User
+from app.models.workspace_file import WorkspaceFile
 from app.schemas.files import (
     CreateFileResponse,
     FileVersionResponse,
@@ -19,6 +23,7 @@ from app.services.file_versions import FileVersionService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["files"])
+public_router = APIRouter(tags=["files"])
 
 
 def _version_to_response(fv: FileVersion) -> FileVersionResponse:
@@ -42,7 +47,9 @@ def _version_to_response(fv: FileVersion) -> FileVersionResponse:
 async def list_project_files(
     project_id: int,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ) -> WorkspaceFileListResponse:
+    await require_project_role(session, project_id, user)
     rows = await FileVersionService.list_project_files(session, project_id)
     return WorkspaceFileListResponse(
         project_id=project_id,
@@ -74,12 +81,14 @@ async def list_project_files(
 async def create_file(
     project_id: int,
     name: str,
-    uploaded_by: str,
+    uploaded_by: str | None = None,
     changelog: str = "",
     doc_type: str | None = None,
     file: UploadFile | None = None,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
+    await require_project_role(session, project_id, user, {"manager", "implementer"})
     if file is None:
         raise bad_request("未提供上传文件", code="MISSING_FILE")
     content = await file.read()
@@ -89,7 +98,7 @@ async def create_file(
         name=name,
         doc_type=doc_type,
         content=content,
-        uploaded_by=uploaded_by,
+        uploaded_by=user.name,
         changelog=changelog,
     )
     await session.commit()
@@ -103,11 +112,15 @@ async def create_file(
 @router.post("/files/{file_id}/versions", response_model=CreateFileResponse)
 async def append_version(
     file_id: int,
-    uploaded_by: str,
+    uploaded_by: str | None = None,
     changelog: str = "",
     file: UploadFile | None = None,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
+    project_id = await session.scalar(select(WorkspaceFile.project_id).where(WorkspaceFile.id == file_id))
+    if project_id is None: raise not_found(f"文件 {file_id} 不存在", code="FILE_NOT_FOUND")
+    await require_project_role(session, project_id, user, {"manager", "implementer"})
     if file is None:
         raise bad_request("未提供上传文件", code="MISSING_FILE")
     content = await file.read()
@@ -116,7 +129,7 @@ async def append_version(
             session=session,
             file_id=file_id,
             content=content,
-            uploaded_by=uploaded_by,
+            uploaded_by=user.name,
             changelog=changelog,
         )
     except Exception:
@@ -131,7 +144,10 @@ async def append_version(
 
 
 @router.get("/files/{file_id}/versions", response_model=VersionListResponse)
-async def list_versions(file_id: int, session: AsyncSession = Depends(get_session)):
+async def list_versions(file_id: int, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
+    project_id = await session.scalar(select(WorkspaceFile.project_id).where(WorkspaceFile.id == file_id))
+    if project_id is None: raise not_found(f"文件 {file_id} 不存在", code="FILE_NOT_FOUND")
+    await require_project_role(session, project_id, user)
     versions = await FileVersionService.get_version_chain(session, file_id)
     return VersionListResponse(
         file_id=file_id,
@@ -139,7 +155,7 @@ async def list_versions(file_id: int, session: AsyncSession = Depends(get_sessio
     )
 
 
-@router.get("/versions/{version}/download")
+@public_router.get("/versions/{version}/download")
 async def download_version(version: str, session: AsyncSession = Depends(get_session)):
     fv = await FileVersionService.get_version(session, version)
     from pathlib import Path as PPath

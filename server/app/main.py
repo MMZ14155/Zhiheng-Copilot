@@ -14,6 +14,9 @@ from app.api.projects import router as projects_router
 from app.api.ai import router as ai_router
 from app.api.copilot import router as copilot_router
 from app.api.statistics import router as statistics_router
+from app.api.auth import router as auth_router
+from app.api.dependencies import get_current_user
+from app.api.files import public_router as public_files_router
 from app.core.config import get_settings
 from app.db.session import get_session
 
@@ -32,12 +35,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(files_router, prefix="/api/v1")
-app.include_router(deliverables_router, prefix="/api/v1")
-app.include_router(projects_router, prefix="/api/v1")
-app.include_router(ai_router, prefix="/api/v1")
-app.include_router(copilot_router, prefix="/api/v1")
-app.include_router(statistics_router, prefix="/api/v1")
+protected = [Depends(get_current_user)]
+app.include_router(auth_router, prefix="/api/v1")
+app.include_router(public_files_router, prefix="/api/v1")
+app.include_router(files_router, prefix="/api/v1", dependencies=protected)
+app.include_router(deliverables_router, prefix="/api/v1", dependencies=protected)
+app.include_router(projects_router, prefix="/api/v1", dependencies=protected)
+app.include_router(ai_router, prefix="/api/v1", dependencies=protected)
+app.include_router(copilot_router, prefix="/api/v1", dependencies=protected)
+app.include_router(statistics_router, prefix="/api/v1", dependencies=protected)
 
 
 @app.exception_handler(StarletteHTTPException)

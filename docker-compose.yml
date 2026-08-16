@@ -23,6 +23,10 @@ services:
       APP_NAME: ${APP_NAME:-Zhiheng Copilot API}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       API_DATA_DIR: ${API_DATA_DIR:-/data}
+      AUTH_DISABLED: ${AUTH_DISABLED:-false}
+      AUTH_TOKEN_TTL_HOURS: ${AUTH_TOKEN_TTL_HOURS:-24}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin-dev-only}
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-demo-dev-only}
     command: >
       sh -c "alembic upgrade head &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"

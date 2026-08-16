@@ -12,6 +12,9 @@ from app.models.tag_snapshot import TagSnapshot
 from app.models.task import Task
 from app.models.tracked_file import TrackedFile
 from app.models.workspace_file import WorkspaceFile
+from app.models.auth_token import AuthToken
+from app.models.project_member import ProjectMember
+from app.models.user import User
 
 __all__ = [
     "ContractInfo",
@@ -28,4 +31,5 @@ __all__ = [
     "Task",
     "TrackedFile",
     "WorkspaceFile",
+    "AuthToken", "ProjectMember", "User",
 ]
