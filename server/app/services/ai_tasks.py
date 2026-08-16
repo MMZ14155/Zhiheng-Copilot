@@ -1,9 +1,11 @@
 import json
 import logging
 from datetime import datetime, timezone
+from typing import Protocol
 
 from sqlalchemy import func, select
 
+from app.core.config import Settings, get_settings
 from app.db.session import AsyncSessionLocal
 from app.models.contract_info import ContractInfo
 from app.models.file_version import FileVersion
@@ -21,8 +23,29 @@ from app.schemas.ai import (
     SummaryGenerationOutput,
 )
 from app.services.llm import LoggedLlmClient
+from app.services.llm_kimi import KimiFileContentExtractor
 
 logger = logging.getLogger(__name__)
+
+
+class FileContentExtractor(Protocol):
+    async def extract_text(self, file_path: str) -> str | None: ...
+
+
+class NullFileContentExtractor:
+    async def extract_text(self, file_path: str) -> str | None:
+        return None
+
+
+def create_file_content_extractor(settings: Settings | None = None) -> FileContentExtractor:
+    settings = settings or get_settings()
+    if settings.llm_provider.lower() == "kimi" and settings.kimi_api_key:
+        return KimiFileContentExtractor(
+            api_key=settings.kimi_api_key,
+            base_url=settings.kimi_base_url,
+            timeout_seconds=settings.kimi_timeout_seconds,
+        )
+    return NullFileContentExtractor()
 
 
 class AiTaskExecutor:
@@ -195,15 +218,25 @@ class AiTaskExecutor:
         if config is None:
             raise ValueError(f"不支持识别的材料类型 {version.document_type}")
         output_schema, model, scene, required_fields = config
-        prompt = json.dumps(
-            {
-                "version": version.version,
-                "document_type": version.document_type,
-                "content_hash": version.content_hash,
-                "required_fields": required_fields,
-            },
-            ensure_ascii=False,
-        )
+        extractor = create_file_content_extractor()
+        document_text = await extractor.extract_text(version.storage_path)
+        prompt_payload = {
+            "version": version.version,
+            "document_type": version.document_type,
+            "content_hash": version.content_hash,
+            "required_fields": required_fields,
+        }
+        if document_text is not None:
+            prompt_payload["document_text"] = document_text
+            prompt_payload["instruction"] = (
+                "仅依据 document_text 抽取，缺失字段进 missing_fields，不得编造"
+            )
+            logger.info(
+                "injecting document text into extraction prompt version=%s text_length=%s",
+                version.version,
+                len(document_text),
+            )
+        prompt = json.dumps(prompt_payload, ensure_ascii=False)
         out = await LoggedLlmClient().call(
             task_id=task.id,
             scene=scene,

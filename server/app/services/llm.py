@@ -158,7 +158,11 @@ class MockLlmProvider:
 
 class LoggedLlmClient:
     def __init__(self, provider: LlmProvider | None = None):
-        self.provider = provider or MockLlmProvider()
+        if provider is None:
+            from app.services.llm_kimi import create_llm_provider
+
+            provider = create_llm_provider()
+        self.provider = provider
 
     async def call(
         self,

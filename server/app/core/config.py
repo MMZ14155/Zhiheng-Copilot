@@ -1,3 +1,4 @@
+from decimal import Decimal
 from functools import lru_cache
 
 from pydantic import Field
@@ -17,6 +18,19 @@ class Settings(BaseSettings):
     api_data_dir: str = Field(default="/data", validation_alias="API_DATA_DIR")
     auth_disabled: bool = Field(default=False, validation_alias="AUTH_DISABLED")
     auth_token_ttl_hours: int = Field(default=24, validation_alias="AUTH_TOKEN_TTL_HOURS")
+    llm_provider: str = Field(default="mock", validation_alias="LLM_PROVIDER")
+    kimi_api_key: str = Field(default="", validation_alias="KIMI_API_KEY")
+    kimi_base_url: str = Field(
+        default="https://api.moonshot.cn/v1", validation_alias="KIMI_BASE_URL"
+    )
+    kimi_model: str = Field(default="kimi-k2.6", validation_alias="KIMI_MODEL")
+    kimi_timeout_seconds: int = Field(default=60, validation_alias="KIMI_TIMEOUT_SECONDS")
+    kimi_input_price_per_mtok: Decimal = Field(
+        default=Decimal("0"), validation_alias="KIMI_INPUT_PRICE_PER_MTOK"
+    )
+    kimi_output_price_per_mtok: Decimal = Field(
+        default=Decimal("0"), validation_alias="KIMI_OUTPUT_PRICE_PER_MTOK"
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

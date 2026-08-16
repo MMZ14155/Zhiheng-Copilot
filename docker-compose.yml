@@ -27,6 +27,13 @@ services:
       AUTH_TOKEN_TTL_HOURS: ${AUTH_TOKEN_TTL_HOURS:-24}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin-dev-only}
       SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-demo-dev-only}
+      LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+      KIMI_API_KEY: ${KIMI_API_KEY:-}
+      KIMI_BASE_URL: ${KIMI_BASE_URL:-https://api.moonshot.cn/v1}
+      KIMI_MODEL: ${KIMI_MODEL:-kimi-k2.6}
+      KIMI_TIMEOUT_SECONDS: ${KIMI_TIMEOUT_SECONDS:-60}
+      KIMI_INPUT_PRICE_PER_MTOK: ${KIMI_INPUT_PRICE_PER_MTOK:-0}
+      KIMI_OUTPUT_PRICE_PER_MTOK: ${KIMI_OUTPUT_PRICE_PER_MTOK:-0}
     command: >
       sh -c "alembic upgrade head &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
