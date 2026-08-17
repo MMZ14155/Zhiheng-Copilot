@@ -28,6 +28,7 @@ export interface RenewalChainResponseDto { project_id: number; depth_limit: numb
 export type RiskLevelDto = 'block' | 'warn' | 'ok';
 export interface ProjectRiskDto { type: string; level: RiskLevelDto; reason: string; recommendation: string; remaining_days: number | null; overdue_days: number | null; overdue_amount: number | null; data_status: 'complete' | 'incomplete' | null }
 export interface ProjectRisksResponseDto { level: RiskLevelDto; risks: ProjectRiskDto[]; config: JsonObject }
+export interface CollectionOverviewDto { contract_amount: string | null; receivable_amount: string | null; received_amount: string; invoiced_amount: string; overdue_amount: string | null; collection_rate: string | null; data_status: 'ok' | 'incomplete'; incomplete_reasons: string[] }
 
 export type ProjectStageDto = 'init' | 'planning' | 'executing' | 'accepting' | 'closed';
 export interface AverageMetricDto { value: number | null; sample_count: number }

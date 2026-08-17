@@ -3,6 +3,7 @@ export type ProjectType = '软件销售' | '正版化服务' | '正版化服务+
 export type RiskLevel = 'block' | 'warn' | 'ok';
 export interface ProjectRisk { type: string; level: RiskLevel; reason: string; recommendation: string; remainingDays: number | null; overdueDays: number | null; overdueAmount: number | null; dataStatus: 'complete' | 'incomplete' | null }
 export interface ProjectRisks { level: RiskLevel; risks: ProjectRisk[] }
+export interface CollectionOverview { contractAmount: number | null; receivableAmount: number | null; receivedAmount: number; invoicedAmount: number; overdueAmount: number | null; collectionRate: number | null; dataStatus: 'ok' | 'incomplete'; incompleteReasons: string[] }
 export type ProjectStage = 'init' | 'planning' | 'executing' | 'accepting' | 'closed';
 export interface AverageMetric { value: number | null; sampleCount: number }
 export interface StageStatistics { stage: ProjectStage | null; count: number; averageCostUsageRate: AverageMetric; averageScheduleUsageRate: AverageMetric; averageSatisfaction: AverageMetric }

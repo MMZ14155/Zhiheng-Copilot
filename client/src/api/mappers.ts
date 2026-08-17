@@ -1,5 +1,5 @@
-import type { AverageMetricDto, ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, StatisticsOverviewResponseDto, TrackedFileResponseDto } from './dto';
-import type { AverageMetric, ProjectDetail, ProjectList, ProjectListItem, ProjectRisks, StatisticsOverview, TrackedFile } from './models';
+import type { AverageMetricDto, CollectionOverviewDto, ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, StatisticsOverviewResponseDto, TrackedFileResponseDto } from './dto';
+import type { AverageMetric, CollectionOverview, ProjectDetail, ProjectList, ProjectListItem, ProjectRisks, StatisticsOverview, TrackedFile } from './models';
 
 export const mapProject = (dto: ProjectResponseDto): ProjectListItem => ({ id: String(dto.id), name: dto.name, code: dto.code, customerName: dto.customer_name, projectType: dto.project_type, status: dto.status, progress: dto.progress, contractAmount: dto.contract_amount, signedDate: dto.signed_date, plannedDeliveryDate: dto.planned_delivery_date, updatedAt: dto.updated_at });
 export const mapProjectList = (dto: ProjectListResponseDto): ProjectList => ({ page: dto.page, size: dto.size, total: dto.total, items: dto.items.map(mapProject) });
@@ -15,6 +15,17 @@ export const mapProjectRisks = (dto: ProjectRisksResponseDto): ProjectRisks => (
     overdueAmount: risk.overdue_amount,
     dataStatus: risk.data_status,
   })),
+});
+const nullableNumber = (value: string | null) => value === null ? null : Number(value);
+export const mapCollectionOverview = (dto: CollectionOverviewDto): CollectionOverview => ({
+  contractAmount: nullableNumber(dto.contract_amount),
+  receivableAmount: nullableNumber(dto.receivable_amount),
+  receivedAmount: Number(dto.received_amount),
+  invoicedAmount: Number(dto.invoiced_amount),
+  overdueAmount: nullableNumber(dto.overdue_amount),
+  collectionRate: nullableNumber(dto.collection_rate),
+  dataStatus: dto.data_status,
+  incompleteReasons: dto.incomplete_reasons,
 });
 const mapAverageMetric = (dto: AverageMetricDto): AverageMetric => ({ value: dto.value, sampleCount: dto.sample_count });
 export const mapStatisticsOverview = (dto: StatisticsOverviewResponseDto): StatisticsOverview => ({

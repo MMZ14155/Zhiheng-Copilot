@@ -76,6 +76,12 @@ describe('API domain modules', () => {
     next({ level: 'warn', risks: [{ type: 'payment-overdue', level: 'warn', reason: 'r', recommendation: 'do', remaining_days: null, overdue_days: 7, overdue_amount: 1234.5, data_status: 'complete' }], config: {} }); expect((await projects.getProjectRisks('1')).risks[0]).toMatchObject({ overdueDays: 7, overdueAmount: 1234.5 })
   })
 
+  it('映射回款概览字符串与 null 字段', async () => {
+    next({ contract_amount: null, receivable_amount: '5000.50', received_amount: '1200.25', invoiced_amount: '3000.00', overdue_amount: null, collection_rate: '0.2400', data_status: 'incomplete', incomplete_reasons: ['缺少已解析合同'] })
+    await expect(projects.getCollectionOverview(7)).resolves.toEqual({ contractAmount: null, receivableAmount: 5000.5, receivedAmount: 1200.25, invoicedAmount: 3000, overdueAmount: null, collectionRate: 0.24, dataStatus: 'incomplete', incompleteReasons: ['缺少已解析合同'] })
+    expect(fetch).toHaveBeenCalledWith('/api/v1/projects/7/collection-overview', expect.any(Object))
+  })
+
   it('覆盖项目写操作', async () => {
     for (const action of [() => projects.createProject({ name: 'n', code: 'c', customer_name: 'x' }), () => projects.updateProject(1, { progress: 2 }), () => projects.createProjectLink(1, { target_project_id: 2, link_type: 'related' }), () => projects.deleteProjectLink(4), () => projects.getRenewalChain(1)]) { next({}); await action() }
     expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/api/v1/projects', '/api/v1/projects/1', '/api/v1/projects/1/links', '/api/v1/links/4', '/api/v1/projects/1/renewal-chain'])

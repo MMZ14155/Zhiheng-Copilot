@@ -10,7 +10,7 @@ import ResourceCenterPage from '../pages/ResourceCenterPage'
 import ProjectDetail from '../pages/ProjectDetail'
 import { authApi, projectsApi, statisticsApi } from '../api'
 
-vi.mock('../api', async (original) => { const actual = await original<typeof import('../api')>(); return { ...actual, authApi: { ...actual.authApi, login: vi.fn() }, projectsApi: { ...actual.projectsApi, listProjects: vi.fn(), getProjectRisks: vi.fn(), getProject: vi.fn() }, statisticsApi: { getStatisticsOverview: vi.fn() } } })
+vi.mock('../api', async (original) => { const actual = await original<typeof import('../api')>(); return { ...actual, authApi: { ...actual.authApi, login: vi.fn() }, projectsApi: { ...actual.projectsApi, listProjects: vi.fn(), getProjectRisks: vi.fn(), getProject: vi.fn(), getCollectionOverview: vi.fn() }, statisticsApi: { getStatisticsOverview: vi.fn() } } })
 vi.mock('../components/ChatArea', () => ({ default: () => <div>聊天区域</div> }))
 vi.mock('../components/CreateProjectModal', () => ({ default: ({ onClose }: { onClose: () => void }) => <div>创建弹窗<button onClick={onClose}>关闭弹窗</button></div> }))
 vi.mock('../components/ResourceCenter', () => ({ default: () => <div>资料中心内容</div> }))
@@ -45,7 +45,7 @@ describe('页面', () => {
 
   it('RiskBoard 加载、筛选项目并打开弹窗', async () => {
     vi.mocked(projectsApi.listProjects).mockResolvedValue({ page: 1, size: 100, total: 1, items: [{ id: '1', name: 'Alpha', code: 'A', customerName: '客户', projectType: '软件销售', status: 'active', progress: 10, contractAmount: null, signedDate: null, plannedDeliveryDate: null, updatedAt: '' }] }); vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({ level: 'warn', risks: [] })
-    render(<MemoryRouter><RiskBoard /></MemoryRouter>); await screen.findByText('Alpha'); expect(screen.getByText('共 1 个项目')).toBeTruthy(); expect(screen.queryByText('A')).toBeNull(); await userEvent.click(screen.getByTitle('点击只看阻塞级项目')); expect(screen.getByText('未找到匹配项目')).toBeTruthy(); await userEvent.click(screen.getByText('新建项目')); expect(screen.getByText('创建弹窗')).toBeTruthy(); await userEvent.click(screen.getByText('关闭弹窗'))
+    render(<MemoryRouter><RiskBoard /></MemoryRouter>); await screen.findByText('Alpha'); expect(screen.getByText('共 1 个项目')).toBeTruthy(); expect(screen.queryByText('A')).toBeNull(); await userEvent.click(screen.getByTitle('点击只看阻塞')); expect(screen.getByText('未找到匹配项目')).toBeTruthy(); await userEvent.click(screen.getByText('新建项目')); expect(screen.getByText('创建弹窗')).toBeTruthy(); await userEvent.click(screen.getByText('关闭弹窗'))
   })
 
   it('RiskBoard 容忍单个风险失败并处理列表错误', async () => {
@@ -58,6 +58,19 @@ describe('页面', () => {
   it('ProjectDetail 挂载并展示项目核心条件', async () => {
     vi.mocked(projectsApi.getProject).mockResolvedValue({ id: '1', name: '详情项目', code: 'P', customerName: '客户', projectType: '软件销售', parties: [], contractAmount: null, signedDate: null, startedDate: null, plannedDeliveryDate: null, status: 'active', progress: 10, notes: null, deliverables: [], latestSummary: null })
     vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({ level: 'warn', risks: [{ type: 'delivery-deadline', level: 'warn', reason: '即将到期', recommendation: '跟进', remainingDays: 8, overdueDays: null, overdueAmount: null, dataStatus: 'complete' }] })
-    render(<MemoryRouter initialEntries={['/projects/1']}><Routes><Route path="/projects/:id" element={<ProjectDetail />} /></Routes></MemoryRouter>); await waitFor(() => expect(screen.getAllByText('详情项目')).toHaveLength(2)); expect(screen.queryByText('P')).toBeNull(); expect(screen.getByText('交付节点 剩余 8 天')).toBeTruthy(); await userEvent.click(screen.getByRole('tab', { name: '交付物' })); expect(screen.getByText('版本历史')).toBeTruthy(); expect(screen.getByText('距交付 8 天')).toBeTruthy(); expect(screen.getByText('本项目回款进度')).toBeTruthy(); await userEvent.click(screen.getByRole('tab', { name: '标签' })); expect(screen.getByText('标签面板')).toBeTruthy()
+    vi.mocked(projectsApi.getCollectionOverview).mockResolvedValue({ contractAmount: null, receivableAmount: 50, receivedAmount: 20, invoicedAmount: 80, overdueAmount: 30, collectionRate: 0.4, dataStatus: 'ok', incompleteReasons: [] })
+    render(<MemoryRouter initialEntries={['/projects/1']}><Routes><Route path="/projects/:id" element={<ProjectDetail />} /></Routes></MemoryRouter>); await waitFor(() => expect(screen.getAllByText('详情项目')).toHaveLength(2)); expect(screen.queryByText('P')).toBeNull(); expect(screen.getByText('交付节点 剩余 8 天')).toBeTruthy(); await userEvent.click(screen.getByRole('tab', { name: '交付物' })); expect(screen.getByText('版本历史')).toBeTruthy(); expect(screen.getByText('距交付 8 天')).toBeTruthy(); expect(screen.getByText('本项目回款进度')).toBeTruthy(); expect(screen.getByText('40%')).toBeTruthy(); await userEvent.click(screen.getByRole('tab', { name: '标签' })); expect(screen.getByText('标签面板')).toBeTruthy()
+  })
+
+  it('ProjectDetail 展示 incomplete 原因与真实回款进度', async () => {
+    vi.mocked(projectsApi.getProject).mockResolvedValue({ id: '1', name: '详情项目', code: 'P', customerName: '客户', projectType: '软件销售', parties: [], contractAmount: 1000, signedDate: null, startedDate: null, plannedDeliveryDate: null, status: 'active', progress: 10, notes: null, deliverables: [], latestSummary: null })
+    vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({ level: 'warn', risks: [] })
+    vi.mocked(projectsApi.getCollectionOverview).mockResolvedValue({ contractAmount: 1000, receivableAmount: 500, receivedAmount: 125, invoicedAmount: 500, overdueAmount: 375, collectionRate: 0.25, dataStatus: 'incomplete', incompleteReasons: ['缺少已解析合同'] })
+    render(<MemoryRouter initialEntries={['/projects/1']}><Routes><Route path="/projects/:id" element={<ProjectDetail />} /></Routes></MemoryRouter>); await waitFor(() => expect(screen.getAllByText('详情项目')).toHaveLength(2))
+    await userEvent.click(screen.getByRole('tab', { name: '交付物' }))
+    await waitFor(() => expect(screen.getByText('回款数据不完整：缺少已解析合同')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('逾期金额 375.00 元，请尽快跟进回款')).toBeTruthy())
+    const progress = screen.getByRole('progressbar') ?? screen.getByLabelText('回款进度 25%')
+    expect((progress.firstElementChild as HTMLElement).style.width).toBe('25%')
   })
 })

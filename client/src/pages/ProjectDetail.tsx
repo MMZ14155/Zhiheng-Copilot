@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { aiApi, ApiError, projectsApi } from '../api';
-import type { ProjectDetail as ProjectDetailModel, ProjectRisks } from '../api';
+import type { CollectionOverview, ProjectDetail as ProjectDetailModel, ProjectRisks } from '../api';
 import VersionHistory from '../components/VersionHistory';
 import ProcessFiles from '../components/ProcessFiles';
 import TagPanel from '../components/TagPanel';
 import { useTaskPolling } from '../hooks/useTaskPolling';
 import { PROJECT_TYPE_COLORS } from '../constants/projectTypes';
-import { Alert, Tabs } from '../components/ui';
+import { Alert, Skeleton, Tabs } from '../components/ui';
 
 const statusLabels: Record<ProjectDetailModel['status'], string> = {
   active: '进行中',
@@ -15,6 +15,7 @@ const statusLabels: Record<ProjectDetailModel['status'], string> = {
   completed: '已完成',
 };
 const money = new Intl.NumberFormat('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const percentage = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -22,6 +23,9 @@ export default function ProjectDetail() {
   const [project, setProject] = useState<ProjectDetailModel | null>(null);
   const [projectRisks, setProjectRisks] = useState<ProjectRisks | null>(null);
   const [riskError, setRiskError] = useState<string | null>(null);
+  const [collectionOverview, setCollectionOverview] = useState<CollectionOverview | null>(null);
+  const [collectionLoading, setCollectionLoading] = useState(projectId !== null);
+  const [collectionError, setCollectionError] = useState<string | null>(null);
   const [loading, setLoading] = useState(projectId !== null);
   const [notFound, setNotFound] = useState(projectId === null);
   const [error, setError] = useState<string | null>(null);
@@ -78,7 +82,21 @@ export default function ProjectDetail() {
     }
   }, [loadQuestions, projectId]);
 
-  useEffect(() => { void loadProject(); }, [loadProject]);
+  const loadCollectionOverview = useCallback(async () => {
+    if (projectId === null) return;
+    setCollectionLoading(true);
+    setCollectionError(null);
+    try {
+      setCollectionOverview(await projectsApi.getCollectionOverview(projectId));
+    } catch (reason) {
+      console.error('回款概览加载失败', reason);
+      setCollectionError(reason instanceof ApiError ? reason.message : '回款概览加载失败，请稍后重试');
+    } finally {
+      setCollectionLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => { void loadProject(); void loadCollectionOverview(); }, [loadProject, loadCollectionOverview]);
 
   if (notFound) return <ProjectNotFound />;
   if (loading) return <div className="page-container detail-state" role="status">正在加载项目详情…</div>;
@@ -86,7 +104,6 @@ export default function ProjectDetail() {
   if (!project) return <div className="page-container detail-state">暂无项目详情</div>;
   const deadlineRisk = projectRisks?.risks.find((risk) => risk.type === 'delivery-deadline');
   const paymentRisk = projectRisks?.risks.find((risk) => risk.type === 'payment-overdue');
-  const paymentIncomplete = projectRisks?.risks.find((risk) => risk.type === 'payment-data-incomplete');
   const remainingDays = deadlineRisk?.remainingDays;
 
   return (
@@ -132,7 +149,7 @@ export default function ProjectDetail() {
             {!questionsLoading && !questionsError && questions.length > 0 && <div className="questions-panel"><h4>待确认问题</h4>{questions.map((question) => <SummaryQuestion key={question} projectId={projectId!} question={question} onCompleted={loadProject} />)}</div>}
           </>}
         </section></>}
-        {activeTab === 'deliverables' && <section className="detail-section deliverable-payment-section"><div className="deliverable-heading"><h3>交付物清单</h3><div className="deadline-countdown">{remainingDays === null || remainingDays === undefined ? '暂无到期预警' : remainingDays < 0 ? `已逾期 ${Math.abs(remainingDays)} 天` : `距交付 ${remainingDays} 天`}</div></div><div className="payment-progress-panel"><div><span>本项目回款进度</span><strong>{paymentRisk ? `逾期 ${money.format(paymentRisk.overdueAmount ?? 0)} 元` : paymentIncomplete ? '数据不完整' : '已收金额待接口提供'}</strong></div><div className="detail-progress-track payment-track" aria-label="本项目回款进度暂缺已收金额"><span style={{ width: '0%' }} /></div><small>{project.contractAmount === null ? '合同额未填写' : `合同额 ${money.format(project.contractAmount)} 元`} · 当前项目详情与风险接口未返回已收金额</small>{riskError && <p className="inline-risk-error" role="alert">{riskError}</p>}</div><VersionHistory projectId={projectId!} deliverables={project.deliverables} /></section>}
+        {activeTab === 'deliverables' && <section className="detail-section deliverable-payment-section"><div className="deliverable-heading"><h3>交付物清单</h3><div className="deadline-countdown">{remainingDays === null || remainingDays === undefined ? '暂无到期预警' : remainingDays < 0 ? `已逾期 ${Math.abs(remainingDays)} 天` : `距交付 ${remainingDays} 天`}</div></div><PaymentOverview overview={collectionOverview} loading={collectionLoading} error={collectionError} onRetry={loadCollectionOverview} /><VersionHistory projectId={projectId!} deliverables={project.deliverables} /></section>}
         {activeTab === 'files' && <section className="detail-section"><h3>过程文件</h3><ProcessFiles projectId={projectId!} onChanged={loadProject} /></section>}
         {activeTab === 'tags' && <section className="detail-section"><h3>标签</h3><TagPanel projectId={projectId!} /></section>}
         {activeTab === 'risks' && <section className="detail-section"><h3>风险列表</h3>{riskError ? <Alert>{riskError}</Alert> : !projectRisks?.risks.length ? <p className="detail-empty">当前没有风险项</p> : <div className="risk-list">{projectRisks.risks.map((risk,index)=><article key={`${risk.type}-${index}`}><span className={`badge ${risk.level}`}>{risk.level === 'block' ? '阻塞' : risk.level === 'warn' ? '预警' : '健康'}</span><div><strong>{risk.reason}</strong><p>{risk.recommendation}</p></div></article>)}</div>}</section>}
@@ -179,6 +196,28 @@ function SummaryQuestion({ projectId, question, onCompleted }: { projectId: numb
 
 function Info({ label, value, valueColor }: { label: string; value: string; valueColor?: string }) {
   return <div className="detail-info"><span>{label}</span><strong style={valueColor ? { color: valueColor } : undefined}>{value}</strong></div>;
+}
+
+function PaymentOverview({ overview, loading, error, onRetry }: { overview: CollectionOverview | null; loading: boolean; error: string | null; onRetry: () => Promise<void> }) {
+  if (loading) return <div className="payment-progress-panel"><Skeleton rows={2} /></div>;
+  if (error) return <div className="payment-progress-panel"><Alert action={<button type="button" className="payment-retry" onClick={() => void onRetry()}>重试</button>}>{error}</Alert></div>;
+  if (overview === null) return <div className="payment-progress-panel"><p className="detail-empty">暂无回款数据</p></div>;
+
+  const collectionPercent = Math.min(100, Math.max(0, overview.collectionRate === null ? 0 : overview.collectionRate * 100));
+  const formatAmount = (amount: number | null) => amount === null ? '—' : `${money.format(amount)} 元`;
+
+  return <div className="payment-progress-panel">
+    <div className="payment-progress-heading"><span>本项目回款进度</span><strong>{overview.dataStatus === 'incomplete' ? '数据不完整' : `${percentage.format(collectionPercent)}%`}</strong></div>
+    <div className="detail-progress-track payment-track" role="progressbar" aria-label={`回款进度 ${percentage.format(collectionPercent)}%`} aria-valuenow={collectionPercent} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${collectionPercent}%` }} /></div>
+    <div className="payment-metrics">
+      <div className="detail-info"><span>合同金额</span><strong>{formatAmount(overview.contractAmount)}</strong></div>
+      <div className="detail-info"><span>应收金额</span><strong>{formatAmount(overview.receivableAmount)}</strong></div>
+      <div className="detail-info"><span>已收金额</span><strong>{formatAmount(overview.receivedAmount)}</strong></div>
+      <div className="detail-info"><span>逾期金额</span><strong>{formatAmount(overview.overdueAmount)}</strong></div>
+    </div>
+    {overview.overdueAmount !== null && overview.overdueAmount > 0 && <Alert tone="danger">逾期金额 {money.format(overview.overdueAmount)} 元，请尽快跟进回款</Alert>}
+    {overview.dataStatus === 'incomplete' && overview.incompleteReasons.length > 0 && <Alert>回款数据不完整：{overview.incompleteReasons.join('、')}</Alert>}
+  </div>;
 }
 
 function ProjectNotFound() {
