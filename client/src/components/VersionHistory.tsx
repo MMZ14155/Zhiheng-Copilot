@@ -20,12 +20,11 @@ const formatSize = (bytes: number) => {
 };
 
 export default function VersionHistory({ projectId, deliverables }: VersionHistoryProps) {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [trackedFiles, setTrackedFiles] = useState<TrackedFile[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [downloadingVersion, setDownloadingVersion] = useState<string | null>(null);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [downloadErrors, setDownloadErrors] = useState<Record<string, string>>({});
 
   const loadTrackedFiles = useCallback(async () => {
     setLoading(true);
@@ -33,16 +32,20 @@ export default function VersionHistory({ projectId, deliverables }: VersionHisto
     try {
       setTrackedFiles(await deliverablesApi.listTrackedFiles(projectId));
     } catch (reason) {
-      console.error('交付物版本历史加载失败', reason);
-      setError(reason instanceof ApiError ? reason.message : '版本历史加载失败，请稍后重试');
+      console.error('交付物版本加载失败', reason);
+      setError(reason instanceof ApiError ? reason.message : '交付物加载失败，请稍后重试');
     } finally {
       setLoading(false);
     }
   }, [projectId]);
 
+  useEffect(() => {
+    if (deliverables.length > 0) void loadTrackedFiles();
+  }, [loadTrackedFiles, deliverables.length]);
+
   const download = useCallback(async (version: string) => {
     setDownloadingVersion(version);
-    setDownloadError(null);
+    setDownloadErrors((current) => { const next = { ...current }; delete next[version]; return next; });
     try {
       const { blob, filename } = await filesApi.downloadVersion(version);
       const objectUrl = URL.createObjectURL(blob);
@@ -55,55 +58,42 @@ export default function VersionHistory({ projectId, deliverables }: VersionHisto
       URL.revokeObjectURL(objectUrl);
     } catch (reason) {
       console.error('版本下载失败', reason);
-      setDownloadError(reason instanceof ApiError ? reason.message : '下载失败，请稍后重试');
+      setDownloadErrors((current) => ({ ...current, [version]: reason instanceof ApiError ? reason.message : '下载失败，请稍后重试' }));
     } finally {
       setDownloadingVersion(null);
     }
   }, []);
 
-  const toggle = (deliverableId: string) => {
-    const nextId = expandedId === deliverableId ? null : deliverableId;
-    setExpandedId(nextId);
-    if (nextId !== null && trackedFiles === null && !loading) void loadTrackedFiles();
-  };
-
   if (deliverables.length === 0) return <p className="detail-empty">暂无交付物</p>;
+  if (loading) return <p className="version-state" role="status">正在加载交付物版本…</p>;
+  if (error) return <div className="version-state version-error" role="alert"><span>{error}</span><button type="button" onClick={() => void loadTrackedFiles()}>重试</button></div>;
 
   return <div className="deliverable-list">
     {deliverables.map((deliverable) => {
-      const expanded = expandedId === deliverable.id;
       const trackedFile = trackedFiles?.find((item) => item.sourceFileId === Number(deliverable.id));
+      const version = trackedFile?.versions.find((v) => v.isCurrent) ?? null;
       return <article className="deliverable-item" key={deliverable.id}>
-        <button type="button" className="deliverable-toggle" aria-expanded={expanded} onClick={() => toggle(deliverable.id)}>
+        <div className="deliverable-heading">
           <span>{deliverable.name}</span>
           <small>更新时间 {formatDateTime(deliverable.updatedAt)}</small>
-          <span className="deliverable-chevron" aria-hidden="true">{expanded ? '收起' : '展开'}</span>
-        </button>
-        {expanded && <div className="version-history">
-          {loading && <p className="version-state" role="status">正在加载版本历史…</p>}
-          {!loading && error && <div className="version-state version-error" role="alert"><span>{error}</span><button type="button" onClick={() => void loadTrackedFiles()}>重试</button></div>}
-          {!loading && !error && trackedFile === undefined && <p className="version-state">暂无版本历史</p>}
-          {!loading && !error && trackedFile !== undefined && trackedFile.versions.length === 0 && <p className="version-state">该交付物暂无文件版本</p>}
-          {!loading && !error && trackedFile !== undefined && trackedFile.versions.length > 0 && <ol className="version-chain">
-            {trackedFile.versions.map((version) => <li className={version.isCurrent ? 'version-item is-current' : 'version-item'} key={version.version}>
-              <div className="version-heading">
-                <code title={version.version}>{version.version.slice(0, 8)}</code>
-                {version.isCurrent && <span className="version-badge current">当前生效</span>}
-                {version.isFrozen && <span className="version-badge frozen">已冻结</span>}
-                <button type="button" onClick={() => void download(version.version)} disabled={downloadingVersion === version.version}>
-                  {downloadingVersion === version.version ? '下载中…' : '下载'}
-                </button>
-              </div>
-              {downloadError && downloadingVersion === null && <div className="version-state version-error" role="alert">{downloadError}</div>}
-              <dl className="version-meta">
-                <div><dt>上传人</dt><dd>{version.uploadedBy || '未知'}</dd></div>
-                <div><dt>上传时间</dt><dd>{formatDateTime(version.uploadedAt)}</dd></div>
-                <div><dt>文件大小</dt><dd>{formatSize(version.sizeBytes)}</dd></div>
-                <div className="version-changelog"><dt>变更说明</dt><dd>{version.changelog || '无'}</dd></div>
-              </dl>
-              {version.documentType && ['contract', 'invoice', 'payment'].includes(version.documentType) && <Extraction version={version} />}
-            </li>)}
-          </ol>}
+        </div>
+        {version === null && <p className="version-state">暂无版本</p>}
+        {version !== null && <div className="version-current">
+          <div className="version-heading">
+            <code title={version.version}>{version.version.slice(0, 8)}</code>
+            {version.isFrozen && <span className="version-badge frozen">已冻结</span>}
+            <button type="button" onClick={() => void download(version.version)} disabled={downloadingVersion === version.version}>
+              {downloadingVersion === version.version ? '下载中…' : '下载'}
+            </button>
+          </div>
+          {downloadErrors[version.version] && <div className="version-state version-error" role="alert">{downloadErrors[version.version]}</div>}
+          <dl className="version-meta">
+            <div><dt>上传人</dt><dd>{version.uploadedBy || '未知'}</dd></div>
+            <div><dt>上传时间</dt><dd>{formatDateTime(version.uploadedAt)}</dd></div>
+            <div><dt>文件大小</dt><dd>{formatSize(version.sizeBytes)}</dd></div>
+            <div className="version-changelog"><dt>变更说明</dt><dd>{version.changelog || '无'}</dd></div>
+          </dl>
+          {version.documentType && ['contract', 'invoice', 'payment'].includes(version.documentType) && <Extraction version={version} />}
         </div>}
       </article>;
     })}
@@ -128,3 +118,4 @@ function ExtractionResult({ result }: { result: ExtractionInfoResponseDto }) {
   const show = (value: unknown) => value === null ? '未识别' : Array.isArray(value) ? (value.length ? JSON.stringify(value) : '无') : String(value);
   return <div className="extraction-result"><dl>{fields.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{show(value)}</dd></div>)}</dl><p className={result.missing_fields.length ? 'has-missing' : ''}>缺失字段 {result.missing_fields.join('、') || '无'}</p></div>;
 }
+

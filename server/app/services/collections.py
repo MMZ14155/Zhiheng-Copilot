@@ -48,7 +48,7 @@ async def load_collection_documents(session: AsyncSession, project_id: int) -> l
         statement = (select(FileVersion.uploaded_at, model).select_from(WorkspaceFile)
             .join(FileVersion, FileVersion.file_id == WorkspaceFile.id)
             .join(model, model.version == FileVersion.version)
-            .where(WorkspaceFile.project_id == project_id, FileVersion.parse_status == "parsed"))
+            .where(WorkspaceFile.project_id == project_id, FileVersion.parse_status == "parsed", WorkspaceFile.is_deleted == False))
         for uploaded_at, info in (await session.execute(statement)).all():
             documents.append(CollectionDocument(
                 version=info.version, kind=kind, amount=info.amount, uploaded_at=uploaded_at,

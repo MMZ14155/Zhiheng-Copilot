@@ -144,6 +144,37 @@
 .process-wide { grid-column: 1 / -1; }
 .process-upload-form button, .inline-file-action button, .extraction-panel button { border: 0; border-radius: 7px; padding: 8px 12px; color: #fff; background: #2563eb; cursor: pointer; }
 .process-file-list { display: grid; gap: 12px; margin-top: 16px; }
+.process-file-main { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.process-file-main strong { font-size: 14px; color: #111827; }
+.process-file-main code { color: #1d4ed8; font-size: 12px; }
+.process-file-meta { display: flex; align-items: center; gap: 10px; color: #6b7280; font-size: 12px; }
+.process-file-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.process-replace-inline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.process-replace-inline input[type="text"] { flex: 1; min-width: 140px; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+.process-pending-update { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px dashed #93c5fd; border-radius: 8px; background: #eff6ff; color: #1e3a8a; font-size: 13px; }
+.process-pending-update input { flex: 1; min-width: 120px; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 6px; }
+.process-workspace-staging { margin-top: 18px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb; }
+.process-workspace-staging ol { margin: 0; padding: 0; list-style: none; }
+.process-workspace-staging li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #e5e7eb; font-size: 13px; }
+.process-workspace-staging li:last-child { border-bottom: 0; }
+.process-workspace-staging li strong { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.process-workspace-staging li button { margin-left: auto; }
+.op-badge { padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+.op-badge.add { color: #047857; background: #d1fae5; }
+.op-badge.update { color: #1d4ed8; background: #dbeafe; }
+.op-badge.remove { color: #991b1b; background: #fecaca; }
+.process-workspace-commit { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 18px; }
+.process-workspace-commit label { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: #374151; }
+.process-workspace-commit label input { width: 100%; padding: 8px; border: 1px solid #d1d5db; border-radius: 7px; }
+.process-files button { justify-self: start; border: 0; border-radius: 8px; padding: 8px 14px; color: #fff; background: #2563eb; cursor: pointer; font-size: 13px; transition: background .15s, opacity .15s; }
+.process-files button:hover { background: #1d4ed8; }
+.process-files button:disabled { cursor: not-allowed; opacity: .65; }
+.process-files button.secondary { color: #1d4ed8; background: #dbeafe; }
+.process-files button.secondary:hover { background: #bfdbfe; }
+.process-files button.danger { color: #fff; background: #dc2626; }
+.process-files button.danger:hover { background: #b91d1d; }
+.process-files input[type="file"]::file-selector-button { border: 0; border-radius: 8px; padding: 8px 14px; color: #fff; background: #2563eb; cursor: pointer; margin-right: 10px; font-size: 13px; }
+.version-badge.danger { color: #991b1b; background: #fecaca; }
 .inline-file-action { display: grid; grid-template-columns: 1fr 1fr auto; align-items: center; gap: 10px; }
 .form-error, .has-missing { color: #b91c1c; }
 .inline-error { display: flex; align-items: center; gap: 12px; margin-top: 14px; color: #b91c1c; font-size: 13px; }

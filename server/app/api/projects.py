@@ -239,7 +239,7 @@ async def get_project(
     project = await _get_project_or_404(session, project_id)
     deliverables_result = await session.execute(
         select(WorkspaceFile)
-        .where(WorkspaceFile.project_id == project_id, WorkspaceFile.is_deliverable.is_(True))
+        .where(WorkspaceFile.project_id == project_id, WorkspaceFile.is_deliverable.is_(True), WorkspaceFile.is_deleted == False)
         .order_by(WorkspaceFile.updated_at.desc(), WorkspaceFile.id.desc())
     )
     latest_summary_id = (

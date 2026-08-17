@@ -58,7 +58,7 @@ class FileVersionService:
                 (latest_version.file_id == WorkspaceFile.id)
                 & (latest_versions.c.version_rank == 1),
             )
-            .where(WorkspaceFile.project_id == project_id)
+            .where(WorkspaceFile.project_id == project_id, WorkspaceFile.is_deleted == False)
             .order_by(WorkspaceFile.created_at, WorkspaceFile.id)
         )
         files = list(rows.all())

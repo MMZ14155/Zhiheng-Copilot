@@ -15,7 +15,7 @@
 .snapshot-meta .ui-button { margin-left:auto; }
 .snapshot-detail { padding:14px; border-top:1px solid #e5e7eb; background:#fff; }
 .snapshot-file-tree { display:grid; gap:8px; margin:0; padding:0 !important; list-style:none; }
-.snapshot-file-tree li { display:grid; grid-template-columns:minmax(160px, 1fr) auto minmax(90px, .4fr) auto; align-items:center; gap:12px; padding:10px; border-radius:8px; background:#f9fafb; }
+.snapshot-file-tree li { display:grid; grid-template-columns:minmax(160px, 1fr) auto minmax(90px, .4fr) auto auto; align-items:center; gap:12px; padding:10px; border-radius:8px; background:#f9fafb; }
 .snapshot-file-tree strong { overflow-wrap:anywhere; color:#374151; font-size:12px; }
 .snapshot-file-tree span, .snapshot-file-tree time { color:#6b7280; font-size:12px; }
 .snapshot-restore-result { display:grid; gap:8px; }

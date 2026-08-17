@@ -20,8 +20,10 @@ from app.schemas.files import (
     WorkspaceFileListResponse,
     WorkspaceFileSummary,
 )
+from app.schemas.workspace_commit import WorkspaceCommitRequest, WorkspaceCommitResponse
 from app.services.file_versions import FileVersionService
 from app.services.snapshots import SnapshotService
+from app.services.workspace_commit import WorkspaceCommitService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["files"])
@@ -154,6 +156,32 @@ async def append_version(
         message="版本追加成功",
         snapshot=snapshot.hash,
     )
+
+
+@router.post("/projects/{project_id}/workspace-commit", response_model=WorkspaceCommitResponse)
+async def workspace_commit(
+    project_id: int,
+    payload: WorkspaceCommitRequest,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    await require_project_role(session, project_id, user, {"manager", "implementer"})
+    project = await session.get(Project, project_id)
+    if project is None:
+        raise not_found(f"项目 {project_id} 不存在", code="PROJECT_NOT_FOUND")
+    try:
+        snapshot_hash = await WorkspaceCommitService.commit(
+            session=session,
+            project=project,
+            author=user.name,
+            message=payload.message,
+            operations=[op.model_dump() for op in payload.operations],
+        )
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+    return WorkspaceCommitResponse(snapshot=snapshot_hash, message="工作区提交成功")
 
 
 @router.get("/files/{file_id}/versions", response_model=VersionListResponse)

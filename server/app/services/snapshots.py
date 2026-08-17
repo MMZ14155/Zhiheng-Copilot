@@ -28,7 +28,7 @@ class SnapshotService:
         head = aliased(FileVersion, ranked)
         rows = await session.execute(select(WorkspaceFile, head).join(
             head, (head.file_id == WorkspaceFile.id) & (ranked.c.version_rank == 1)
-        ).where(WorkspaceFile.project_id == project_id).order_by(WorkspaceFile.id))
+        ).where(WorkspaceFile.project_id == project_id, WorkspaceFile.is_deleted == False).order_by(WorkspaceFile.id))
         return list(rows.all())
 
     @staticmethod

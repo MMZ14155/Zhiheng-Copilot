@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ApiError, snapshotsApi } from '../api';
+import { ApiError, filesApi, snapshotsApi } from '../api';
 import type { SnapshotDetail, SnapshotRestoreResult, SnapshotSummary } from '../api';
 import { Alert, Button, Empty, Skeleton } from './ui';
 import './SnapshotTimeline.css';
@@ -18,6 +18,8 @@ export default function SnapshotTimeline({ projectId, onChanged }: { projectId: 
   const [restoringHash, setRestoringHash] = useState<string | null>(null);
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [restoreResult, setRestoreResult] = useState<SnapshotRestoreResult | null>(null);
+  const [downloadingVersion, setDownloadingVersion] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const loadSnapshots = useCallback(async () => {
     setLoading(true);
@@ -55,6 +57,27 @@ export default function SnapshotTimeline({ projectId, onChanged }: { projectId: 
     }
     setExpandedHash(hash);
     if (!details[hash]) void loadDetail(hash);
+  };
+
+  const download = async (version: string) => {
+    setDownloadingVersion(version);
+    setDownloadError(null);
+    try {
+      const { blob, filename } = await filesApi.downloadVersion(version);
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    } catch (reason) {
+      console.error('快照版本下载失败', reason);
+      setDownloadError(errorMessage(reason, '下载失败，请稍后重试'));
+    } finally {
+      setDownloadingVersion(null);
+    }
   };
 
   const restore = async (snapshot: SnapshotSummary) => {
@@ -110,10 +133,11 @@ export default function SnapshotTimeline({ projectId, onChanged }: { projectId: 
             {expanded && <div className="snapshot-detail">
               {detailLoading === snapshot.hash && <Skeleton rows={2} />}
               {detailErrors[snapshot.hash] && <Alert action={<Button type="button" variant="danger" onClick={() => void loadDetail(snapshot.hash)}>重试</Button>}>{detailErrors[snapshot.hash]}</Alert>}
+              {downloadError && <Alert>{downloadError}</Alert>}
               {!detailLoading && !detailErrors[snapshot.hash] && detail && (
                 detail.entries.length === 0
                   ? <Empty title="快照为空" />
-                  : <ol className="snapshot-file-tree">{detail.entries.map((entry) => <li key={`${entry.fileId}-${entry.path}`}><strong>{entry.path}</strong><span>{entry.uploader}</span><time dateTime={entry.uploadedAt}>{formatTime(entry.uploadedAt)}</time><code title={entry.version}>{entry.version.slice(0, 8)}</code></li>)}</ol>
+                  : <ol className="snapshot-file-tree">{detail.entries.map((entry) => <li key={`${entry.fileId}-${entry.path}`}><strong>{entry.path}</strong><span>{entry.uploader}</span><time dateTime={entry.uploadedAt}>{formatTime(entry.uploadedAt)}</time><code title={entry.version}>{entry.version.slice(0, 8)}</code><Button type="button" variant="ghost" onClick={() => download(entry.version)} disabled={downloadingVersion === entry.version}>{downloadingVersion === entry.version ? '下载中…' : '下载'}</Button></li>)}</ol>
               )}
             </div>}
           </article>

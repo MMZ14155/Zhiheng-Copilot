@@ -64,6 +64,11 @@ export interface SnapshotEntryDto { file_id: number; path: string; version: stri
 export interface SnapshotDetailResponseDto extends SnapshotSummaryDto { project_id: number; entries: SnapshotEntryDto[] }
 export interface SkippedSnapshotFileDto { file_id: number; path: string; reason: string }
 export interface SnapshotRestoreResponseDto { snapshot: string; restored_files: number; skipped: SkippedSnapshotFileDto[] }
+export interface WorkspaceAddOperationDto { op: 'add'; name: string; content: string; doc_type?: string | null; changelog?: string | null }
+export interface WorkspaceUpdateOperationDto { op: 'update'; file_id: number; content: string; changelog?: string | null }
+export interface WorkspaceRemoveOperationDto { op: 'remove'; file_id: number }
+export interface WorkspaceCommitRequestDto { message: string; operations: Array<WorkspaceAddOperationDto | WorkspaceUpdateOperationDto | WorkspaceRemoveOperationDto> }
+export interface WorkspaceCommitResponseDto { snapshot: string; message: string }
 export interface TaskCreatedResponseDto { task_id: number; status: 'pending' }
 export interface SummaryAnswerDto { question: string; answer: string }
 export interface SummaryAnswersRequestDto { answers: SummaryAnswerDto[] }

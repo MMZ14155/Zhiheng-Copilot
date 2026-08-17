@@ -50,26 +50,25 @@ describe('核心组件', () => {
     route(<ChatArea />); await screen.findByText(/你好，我是/); const input = screen.getByPlaceholderText('输入问题...'); await userEvent.type(input, '问题'); fireEvent.keyDown(input, { key: 'Enter' }); await screen.findByText('接口失败')
   })
 
-  it('VersionHistory 展示空状态、版本和格式化数据', async () => {
+  it('VersionHistory 展示空状态和最新版本信息', async () => {
     const { rerender } = render(<VersionHistory projectId={1} deliverables={[]} />); expect(screen.getByText('暂无交付物')).toBeTruthy()
     vi.mocked(deliverablesApi.listTrackedFiles).mockResolvedValue([{ id: '1', sourceFileId: 5, name: '合同', category: '合同', required: true, currentVersion: 'abcdefghijk', status: 'ok', versions: [{ version: 'abcdefghijk', previousVersion: null, uploadedBy: '', changelog: '', parseStatus: 'done', documentType: null, sizeBytes: 2048, isFrozen: true, isCurrent: true, uploadedAt: '2026-01-01T00:00:00Z' }] }])
-    rerender(<VersionHistory projectId={1} deliverables={[{ id: '5', name: '合同', createdAt: '', updatedAt: '2026-01-01T00:00:00Z' }]} />); await userEvent.click(screen.getByText('展开')); await screen.findByText('当前生效'); expect(screen.getByText('已冻结')).toBeTruthy(); expect(screen.getByText('2.0 KB')).toBeTruthy(); expect(screen.getAllByText('无').length).toBeGreaterThan(0)
+    rerender(<VersionHistory projectId={1} deliverables={[{ id: '5', name: '合同', createdAt: '', updatedAt: '2026-01-01T00:00:00Z' }]} />); await screen.findByText('已冻结'); expect(screen.getByText('2.0 KB')).toBeTruthy(); expect(screen.getByText('下载')).toBeTruthy(); expect(screen.getAllByText('无').length).toBeGreaterThan(0)
   })
 
-  it('VersionHistory 处理加载错误和无对应历史', async () => {
-    vi.mocked(deliverablesApi.listTrackedFiles).mockRejectedValueOnce(new Error()); route(<VersionHistory projectId={1} deliverables={[{ id: '5', name: '合同', createdAt: '', updatedAt: '2026-01-01T00:00:00Z' }]} />)
-    await userEvent.click(screen.getByText('展开')); await screen.findByText('版本历史加载失败，请稍后重试')
-    vi.mocked(deliverablesApi.listTrackedFiles).mockResolvedValueOnce([]); await userEvent.click(screen.getByText('重试')); await screen.findByText('暂无版本历史')
+  it('VersionHistory 处理加载错误和重试', async () => {
+    vi.mocked(deliverablesApi.listTrackedFiles).mockRejectedValueOnce(new Error()); render(<VersionHistory projectId={1} deliverables={[{ id: '5', name: '合同', createdAt: '', updatedAt: '2026-01-01T00:00:00Z' }]} />)
+    await screen.findByText('交付物加载失败，请稍后重试')
+    vi.mocked(deliverablesApi.listTrackedFiles).mockResolvedValueOnce([]); await userEvent.click(screen.getByText('重试')); await screen.findByText('暂无版本')
   })
 
-  it('VersionHistory 通过 blob 下载版本并处理失败', async () => {
+  it('VersionHistory 通过 blob 下载最新版本并处理失败', async () => {
     vi.mocked(deliverablesApi.listTrackedFiles).mockResolvedValue([{ id: '1', sourceFileId: 5, name: '合同', category: '合同', required: true, currentVersion: 'abcdefghijk', status: 'ok', versions: [{ version: 'abcdefghijk', previousVersion: null, uploadedBy: '', changelog: '', parseStatus: 'done', documentType: null, sizeBytes: 2048, isFrozen: true, isCurrent: true, uploadedAt: '2026-01-01T00:00:00Z' }] }])
     vi.mocked(filesApi.downloadVersion).mockResolvedValueOnce({ blob: new Blob(['x']), filename: 'report.pdf' })
     const createObjectURL = vi.spyOn(globalThis.URL, 'createObjectURL').mockReturnValue('blob:mock')
     const revokeObjectURL = vi.spyOn(globalThis.URL, 'revokeObjectURL').mockImplementation(() => {})
     render(<VersionHistory projectId={1} deliverables={[{ id: '5', name: '合同', createdAt: '', updatedAt: '2026-01-01T00:00:00Z' }]} />)
-    await userEvent.click(screen.getByText('展开'))
-    await screen.findByText('当前生效')
+    await screen.findByText('下载')
     await userEvent.click(screen.getByText('下载'))
     await waitFor(() => expect(filesApi.downloadVersion).toHaveBeenCalledWith('abcdefghijk'))
     expect(createObjectURL).toHaveBeenCalled()
