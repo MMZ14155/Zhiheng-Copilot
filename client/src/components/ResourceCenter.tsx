@@ -3,19 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { aiApi, ApiError, filesApi, projectsApi, tagsApi } from '../api';
 import type { ProjectFile, ProjectListItem, TagSnapshot } from '../api/models';
 
-/*
- * 待认证体系落地后恢复下列权限控制代码。
- *
- * import { canViewFile, canUploadProcessFile } from '../core/ProjectAccess';
- * import type { User, ProjectPermission } from '../core/ProjectAccess';
- * import type { WorkspaceFile } from '../types/project';
- * const currentUser: User = { id: 'u1', isAdmin: false, role: 'user' };
- * const accessProject: ProjectPermission = { managerId: selected?.manager ?? 'unknown', implementerIds: ['u1'] };
- * const dummyFile: WorkspaceFile = { id: 'dummy', name: 'dummy', path: '', versions: [], tags: [], isDeliverable: false };
- * const canUpload = canUploadProcessFile(currentUser, accessProject);
- * selected.docs.filter(() => canViewFile(currentUser, dummyFile, accessProject));
- */
-
 type SnapshotRow = TagSnapshot & { tagName: string };
 type DetailState = {
   files: ProjectFile[];

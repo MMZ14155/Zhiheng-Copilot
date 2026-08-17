@@ -1,3 +1,4 @@
+.vscode/
 .vite/
 client/node_modules/
 client/dist/

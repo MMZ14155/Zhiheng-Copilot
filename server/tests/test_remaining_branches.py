@@ -14,7 +14,7 @@ from app.models.project_member import ProjectMember
 from app.models.tracked_file import TrackedFile
 from app.schemas.ai import ContractExtractionOutput
 from app.services.deliverables import DeliverableService
-from app.services.llm_kimi import KimiFileContentExtractor, KimiLlmProvider, KimiProviderError
+from app.services.llm_kimi import KimiProviderError
 from tests.conftest import Result
 from tests.test_llm_kimi import _make_extractor, _make_provider, _chat_response
 

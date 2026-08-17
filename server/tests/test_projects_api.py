@@ -12,7 +12,6 @@ from app.api import projects
 from app.models.project import Project
 from app.models.project_link import ProjectLink
 from app.schemas.projects import ProjectCreate, ProjectLinkCreate, ProjectParty, ProjectUpdate
-from app.schemas.risks import RiskConfig
 from tests.conftest import Result
 
 

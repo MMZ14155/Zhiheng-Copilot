@@ -1,13 +1,11 @@
 import base64
 import logging
-from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.errors import bad_request, not_found
 from app.models.file_version import FileVersion
 from app.models.project import Project
-from app.models.workspace_file import WorkspaceFile
 from app.services.file_versions import FileVersionService
 from app.services.snapshots import SnapshotService
 

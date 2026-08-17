@@ -19,11 +19,12 @@ Write-Host '==> 启动完成' -ForegroundColor Green
 Write-Host '   API:      http://localhost:8086' -ForegroundColor Gray
 Write-Host '   DB:       http://localhost:8088' -ForegroundColor Gray
 Write-Host '   前端预览: http://localhost:4173' -ForegroundColor Gray
+Write-Host '   公网访问: http://<服务器IP>:4173（预览已绑定 0.0.0.0）' -ForegroundColor Gray
 Write-Host '   按 Ctrl+C 退出前端预览，后端服务将自动停止。' -ForegroundColor Gray
 
 try {
     Set-Location "$root\client"
-    npm run preview
+    npm run preview -- --host
 } finally {
     Set-Location $root
     Write-Host '==> 停止后端服务...' -ForegroundColor Cyan

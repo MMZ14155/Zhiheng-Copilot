@@ -6,7 +6,6 @@ import pytest
 from app.api import files
 from app.models.project import Project
 from app.schemas.workspace_commit import WorkspaceAddOperation, WorkspaceCommitRequest, WorkspaceRemoveOperation, WorkspaceUpdateOperation
-from tests.conftest import Result
 
 
 def test_workspace_commit_endpoint(fake_session, users, now, monkeypatch):

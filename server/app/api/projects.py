@@ -1,7 +1,7 @@
 import logging
 import secrets
 from collections.abc import Iterable
-from datetime import date, datetime, timezone
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import String, and_, cast, func, or_, select, text
