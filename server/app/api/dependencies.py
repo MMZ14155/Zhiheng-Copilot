@@ -22,6 +22,13 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials | None = De
     if row is None or row.AuthToken.expires_at <= datetime.now(timezone.utc): raise unauthorized("登录凭证无效或已过期")
     return row.User
 
+async def require_admin(user: User = Depends(get_current_user)) -> User:
+    if not user.is_admin:
+        logger.warning("admin access denied user_id=%s", user.id)
+        raise forbidden()
+    return user
+
+
 async def require_project_role(session: AsyncSession, project_id: int, user: User, allowed_roles: set[str] | None = None) -> ProjectMember | None:
     if user.is_admin: return None
     member = await session.scalar(select(ProjectMember).where(ProjectMember.project_id == project_id, ProjectMember.user_id == user.id))

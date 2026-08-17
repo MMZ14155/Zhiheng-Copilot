@@ -1,4 +1,5 @@
 import logging
+import secrets
 from collections.abc import Iterable
 from datetime import date, datetime, timezone
 
@@ -48,6 +49,7 @@ from app.services.statistics import aggregate_project_finance, load_financial_do
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["projects"])
 RENEWAL_CHAIN_DEPTH_LIMIT = 20
+PROJECT_CODE_CREATE_ATTEMPTS = 5
 
 
 def _canonical_pair(left_id: int, right_id: int) -> tuple[int, int]:
@@ -200,30 +202,36 @@ async def create_project(
         from app.api.errors import forbidden
         manager = await session.scalar(select(ProjectMember.id).where(ProjectMember.user_id == user.id, ProjectMember.role == "manager").limit(1))
         if manager is None: raise forbidden()
-    code = payload.code or str(int(datetime.now(timezone.utc).timestamp() * 1000))
-    project = Project(
-        name=payload.name,
-        code=code,
-        project_type=payload.project_type,
-        customer_name=payload.customer_name,
-        parties=_serialize_parties(payload.parties),
-        contract_amount=payload.contract_amount,
-        signed_date=payload.signed_date,
-        started_date=payload.started_date,
-        planned_delivery_date=payload.planned_delivery_date,
-        status=payload.status,
-        progress=payload.progress,
-        notes=payload.notes,
-    )
-    session.add(project)
-    try:
-        await session.flush()
-        if not user.is_admin: session.add(ProjectMember(project_id=project.id, user_id=user.id, role="manager"))
-        await session.commit()
-    except IntegrityError as exc:
-        await session.rollback()
-        logger.warning("project create conflict code=%s error=%s", code, exc)
-        raise conflict("项目编码已存在", code="PROJECT_CODE_EXISTS") from exc
+    generated_code = payload.code is None
+    attempts = PROJECT_CODE_CREATE_ATTEMPTS if generated_code else 1
+    for attempt in range(attempts):
+        code = payload.code or f"PRJ-{secrets.token_hex(4).upper()}"
+        project = Project(
+            name=payload.name,
+            code=code,
+            project_type=payload.project_type,
+            customer_name=payload.customer_name,
+            parties=_serialize_parties(payload.parties),
+            contract_amount=payload.contract_amount,
+            signed_date=payload.signed_date,
+            started_date=payload.started_date,
+            planned_delivery_date=payload.planned_delivery_date,
+            status=payload.status,
+            progress=payload.progress,
+            notes=payload.notes,
+        )
+        session.add(project)
+        try:
+            await session.flush()
+            if not user.is_admin:
+                session.add(ProjectMember(project_id=project.id, user_id=user.id, role="manager"))
+            await session.commit()
+            break
+        except IntegrityError as exc:
+            await session.rollback()
+            logger.warning("project create conflict code=%s attempt=%s", code, attempt + 1)
+            if not generated_code or attempt == attempts - 1:
+                raise conflict("项目编码已存在", code="PROJECT_CODE_EXISTS") from exc
     await session.refresh(project)
     logger.info("created project id=%s code=%s", project.id, project.code)
     return _to_project_response(project)

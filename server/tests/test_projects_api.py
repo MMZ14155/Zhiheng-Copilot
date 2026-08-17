@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock
 import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
+from sqlalchemy.exc import IntegrityError
 
 from app.api import projects
 from app.models.project import Project
@@ -59,7 +60,7 @@ def test_create_update_project(fake_session, users, now, monkeypatch):
         obj.quality_issues = obj.satisfaction = obj.acceptance_result = None
     fake_session.refresh.side_effect = refresh
     created = asyncio.run(projects.create_project(payload, fake_session, users.admin))
-    assert created.code and created.project_type == "正版化服务"
+    assert created.code.startswith("PRJ-") and created.project_type == "正版化服务"
 
     existing = project(now, 3)
     fake_session.get.return_value = existing
@@ -73,6 +74,24 @@ def test_project_type_validation():
     assert payload.project_type == "软件销售"
     with pytest.raises(ValidationError):
         ProjectCreate(name="项目", code="P", customer_name="客户", project_type="其他")
+
+
+def test_generated_project_code_retries_conflict(fake_session, users, now, monkeypatch):
+    payload = ProjectCreate(name="新项目", customer_name="客户")
+    monkeypatch.setattr(projects.secrets, "token_hex", lambda size: "abcd1234")
+    fake_session.flush.side_effect = [IntegrityError("insert", {}, Exception("duplicate")), None]
+
+    async def refresh(obj):
+        obj.id = 3
+        obj.created_at = obj.updated_at = now
+        obj.stage = obj.budget = obj.cost = obj.planned_days = obj.used_days = None
+        obj.quality_issues = obj.satisfaction = obj.acceptance_result = None
+
+    fake_session.refresh.side_effect = refresh
+    created = asyncio.run(projects.create_project(payload, fake_session, users.admin))
+    assert created.code == "PRJ-ABCD1234"
+    assert fake_session.rollback.await_count == 1
+    assert fake_session.flush.await_count == 2
 
 
 def test_project_detail_and_risks(fake_session, users, now, monkeypatch):
