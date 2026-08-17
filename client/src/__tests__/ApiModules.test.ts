@@ -9,6 +9,7 @@ import * as tags from '../api/tags'
 import * as ai from '../api/ai'
 import * as statistics from '../api/statistics'
 import * as snapshots from '../api/snapshots'
+import * as admin from '../api/admin'
 import { projects as legacyProjects } from '../data/projects'
 import { docProjects } from '../data/docs'
 
@@ -86,6 +87,27 @@ describe('API domain modules', () => {
   it('覆盖项目写操作', async () => {
     for (const action of [() => projects.createProject({ name: 'n', code: 'c', customer_name: 'x' }), () => projects.updateProject(1, { progress: 2 }), () => projects.createProjectLink(1, { target_project_id: 2, link_type: 'related' }), () => projects.deleteProjectLink(4), () => projects.getRenewalChain(1)]) { next({}); await action() }
     expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/api/v1/projects', '/api/v1/projects/1', '/api/v1/projects/1/links', '/api/v1/links/4', '/api/v1/projects/1/renewal-chain'])
+  })
+
+  it('调用管理端点并映射用户与项目成员', async () => {
+    next([{ id: 1, login: 'admin', name: '管理员', is_admin: true, created_at: '2026-08-17T00:00:00Z' }])
+    await expect(admin.listUsers()).resolves.toEqual([{ id: 1, login: 'admin', name: '管理员', isAdmin: true, createdAt: '2026-08-17T00:00:00Z' }])
+    next({ id: 2, login: 'demo', name: '演示', is_admin: false, created_at: '2026-08-17T01:00:00Z' })
+    await admin.createUser({ login: 'demo', name: '演示', password: 'secret', is_admin: false })
+    next({}, 204); await admin.deleteUser(2)
+    next([{ user_id: 2, login: 'demo', name: '演示', role: 'implementer' }])
+    await expect(admin.listProjectMembers(7)).resolves.toEqual([{ userId: 2, login: 'demo', name: '演示', role: 'implementer' }])
+    next({ user_id: 2, login: 'demo', name: '演示', role: 'manager' })
+    await admin.assignMember(7, { user_id: 2, role: 'manager' })
+    next({}, 204); await admin.removeMember(7, 2)
+    expect(vi.mocked(fetch).mock.calls.map(([url, init]) => [url, (init as RequestInit).method, (init as RequestInit).body])).toEqual([
+      ['/api/v1/admin/users', undefined, undefined],
+      ['/api/v1/admin/users', 'POST', JSON.stringify({ login: 'demo', name: '演示', password: 'secret', is_admin: false })],
+      ['/api/v1/admin/users/2', 'DELETE', undefined],
+      ['/api/v1/admin/projects/7/members', undefined, undefined],
+      ['/api/v1/admin/projects/7/members', 'POST', JSON.stringify({ user_id: 2, role: 'manager' })],
+      ['/api/v1/admin/projects/7/members/2', 'DELETE', undefined],
+    ])
   })
 
   it('上传文件、映射文件列表及版本', async () => {

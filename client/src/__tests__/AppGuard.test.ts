@@ -27,4 +27,19 @@ describe('App 登录守卫', () => {
     expect(html).toContain('app-header')
     expect(html).toContain('项目首页')
   })
+
+  it('非管理员隐藏管理入口且直访管理页被重定向', () => {
+    setAuthToken('token-1', { id: 2, login: 'demo', name: '演示用户', isAdmin: false })
+    const navigation = renderToString(createElement(MemoryRouter, { initialEntries: ['/risk-board'] }, createElement(App)))
+    const direct = renderToString(createElement(MemoryRouter, { initialEntries: ['/admin'] }, createElement(App)))
+    expect(navigation).not.toContain('>管理<')
+    expect(direct).not.toContain('账号管理')
+  })
+
+  it('管理员可见管理入口并能访问管理页', () => {
+    setAuthToken('token-1', { id: 1, login: 'admin', name: '管理员', isAdmin: true })
+    const html = renderToString(createElement(MemoryRouter, { initialEntries: ['/admin'] }, createElement(App)))
+    expect(html).toContain('>管理<')
+    expect(html).toContain('系统管理')
+  })
 })

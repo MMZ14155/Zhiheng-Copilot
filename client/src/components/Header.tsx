@@ -17,6 +17,7 @@ export default function Header({ subtitle }: HeaderProps) {
         <NavLink to="/risk-board">项目首页</NavLink>
         <NavLink to="/resource-center">资料中心</NavLink>
         <NavLink to="/statistics">统计看板</NavLink>
+        {user?.isAdmin && <NavLink to="/admin">管理</NavLink>}
       </nav>
       <div className="user-menu" ref={menuRef}><button className="user-trigger" type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}><span className="user-avatar">{user?.name?.slice(0, 1) ?? '用'}</span><span>{user?.name ?? '当前用户'}</span><span aria-hidden="true">⌄</span></button>{open && <div className="user-popover" role="menu"><p>当前用户 · {user?.name ?? '未知'}</p><button type="button" role="menuitem" onClick={logout}>退出登录</button></div>}</div>
     </header>

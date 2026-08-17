@@ -3,15 +3,14 @@ import { ApiError, projectsApi, type ProjectPartyDto, type ProjectTypeDto, type 
 import { PROJECT_TYPES } from '../constants/projectTypes';
 import './CreateProjectModal.css';
 
-type Field = 'name' | 'code' | 'customerName' | 'projectType' | 'contractAmount' | 'signedDate' | 'startedDate' | 'deliveryDate' | 'progress' | 'notes';
+type Field = 'name' | 'customerName' | 'projectType' | 'contractAmount' | 'signedDate' | 'startedDate' | 'deliveryDate' | 'progress' | 'notes';
 type Values = Record<Field, string>;
 type Errors = Partial<Record<Field, string>>;
-const initial: Values = { name:'', code:'', customerName:'', projectType:'', contractAmount:'', signedDate:'', startedDate:'', deliveryDate:'', progress:'', notes:'' };
+const initial: Values = { name:'', customerName:'', projectType:'', contractAmount:'', signedDate:'', startedDate:'', deliveryDate:'', progress:'', notes:'' };
 
 function validate(v: Values): Errors {
   const e: Errors = {};
   if (!v.name.trim()) e.name = '请输入项目名称';
-  if (!v.code.trim()) e.code = '请输入项目编号';
   if (!v.customerName.trim()) e.customerName = '请输入客户名称';
   if (v.contractAmount && (!Number.isFinite(Number(v.contractAmount)) || Number(v.contractAmount) <= 0)) e.contractAmount = '合同金额必须大于 0';
   if (v.progress && (!Number.isFinite(Number(v.progress)) || Number(v.progress) < 0 || Number(v.progress) > 100)) e.progress = '进度必须在 0 到 100 之间';
@@ -37,7 +36,7 @@ export default function CreateProjectModal({ onClose, onCreated }: { onClose:()=
   const submit = async (event: FormEvent) => {
     event.preventDefault(); const next = validate(values); setErrors(next); setApiError(null); if (Object.keys(next).length) return;
     const body: ProjectWriteDto = {
-      name:values.name.trim(), code:values.code.trim(), customer_name:values.customerName.trim(),
+      name:values.name.trim(), customer_name:values.customerName.trim(),
       project_type: (values.projectType as ProjectTypeDto) || null,
       contract_amount:values.contractAmount ? Number(values.contractAmount) : null,
       signed_date:values.signedDate || null, started_date:values.startedDate || null,
@@ -57,7 +56,6 @@ export default function CreateProjectModal({ onClose, onCreated }: { onClose:()=
         {apiError && <div className="form-submit-error" role="alert">{apiError}</div>}
         <div className="project-form-grid">
           <Field label="项目名称" required error={errors.name}><input autoFocus maxLength={200} value={values.name} onChange={e=>set('name',e.target.value)}/></Field>
-          <Field label="项目编号" required error={errors.code}><input maxLength={80} value={values.code} onChange={e=>set('code',e.target.value)}/></Field>
           <Field label="客户名称" required error={errors.customerName}><input maxLength={200} value={values.customerName} onChange={e=>set('customerName',e.target.value)}/></Field>
           <Field label="项目类型"><select value={values.projectType} onChange={e=>set('projectType',e.target.value)}><option value="">请选择</option>{PROJECT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}</select></Field>
           <Field label="合同金额" error={errors.contractAmount}><input type="number" min="0" step="0.01" value={values.contractAmount} onChange={e=>set('contractAmount',e.target.value)}/></Field>

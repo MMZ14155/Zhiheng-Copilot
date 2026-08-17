@@ -1,4 +1,7 @@
 export interface CurrentUser { id: number; login: string; name: string; isAdmin: boolean }
+export type ProjectMemberRole = 'manager' | 'implementer';
+export interface AdminUser { id: number; login: string; name: string; isAdmin: boolean; createdAt: string }
+export interface ProjectMember { userId: number; login: string; name: string; role: ProjectMemberRole }
 export type ProjectType = '软件销售' | '正版化服务' | '正版化服务+软件销售';
 export type RiskLevel = 'block' | 'warn' | 'ok';
 export interface ProjectRisk { type: string; level: RiskLevel; reason: string; recommendation: string; remainingDays: number | null; overdueDays: number | null; overdueAmount: number | null; dataStatus: 'complete' | 'incomplete' | null }

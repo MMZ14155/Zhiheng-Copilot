@@ -13,7 +13,7 @@ export interface UserDto { id: number; login: string; name: string; is_admin: bo
 export interface LoginResponseDto { token: string; expires_at: string; user: UserDto }
 
 export interface ProjectPartyDto { role: string; name: string; contact: string | null }
-export interface ProjectWriteDto { name: string; code: string; customer_name: string; project_type?: ProjectTypeDto | null; parties?: ProjectPartyDto[]; contract_amount?: number | null; signed_date?: string | null; started_date?: string | null; planned_delivery_date?: string | null; status?: ProjectStatusDto; progress?: number; notes?: string | null }
+export interface ProjectWriteDto { name: string; code?: string; customer_name: string; project_type?: ProjectTypeDto | null; parties?: ProjectPartyDto[]; contract_amount?: number | null; signed_date?: string | null; started_date?: string | null; planned_delivery_date?: string | null; status?: ProjectStatusDto; progress?: number; notes?: string | null }
 export type ProjectUpdateDto = Partial<ProjectWriteDto>;
 export interface ProjectResponseDto { id: number; name: string; code: string; customer_name: string; project_type: ProjectTypeDto | null; parties: ProjectPartyDto[]; contract_amount: number | null; signed_date: string | null; started_date: string | null; planned_delivery_date: string | null; status: ProjectStatusDto; progress: number; notes: string | null; created_at: string; updated_at: string; links: RelatedProjectSummaryDto[] | null }
 export interface RelatedProjectSummaryDto { id: number; name: string; code: string; customer_name: string; status: ProjectStatusDto; signed_date: string | null; link_id: number; link_type: ProjectLinkTypeDto }
@@ -29,6 +29,12 @@ export type RiskLevelDto = 'block' | 'warn' | 'ok';
 export interface ProjectRiskDto { type: string; level: RiskLevelDto; reason: string; recommendation: string; remaining_days: number | null; overdue_days: number | null; overdue_amount: number | null; data_status: 'complete' | 'incomplete' | null }
 export interface ProjectRisksResponseDto { level: RiskLevelDto; risks: ProjectRiskDto[]; config: JsonObject }
 export interface CollectionOverviewDto { contract_amount: string | null; receivable_amount: string | null; received_amount: string; invoiced_amount: string; overdue_amount: string | null; collection_rate: string | null; data_status: 'ok' | 'incomplete'; incomplete_reasons: string[] }
+
+export type ProjectMemberRoleDto = 'manager' | 'implementer';
+export interface AdminUserDto { id: number; login: string; name: string; is_admin: boolean; created_at: string }
+export interface AdminUserCreateDto { login: string; name: string; password: string; is_admin: boolean }
+export interface ProjectMemberDto { user_id: number; login: string; name: string; role: ProjectMemberRoleDto }
+export interface ProjectMemberAssignDto { user_id: number; role: ProjectMemberRoleDto }
 
 export type ProjectStageDto = 'init' | 'planning' | 'executing' | 'accepting' | 'closed';
 export interface AverageMetricDto { value: number | null; sample_count: number }
