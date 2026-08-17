@@ -42,6 +42,10 @@ def tracked(now):
 
 def test_files_endpoints(fake_session, users, now, monkeypatch, tmp_path):
     monkeypatch.setattr(files, "require_project_role", AsyncMock())
+    snapshot = __import__("app.models.snapshot", fromlist=["Snapshot"]).Snapshot(hash="f" * 64, project_id=1, created_at=now)
+    fake_session.get.return_value = Project(id=1)
+    monkeypatch.setattr(files.SnapshotService, "latest", AsyncMock(return_value=None))
+    monkeypatch.setattr(files.SnapshotService, "create_snapshot", AsyncMock(return_value=snapshot))
     wf = WorkspaceFile(id=2, project_id=1, name="a.pdf", is_deliverable=False, created_at=now, updated_at=now)
     fv = version(now)
     monkeypatch.setattr(files.FileVersionService, "list_project_files", AsyncMock(return_value=[(wf, fv)]))
@@ -52,6 +56,7 @@ def test_files_endpoints(fake_session, users, now, monkeypatch, tmp_path):
     monkeypatch.setattr(files.FileVersionService, "create_file_with_first_version", AsyncMock(return_value=(wf, fv)))
     created = asyncio.run(files.create_file(1, "a.pdf", file=upload, session=fake_session, user=users.member))
     assert created.file_id == 2
+    assert created.snapshot == snapshot.hash
     with pytest.raises(HTTPException):
         asyncio.run(files.create_file(1, "a.pdf", file=None, session=fake_session, user=users.member))
 
@@ -59,6 +64,7 @@ def test_files_endpoints(fake_session, users, now, monkeypatch, tmp_path):
     monkeypatch.setattr(files.FileVersionService, "append_version", AsyncMock(return_value=fv))
     appended = asyncio.run(files.append_version(2, file=upload, session=fake_session, user=users.member))
     assert appended.version == fv.version
+    assert appended.snapshot == snapshot.hash
     monkeypatch.setattr(files.FileVersionService, "get_version_chain", AsyncMock(return_value=[fv]))
     assert len(asyncio.run(files.list_versions(2, fake_session, users.member)).versions) == 1
 

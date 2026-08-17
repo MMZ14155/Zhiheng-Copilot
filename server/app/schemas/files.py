@@ -18,6 +18,7 @@ class CreateFileResponse(BaseModel):
     file_id: int
     version: str
     message: str
+    snapshot: str
 
 
 class FileVersionResponse(BaseModel):

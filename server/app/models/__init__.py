@@ -15,6 +15,8 @@ from app.models.workspace_file import WorkspaceFile
 from app.models.auth_token import AuthToken
 from app.models.project_member import ProjectMember
 from app.models.user import User
+from app.models.snapshot import Snapshot
+from app.models.snapshot_entry import SnapshotEntry
 
 __all__ = [
     "ContractInfo",
@@ -31,5 +33,5 @@ __all__ = [
     "Task",
     "TrackedFile",
     "WorkspaceFile",
-    "AuthToken", "ProjectMember", "User",
+    "AuthToken", "ProjectMember", "User", "Snapshot", "SnapshotEntry",
 ]

@@ -10,6 +10,7 @@ from app.api.dependencies import get_current_user, require_project_role
 from app.db.session import get_session
 from app.models.file_version import FileVersion
 from app.models.user import User
+from app.models.project import Project
 from app.models.workspace_file import WorkspaceFile
 from app.schemas.files import (
     CreateFileResponse,
@@ -20,6 +21,7 @@ from app.schemas.files import (
     WorkspaceFileSummary,
 )
 from app.services.file_versions import FileVersionService
+from app.services.snapshots import SnapshotService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["files"])
@@ -88,6 +90,9 @@ async def create_file(
     user: User = Depends(get_current_user),
 ):
     await require_project_role(session, project_id, user, {"manager", "implementer"})
+    project = await session.get(Project, project_id)
+    if project is None: raise not_found(f"项目 {project_id} 不存在", code="PROJECT_NOT_FOUND")
+    parent = await SnapshotService.latest(session, project_id)
     if file is None:
         raise bad_request("未提供上传文件", code="MISSING_FILE")
     content = await file.read()
@@ -100,11 +105,14 @@ async def create_file(
         uploaded_by=user.name,
         changelog=changelog,
     )
+    snapshot = await SnapshotService.create_snapshot(session, project, parent, user.name, changelog)
+    file_version.snapshot_hash = snapshot.hash
     await session.commit()
     return CreateFileResponse(
         file_id=file_version.file_id,
         version=file_version.version,
         message="文件创建成功并上传首版本",
+        snapshot=snapshot.hash,
     )
 
 
@@ -120,6 +128,9 @@ async def append_version(
     project_id = await session.scalar(select(WorkspaceFile.project_id).where(WorkspaceFile.id == file_id))
     if project_id is None: raise not_found(f"文件 {file_id} 不存在", code="FILE_NOT_FOUND")
     await require_project_role(session, project_id, user, {"manager", "implementer"})
+    project = await session.get(Project, project_id)
+    if project is None: raise not_found(f"项目 {project_id} 不存在", code="PROJECT_NOT_FOUND")
+    parent = await SnapshotService.latest(session, project_id)
     if file is None:
         raise bad_request("未提供上传文件", code="MISSING_FILE")
     content = await file.read()
@@ -131,6 +142,8 @@ async def append_version(
             uploaded_by=user.name,
             changelog=changelog,
         )
+        snapshot = await SnapshotService.create_snapshot(session, project, parent, user.name, changelog)
+        file_version.snapshot_hash = snapshot.hash
     except Exception:
         await session.rollback()
         raise
@@ -139,6 +152,7 @@ async def append_version(
         file_id=file_id,
         version=file_version.version,
         message="版本追加成功",
+        snapshot=snapshot.hash,
     )
 
 

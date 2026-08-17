@@ -15,6 +15,7 @@ from app.api.ai import router as ai_router
 from app.api.copilot import router as copilot_router
 from app.api.statistics import router as statistics_router
 from app.api.auth import router as auth_router
+from app.api.snapshots import router as snapshots_router
 from app.api.dependencies import get_current_user
 from app.core.config import get_settings
 from app.db.session import get_session
@@ -42,6 +43,7 @@ app.include_router(projects_router, prefix="/api/v1", dependencies=protected)
 app.include_router(ai_router, prefix="/api/v1", dependencies=protected)
 app.include_router(copilot_router, prefix="/api/v1", dependencies=protected)
 app.include_router(statistics_router, prefix="/api/v1", dependencies=protected)
+app.include_router(snapshots_router, prefix="/api/v1", dependencies=protected)
 
 
 @app.exception_handler(StarletteHTTPException)
