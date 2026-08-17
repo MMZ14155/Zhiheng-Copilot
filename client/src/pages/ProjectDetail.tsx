@@ -5,6 +5,7 @@ import type { CollectionOverview, ProjectDetail as ProjectDetailModel, ProjectRi
 import VersionHistory from '../components/VersionHistory';
 import ProcessFiles from '../components/ProcessFiles';
 import TagPanel from '../components/TagPanel';
+import SnapshotTimeline from '../components/SnapshotTimeline';
 import { useTaskPolling } from '../hooks/useTaskPolling';
 import { PROJECT_TYPE_COLORS } from '../constants/projectTypes';
 import { Alert, Skeleton, Tabs } from '../components/ui';
@@ -113,7 +114,7 @@ export default function ProjectDetail() {
         <Link to="/risk-board" className="back-link">← 返回项目列表</Link>
       </div>
       <div className="detail-card">
-        <Tabs active={activeTab} onChange={setActiveTab} tabs={[{key:'overview',label:'概览'},{key:'deliverables',label:'交付物'},{key:'files',label:'过程文件'},{key:'tags',label:'标签'},{key:'risks',label:'风险列表'}]} />
+        <Tabs active={activeTab} onChange={setActiveTab} tabs={[{key:'overview',label:'概览'},{key:'deliverables',label:'交付物'},{key:'files',label:'过程文件'},{key:'tags',label:'标签'},{key:'risks',label:'风险列表'},{key:'snapshots',label:'历史快照'}]} />
         {activeTab === 'overview' && <><section className="detail-section">
           <h3>基础信息</h3>
           <div className="detail-grid">
@@ -153,6 +154,7 @@ export default function ProjectDetail() {
         {activeTab === 'files' && <section className="detail-section"><h3>过程文件</h3><ProcessFiles projectId={projectId!} onChanged={loadProject} /></section>}
         {activeTab === 'tags' && <section className="detail-section"><h3>标签</h3><TagPanel projectId={projectId!} /></section>}
         {activeTab === 'risks' && <section className="detail-section"><h3>风险列表</h3>{riskError ? <Alert>{riskError}</Alert> : !projectRisks?.risks.length ? <p className="detail-empty">当前没有风险项</p> : <div className="risk-list">{projectRisks.risks.map((risk,index)=><article key={`${risk.type}-${index}`}><span className={`badge ${risk.level}`}>{risk.level === 'block' ? '阻塞' : risk.level === 'warn' ? '预警' : '健康'}</span><div><strong>{risk.reason}</strong><p>{risk.recommendation}</p></div></article>)}</div>}</section>}
+        {activeTab === 'snapshots' && <section className="detail-section"><h3>历史快照</h3><SnapshotTimeline projectId={projectId!} onChanged={loadProject} /></section>}
       </div>
     </div>
   );

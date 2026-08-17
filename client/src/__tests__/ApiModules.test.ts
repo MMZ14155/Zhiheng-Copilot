@@ -8,6 +8,7 @@ import * as deliverables from '../api/deliverables'
 import * as tags from '../api/tags'
 import * as ai from '../api/ai'
 import * as statistics from '../api/statistics'
+import * as snapshots from '../api/snapshots'
 import { projects as legacyProjects } from '../data/projects'
 import { docProjects } from '../data/docs'
 
@@ -119,5 +120,16 @@ describe('API domain modules', () => {
     const metric = { value: 12, sample_count: 2 }; next({ projects: { total: 1, risks: { block: 0, warn: 1, ok: 0 }, average_cost_usage_rate: metric, average_schedule_usage_rate: metric, average_satisfaction: metric }, files: { workspace_file_total: 2, deliverables: { missing: 0, old: 0, conflict: 0, ok: 1 } }, by_stage: [{ stage: 'executing', count: 1, average_cost_usage_rate: metric, average_schedule_usage_rate: metric, average_satisfaction: metric }], project_type_distribution: { 软件销售: 1 }, delivery_deadline_distribution: { due_soon: 1 }, payment: { contract_amount: 100, invoiced_amount: 80, receivable_amount: 50, received_amount: 40, outstanding_amount: 60, overdue_amount: 10, collection_rate: 0.8, data_incomplete_projects: 0 } })
     const overview = await statistics.getStatisticsOverview(); expect(overview.byStage[0].averageCostUsageRate.sampleCount).toBe(2); expect(overview.payment.receivedAmount).toBe(40); expect(overview.projectTypeDistribution).toEqual({ 软件销售: 1 })
     next({ detail: '禁止', code: 'NO' }, 403); await expect(projects.listProjects()).rejects.toBeInstanceOf(ApiError)
+  })
+
+  it('映射快照时间线、详情与恢复结果并发送空请求体', async () => {
+    const summary = { hash: 'a'.repeat(64), parent_hash: null, author: '甲', message: '上传合同', created_at: '2026-08-17T08:00:00Z', entry_count: 1 }
+    next({ project_id: 7, snapshots: [summary] })
+    await expect(snapshots.listSnapshots(7)).resolves.toEqual({ projectId: 7, snapshots: [{ hash: 'a'.repeat(64), parentHash: null, author: '甲', message: '上传合同', createdAt: '2026-08-17T08:00:00Z', entryCount: 1 }] })
+    next({ ...summary, project_id: 7, entries: [{ file_id: 3, path: '合同.pdf', version: 'b'.repeat(64), uploader: '乙', uploaded_at: '2026-08-17T07:00:00Z' }] })
+    expect((await snapshots.getSnapshot(summary.hash)).entries[0]).toEqual({ fileId: 3, path: '合同.pdf', version: 'b'.repeat(64), uploader: '乙', uploadedAt: '2026-08-17T07:00:00Z' })
+    next({ snapshot: 'c'.repeat(64), restored_files: 1, skipped: [{ file_id: 4, path: '缺失.pdf', reason: '源版本不存在' }] })
+    await expect(snapshots.restoreSnapshot(summary.hash)).resolves.toEqual({ snapshot: 'c'.repeat(64), restoredFiles: 1, skipped: [{ fileId: 4, path: '缺失.pdf', reason: '源版本不存在' }] })
+    expect(fetch).toHaveBeenLastCalledWith(`/api/v1/snapshots/${summary.hash}/restore`, expect.objectContaining({ method: 'POST', body: undefined }))
   })
 })

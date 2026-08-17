@@ -1,0 +1,30 @@
+.project-snapshot-panel { display:grid; gap:14px; }
+.project-snapshot-panel > .ui-alert { margin:0; }
+.project-snapshot-timeline { display:grid; gap:0; margin:0; padding:0 0 0 12px !important; list-style:none; }
+.project-snapshot-item { position:relative; padding:0 0 18px 24px; border-left:2px solid #dbeafe; }
+.project-snapshot-item:last-child { padding-bottom:0; border-left-color:transparent; }
+.snapshot-marker { position:absolute; top:17px; left:-7px; width:12px; height:12px; border-radius:50%; background:#93c5fd; }
+.project-snapshot-item:first-child .snapshot-marker { background:#2563eb; box-shadow:0 0 0 4px #dbeafe; }
+.project-snapshot-item > article { overflow:hidden; border:1px solid #e5e7eb; border-radius:10px; background:#f9fafb; }
+.snapshot-heading { display:flex; align-items:center; gap:10px; padding:12px 14px 0; }
+.snapshot-toggle { display:flex; flex:1; align-items:center; justify-content:space-between; gap:12px; min-width:0; padding:0; border:0; color:#111827; background:transparent; text-align:left; cursor:pointer; }
+.snapshot-toggle > span { overflow-wrap:anywhere; font-size:13px; font-weight:600; }
+.snapshot-toggle small { flex:none; color:#2563eb; }
+.snapshot-meta { display:flex; align-items:center; flex-wrap:wrap; gap:8px 14px; padding:10px 14px 14px; color:#6b7280; font-size:12px; }
+.snapshot-meta code, .snapshot-file-tree code { color:#1d4ed8; }
+.snapshot-meta .ui-button { margin-left:auto; }
+.snapshot-detail { padding:14px; border-top:1px solid #e5e7eb; background:#fff; }
+.snapshot-file-tree { display:grid; gap:8px; margin:0; padding:0 !important; list-style:none; }
+.snapshot-file-tree li { display:grid; grid-template-columns:minmax(160px, 1fr) auto minmax(90px, .4fr) auto; align-items:center; gap:12px; padding:10px; border-radius:8px; background:#f9fafb; }
+.snapshot-file-tree strong { overflow-wrap:anywhere; color:#374151; font-size:12px; }
+.snapshot-file-tree span, .snapshot-file-tree time { color:#6b7280; font-size:12px; }
+.snapshot-restore-result { display:grid; gap:8px; }
+.snapshot-restore-result ul { display:grid; gap:6px; margin:0; padding:0 !important; list-style:none; }
+.snapshot-restore-result li { display:flex; justify-content:space-between; gap:16px; padding:9px 12px; border-radius:8px; color:#92400e; background:#fffbeb; font-size:12px; }
+
+@media (max-width:640px) {
+  .snapshot-meta { align-items:flex-start; }
+  .snapshot-meta .ui-button { width:100%; margin-left:0; }
+  .snapshot-file-tree li { grid-template-columns:1fr; gap:4px; }
+  .snapshot-restore-result li { flex-direction:column; gap:3px; }
+}

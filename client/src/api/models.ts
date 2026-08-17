@@ -63,6 +63,19 @@ export interface TagSnapshot {
   note: string | null;
   createdAt: string;
 }
+export interface SnapshotSummary {
+  hash: string;
+  parentHash: string | null;
+  author: string;
+  message: string;
+  createdAt: string;
+  entryCount: number;
+}
+export interface SnapshotTimeline { projectId: number; snapshots: SnapshotSummary[] }
+export interface SnapshotEntry { fileId: number; path: string; version: string; uploader: string; uploadedAt: string }
+export interface SnapshotDetail extends SnapshotSummary { projectId: number; entries: SnapshotEntry[] }
+export interface SkippedSnapshotFile { fileId: number; path: string; reason: string }
+export interface SnapshotRestoreResult { snapshot: string; restoredFiles: number; skipped: SkippedSnapshotFile[] }
 export interface TrackedFile {
   id: string;
   sourceFileId: number | null;

@@ -58,6 +58,12 @@ export interface TagListResponseDto { items: TagResponseDto[] }
 export interface TagSnapshotCreateDto { source_file_id: number; version: string; note?: string | null }
 export interface TagSnapshotResponseDto { id: number; tag_id: number; source_file_id: number | null; file_version: string; name: string; note: string | null; created_at: string }
 export interface TagSnapshotListResponseDto { items: TagSnapshotResponseDto[] }
+export interface SnapshotSummaryDto { hash: string; parent_hash: string | null; author: string; message: string; created_at: string; entry_count: number }
+export interface SnapshotTimelineResponseDto { project_id: number; snapshots: SnapshotSummaryDto[] }
+export interface SnapshotEntryDto { file_id: number; path: string; version: string; uploader: string; uploaded_at: string }
+export interface SnapshotDetailResponseDto extends SnapshotSummaryDto { project_id: number; entries: SnapshotEntryDto[] }
+export interface SkippedSnapshotFileDto { file_id: number; path: string; reason: string }
+export interface SnapshotRestoreResponseDto { snapshot: string; restored_files: number; skipped: SkippedSnapshotFileDto[] }
 export interface TaskCreatedResponseDto { task_id: number; status: 'pending' }
 export interface SummaryAnswerDto { question: string; answer: string }
 export interface SummaryAnswersRequestDto { answers: SummaryAnswerDto[] }

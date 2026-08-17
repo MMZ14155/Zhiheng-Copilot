@@ -1,5 +1,5 @@
-import type { AverageMetricDto, CollectionOverviewDto, ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, StatisticsOverviewResponseDto, TrackedFileResponseDto } from './dto';
-import type { AverageMetric, CollectionOverview, ProjectDetail, ProjectList, ProjectListItem, ProjectRisks, StatisticsOverview, TrackedFile } from './models';
+import type { AverageMetricDto, CollectionOverviewDto, ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, SnapshotDetailResponseDto, SnapshotRestoreResponseDto, SnapshotSummaryDto, SnapshotTimelineResponseDto, StatisticsOverviewResponseDto, TrackedFileResponseDto } from './dto';
+import type { AverageMetric, CollectionOverview, ProjectDetail, ProjectList, ProjectListItem, ProjectRisks, SnapshotDetail, SnapshotRestoreResult, SnapshotSummary, SnapshotTimeline, StatisticsOverview, TrackedFile } from './models';
 
 export const mapProject = (dto: ProjectResponseDto): ProjectListItem => ({ id: String(dto.id), name: dto.name, code: dto.code, customerName: dto.customer_name, projectType: dto.project_type, status: dto.status, progress: dto.progress, contractAmount: dto.contract_amount, signedDate: dto.signed_date, plannedDeliveryDate: dto.planned_delivery_date, updatedAt: dto.updated_at });
 export const mapProjectList = (dto: ProjectListResponseDto): ProjectList => ({ page: dto.page, size: dto.size, total: dto.total, items: dto.items.map(mapProject) });
@@ -106,3 +106,12 @@ export const mapTrackedFile = (dto: TrackedFileResponseDto): TrackedFile => ({
     uploadedAt: version.uploaded_at,
   })),
 });
+
+export const mapSnapshotSummary = (dto: SnapshotSummaryDto): SnapshotSummary => ({ hash: dto.hash, parentHash: dto.parent_hash, author: dto.author, message: dto.message, createdAt: dto.created_at, entryCount: dto.entry_count });
+export const mapSnapshotTimeline = (dto: SnapshotTimelineResponseDto): SnapshotTimeline => ({ projectId: dto.project_id, snapshots: dto.snapshots.map(mapSnapshotSummary) });
+export const mapSnapshotDetail = (dto: SnapshotDetailResponseDto): SnapshotDetail => ({
+  ...mapSnapshotSummary(dto),
+  projectId: dto.project_id,
+  entries: dto.entries.map((entry) => ({ fileId: entry.file_id, path: entry.path, version: entry.version, uploader: entry.uploader, uploadedAt: entry.uploaded_at })),
+});
+export const mapSnapshotRestoreResult = (dto: SnapshotRestoreResponseDto): SnapshotRestoreResult => ({ snapshot: dto.snapshot, restoredFiles: dto.restored_files, skipped: dto.skipped.map((item) => ({ fileId: item.file_id, path: item.path, reason: item.reason })) });
