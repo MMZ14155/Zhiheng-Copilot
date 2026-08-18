@@ -1,6 +1,9 @@
+import json
 import logging
+import os
+import tempfile
 
-from fastapi import APIRouter, BackgroundTasks, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -21,6 +24,7 @@ from app.schemas.ai import (
     InvoiceInfoResponse,
     LlmUsageResponse,
     PaymentInfoResponse,
+    ProjectDraftOutput,
     SummaryAnswersRequest,
     SummaryAnswersTaskResponse,
     SummaryHistoryResponse,
@@ -30,9 +34,57 @@ from app.schemas.ai import (
     TaskResponse,
 )
 from app.services.ai_tasks import AiTaskExecutor
+from app.services.ai_tasks import NullFileContentExtractor, create_file_content_extractor
+from app.services.file_versions import FileVersionService
+from app.services.llm import LoggedLlmClient
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["ai"])
+
+
+@router.post("/ai/project-draft", response_model=ProjectDraftOutput)
+async def create_project_draft(file: UploadFile) -> ProjectDraftOutput:
+    filename = file.filename or ""
+    content = await file.read()
+    safe_name = FileVersionService._validate_file(filename, len(content))
+    suffix = os.path.splitext(safe_name)[1]
+    temporary_path: str | None = None
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
+            temporary.write(content)
+            temporary_path = temporary.name
+        extractor = create_file_content_extractor()
+        document_text = None
+        if not isinstance(extractor, NullFileContentExtractor):
+            document_text = await extractor.extract_text(temporary_path)
+        prompt_payload = {
+            "required_fields": [
+                "name", "customer_name", "parties(role/name/contact)",
+                "contract_amount", "signed_date", "started_date",
+                "planned_delivery_date", "project_type", "missing_fields", "notes",
+            ],
+            "instruction": (
+                "仅依据合同文本生成建项草稿，缺失字段必须进入 missing_fields，不得编造。"
+                "project_type 仅能选择 软件销售、正版化服务、正版化服务+软件销售。"
+            ),
+        }
+        if document_text is not None:
+            prompt_payload["document_text"] = document_text
+        result = await LoggedLlmClient().call(
+            project_id=None,
+            scene="project_draft",
+            prompt=json.dumps(prompt_payload, ensure_ascii=False),
+            output_schema=ProjectDraftOutput,
+            request_meta={"filename": safe_name},
+        )
+        logger.info("generated project draft filename=%s", safe_name)
+        return result
+    finally:
+        if temporary_path:
+            try:
+                os.unlink(temporary_path)
+            except FileNotFoundError:
+                pass
 
 
 def _serialize_summaries(
@@ -122,7 +174,7 @@ async def create_summary_regeneration_task(
         task.id,
         project_id,
         len(accepted),
-        ignored,
+        len(ignored),
     )
     return SummaryAnswersTaskResponse(
         task_id=task.id,

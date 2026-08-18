@@ -13,6 +13,7 @@ from app.schemas.ai import (
     ContractExtractionOutput,
     InvoiceExtractionOutput,
     PaymentExtractionOutput,
+    ProjectDraftOutput,
     SummaryGenerationOutput,
 )
 from app.schemas.copilot import CopilotAnswerOutput
@@ -69,6 +70,22 @@ class MockLlmProvider:
                 "contract_no": "MOCK-CONTRACT-001",
                 "remarks": "合同款已到账",
                 "missing_fields": [],
+            }
+        elif output_schema is ProjectDraftOutput:
+            data = {
+                "name": "示例软件采购项目",
+                "customer_name": "示例甲方",
+                "parties": [
+                    {"role": "甲方", "name": "示例甲方", "contact": None},
+                    {"role": "乙方", "name": "示例乙方", "contact": None},
+                ],
+                "contract_amount": "100000.00",
+                "signed_date": "2026-08-10",
+                "started_date": None,
+                "planned_delivery_date": None,
+                "project_type": "软件销售",
+                "missing_fields": ["started_date", "planned_delivery_date"],
+                "notes": "依据上传合同生成的建项草稿",
             }
         elif output_schema is SummaryGenerationOutput:
             try:

@@ -110,6 +110,40 @@ class ContractExtractionOutput(BaseModel):
     missing_fields: list[str] = Field(default_factory=list)
 
 
+class ProjectDraftParty(BaseModel):
+    role: str
+    name: str
+    contact: str | None = None
+
+
+class ProjectDraftOutput(BaseModel):
+    name: str | None = None
+    customer_name: str | None = None
+    parties: list[ProjectDraftParty] = Field(default_factory=list)
+    contract_amount: Decimal | None = None
+    signed_date: date | None = None
+    started_date: date | None = None
+    planned_delivery_date: date | None = None
+    project_type: Literal["软件销售", "正版化服务", "正版化服务+软件销售"] | None = None
+    missing_fields: list[str] = Field(default_factory=list)
+    notes: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_project_type(cls, value):
+        if not isinstance(value, dict):
+            return value
+        allowed = {"软件销售", "正版化服务", "正版化服务+软件销售", None}
+        if value.get("project_type") not in allowed:
+            value = dict(value)
+            value["project_type"] = None
+            missing = list(value.get("missing_fields") or [])
+            if "project_type" not in missing:
+                missing.append("project_type")
+            value["missing_fields"] = missing
+        return value
+
+
 class InvoiceInfoResponse(BaseModel):
     type: Literal["invoice"] = "invoice"
     id: int
