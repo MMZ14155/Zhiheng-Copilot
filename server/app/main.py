@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,13 +21,23 @@ from app.api.snapshots import router as snapshots_router
 from app.api.dependencies import get_current_user
 from app.core.config import get_settings
 from app.db.session import get_session
+from app.db.session import AsyncSessionLocal
+from app.services.settings_store import load_llm_overrides
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-app = FastAPI(title=settings.app_name)
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    async with AsyncSessionLocal() as session:
+        await load_llm_overrides(session)
+    logger.info("runtime LLM configuration loaded")
+    yield
+
+
+app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

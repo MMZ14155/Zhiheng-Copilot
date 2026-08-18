@@ -1,4 +1,5 @@
 from datetime import datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -32,3 +33,30 @@ class ProjectMemberResponse(BaseModel):
     name: str
     role: Literal["manager", "implementer"]
     created_at: datetime
+
+
+class LlmConfigUpdate(BaseModel):
+    provider: str | None = Field(default=None, min_length=1, max_length=40)
+    api_key: str | None = Field(default=None, max_length=4096)
+    base_url: str | None = Field(default=None, min_length=1, max_length=2048)
+    model: str | None = Field(default=None, min_length=1, max_length=200)
+    timeout_seconds: int | None = Field(default=None, gt=0, le=600)
+    input_price_per_mtok: Decimal | None = Field(default=None, ge=0)
+    output_price_per_mtok: Decimal | None = Field(default=None, ge=0)
+
+
+class LlmConfigResponse(BaseModel):
+    provider: str
+    base_url: str
+    model: str
+    timeout_seconds: int
+    input_price_per_mtok: Decimal
+    output_price_per_mtok: Decimal
+    api_key_set: bool
+    api_key_masked: str | None
+    source: Literal["db", "env", "default"]
+
+
+class LlmConfigTestResponse(BaseModel):
+    ok: bool
+    detail: str

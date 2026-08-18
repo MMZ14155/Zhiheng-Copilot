@@ -7,3 +7,8 @@ class UserResponse(BaseModel):
     model_config = {"from_attributes": True}
 class LoginResponse(BaseModel):
     token: str; token_type: str = "bearer"; expires_at: str; user: UserResponse
+
+
+class ChangePasswordRequest(BaseModel):
+    old_password: str = Field(min_length=1, max_length=1024)
+    new_password: str = Field(min_length=8, max_length=1024)

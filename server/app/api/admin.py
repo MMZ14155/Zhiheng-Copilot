@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import APIRouter, Depends, Response, status
+from pydantic import BaseModel
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,15 +14,88 @@ from app.models.auth_token import AuthToken
 from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.user import User
+from app.models.system_setting import SystemSetting
 from app.schemas.admin import (
     AdminUserCreate,
     AdminUserResponse,
     ProjectMemberCreate,
     ProjectMemberResponse,
+    LlmConfigResponse,
+    LlmConfigTestResponse,
+    LlmConfigUpdate,
+)
+from app.services.llm_kimi import create_llm_provider
+from app.services.settings_store import (
+    DB_KEYS,
+    get_effective_llm_settings,
+    load_llm_overrides,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(require_admin)])
+
+
+class _LlmConfigTestOutput(BaseModel):
+    answer: str
+
+
+def _llm_config_response() -> LlmConfigResponse:
+    effective = get_effective_llm_settings()
+    return LlmConfigResponse(
+        provider=effective.provider,
+        base_url=effective.base_url,
+        model=effective.model,
+        timeout_seconds=effective.timeout_seconds,
+        input_price_per_mtok=effective.input_price_per_mtok,
+        output_price_per_mtok=effective.output_price_per_mtok,
+        api_key_set=bool(effective.api_key),
+        api_key_masked=f"****{effective.api_key[-4:]}" if effective.api_key else None,
+        source=effective.source,
+    )
+
+
+@router.get("/llm-config", response_model=LlmConfigResponse)
+async def get_llm_config() -> LlmConfigResponse:
+    return _llm_config_response()
+
+
+@router.put("/llm-config", response_model=LlmConfigResponse)
+async def update_llm_config(
+    payload: LlmConfigUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> LlmConfigResponse:
+    changes = payload.model_dump(exclude_unset=True)
+    for name, value in changes.items():
+        if value is None:
+            continue
+        key = DB_KEYS[name]
+        if name == "api_key" and value == "":
+            await session.execute(delete(SystemSetting).where(SystemSetting.key == key))
+            continue
+        stored = await session.get(SystemSetting, key)
+        text_value = str(value)
+        if stored is None:
+            session.add(SystemSetting(key=key, value=text_value))
+        else:
+            stored.value = text_value
+    await session.commit()
+    await load_llm_overrides(session)
+    logger.info("admin updated LLM configuration fields=%s", sorted(changes))
+    return _llm_config_response()
+
+
+@router.post("/llm-config/test", response_model=LlmConfigTestResponse)
+async def test_llm_config() -> LlmConfigTestResponse:
+    try:
+        provider = create_llm_provider()
+        await provider.generate(
+            "请仅返回 JSON，answer 字段值为 ok。",
+            _LlmConfigTestOutput,
+        )
+        return LlmConfigTestResponse(ok=True, detail="LLM 配置连接成功")
+    except Exception as exc:
+        logger.warning("LLM configuration test failed error_type=%s", type(exc).__name__)
+        return LlmConfigTestResponse(ok=False, detail="LLM 配置连接失败")
 
 
 @router.get("/users", response_model=list[AdminUserResponse])

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from app.core.config import Settings, get_settings
 from app.services.llm import LlmProvider, MockLlmProvider, ProviderResult
+from app.services.settings_store import get_effective_llm_settings
 
 logger = logging.getLogger(__name__)
 
@@ -202,14 +203,14 @@ class KimiFileContentExtractor:
 
 
 def create_llm_provider(settings: Settings | None = None) -> LlmProvider:
-    settings = settings or get_settings()
-    if settings.llm_provider.lower() == "kimi" and settings.kimi_api_key:
+    effective = get_effective_llm_settings(settings or get_settings())
+    if effective.provider.lower() == "kimi" and effective.api_key:
         return KimiLlmProvider(
-            api_key=settings.kimi_api_key,
-            base_url=settings.kimi_base_url,
-            model=settings.kimi_model,
-            timeout_seconds=settings.kimi_timeout_seconds,
-            input_price_per_mtok=settings.kimi_input_price_per_mtok,
-            output_price_per_mtok=settings.kimi_output_price_per_mtok,
+            api_key=effective.api_key,
+            base_url=effective.base_url,
+            model=effective.model,
+            timeout_seconds=effective.timeout_seconds,
+            input_price_per_mtok=effective.input_price_per_mtok,
+            output_price_per_mtok=effective.output_price_per_mtok,
         )
     return MockLlmProvider()

@@ -24,6 +24,7 @@ from app.schemas.ai import (
 )
 from app.services.llm import LoggedLlmClient
 from app.services.llm_kimi import KimiFileContentExtractor
+from app.services.settings_store import get_effective_llm_settings
 
 logger = logging.getLogger(__name__)
 
@@ -38,12 +39,12 @@ class NullFileContentExtractor:
 
 
 def create_file_content_extractor(settings: Settings | None = None) -> FileContentExtractor:
-    settings = settings or get_settings()
-    if settings.llm_provider.lower() == "kimi" and settings.kimi_api_key:
+    effective = get_effective_llm_settings(settings or get_settings())
+    if effective.provider.lower() == "kimi" and effective.api_key:
         return KimiFileContentExtractor(
-            api_key=settings.kimi_api_key,
-            base_url=settings.kimi_base_url,
-            timeout_seconds=settings.kimi_timeout_seconds,
+            api_key=effective.api_key,
+            base_url=effective.base_url,
+            timeout_seconds=effective.timeout_seconds,
         )
     return NullFileContentExtractor()
 

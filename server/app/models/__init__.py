@@ -17,6 +17,7 @@ from app.models.project_member import ProjectMember
 from app.models.user import User
 from app.models.snapshot import Snapshot
 from app.models.snapshot_entry import SnapshotEntry
+from app.models.system_setting import SystemSetting
 
 __all__ = [
     "ContractInfo",
@@ -33,5 +34,5 @@ __all__ = [
     "Task",
     "TrackedFile",
     "WorkspaceFile",
-    "AuthToken", "ProjectMember", "User", "Snapshot", "SnapshotEntry",
+    "AuthToken", "ProjectMember", "User", "Snapshot", "SnapshotEntry", "SystemSetting",
 ]
