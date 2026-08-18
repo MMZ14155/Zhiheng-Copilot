@@ -1,5 +1,5 @@
-import type { AverageMetricDto, CollectionOverviewDto, ProjectDetailResponseDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, SnapshotDetailResponseDto, SnapshotRestoreResponseDto, SnapshotSummaryDto, SnapshotTimelineResponseDto, StatisticsOverviewResponseDto, TrackedFileResponseDto } from './dto';
-import type { AverageMetric, CollectionOverview, ProjectDetail, ProjectList, ProjectListItem, ProjectRisks, SnapshotDetail, SnapshotRestoreResult, SnapshotSummary, SnapshotTimeline, StatisticsOverview, TrackedFile } from './models';
+import type { AverageMetricDto, CollectionOverviewDto, ProjectDetailResponseDto, ProjectDraftOutputDto, ProjectListResponseDto, ProjectResponseDto, ProjectRisksResponseDto, SnapshotDetailResponseDto, SnapshotRestoreResponseDto, SnapshotSummaryDto, SnapshotTimelineResponseDto, StatisticsOverviewResponseDto, TrackedFileResponseDto } from './dto';
+import type { AverageMetric, CollectionOverview, ProjectDetail, ProjectDraft, ProjectList, ProjectListItem, ProjectRisks, SnapshotDetail, SnapshotRestoreResult, SnapshotSummary, SnapshotTimeline, StatisticsOverview, TrackedFile } from './models';
 
 export const mapProject = (dto: ProjectResponseDto): ProjectListItem => ({ id: String(dto.id), name: dto.name, code: dto.code, customerName: dto.customer_name, projectType: dto.project_type, status: dto.status, progress: dto.progress, contractAmount: dto.contract_amount, signedDate: dto.signed_date, plannedDeliveryDate: dto.planned_delivery_date, updatedAt: dto.updated_at });
 export const mapProjectList = (dto: ProjectListResponseDto): ProjectList => ({ page: dto.page, size: dto.size, total: dto.total, items: dto.items.map(mapProject) });
@@ -83,6 +83,19 @@ export const mapProjectDetail = (dto: ProjectDetailResponseDto): ProjectDetail =
       fileVersion: input.file_version,
     })),
   },
+});
+
+export const mapProjectDraft = (dto: ProjectDraftOutputDto): ProjectDraft => ({
+  name: dto.name,
+  customerName: dto.customer_name,
+  parties: dto.parties.map((party) => ({ role: party.role, name: party.name, contact: party.contact })),
+  contractAmount: dto.contract_amount,
+  signedDate: dto.signed_date,
+  startedDate: dto.started_date,
+  plannedDeliveryDate: dto.planned_delivery_date,
+  projectType: dto.project_type,
+  missingFields: dto.missing_fields,
+  notes: dto.notes,
 });
 
 export const mapTrackedFile = (dto: TrackedFileResponseDto): TrackedFile => ({

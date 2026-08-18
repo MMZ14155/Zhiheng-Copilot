@@ -89,3 +89,17 @@ export interface ContractInfoResponseDto { type: 'contract'; id: number; version
 export interface InvoiceInfoResponseDto { type: 'invoice'; id: number; version: string; invoice_no: string | null; issued_date: string | null; amount: number | null; tax_amount: number | null; tax_rate: number | null; buyer: string | null; seller: string | null; missing_fields: string[]; raw_output: JsonObject; created_at: string }
 export interface PaymentInfoResponseDto { type: 'payment'; id: number; version: string; amount: number | null; payment_date: string | null; payer: string | null; contract_no: string | null; remarks: string | null; missing_fields: string[]; raw_output: JsonObject; created_at: string }
 export type ExtractionInfoResponseDto = ContractInfoResponseDto | InvoiceInfoResponseDto | PaymentInfoResponseDto;
+
+// 与后端 ProjectDraftOutput 对齐：contract_amount 为 Decimal，JSON 序列化为字符串；project_type 非法值已由后端归一为 null。
+export interface ProjectDraftOutputDto {
+  name: string | null;
+  customer_name: string | null;
+  parties: ProjectPartyDto[];
+  contract_amount: string | null;
+  signed_date: string | null;
+  started_date: string | null;
+  planned_delivery_date: string | null;
+  project_type: ProjectTypeDto | null;
+  missing_fields: string[];
+  notes: string | null;
+}

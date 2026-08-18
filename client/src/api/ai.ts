@@ -1,5 +1,7 @@
-import { jsonRequest } from './client';
-import type { CopilotAskRequestDto, CopilotAskResponseDto, ExtractionInfoResponseDto, SummaryAnswersRequestDto, SummaryAnswersTaskResponseDto, SummaryHistoryResponseDto, SummaryResponseDto, TaskCreatedResponseDto, TaskResponseDto } from './dto';
+import { jsonRequest, multipartRequest } from './client';
+import { mapProjectDraft } from './mappers';
+import type { ProjectDraft } from './models';
+import type { CopilotAskRequestDto, CopilotAskResponseDto, ExtractionInfoResponseDto, ProjectDraftOutputDto, SummaryAnswersRequestDto, SummaryAnswersTaskResponseDto, SummaryHistoryResponseDto, SummaryResponseDto, TaskCreatedResponseDto, TaskResponseDto } from './dto';
 
 export const askCopilot = (question: string, projectId?: number) => {
   const body: CopilotAskRequestDto = {
@@ -16,3 +18,9 @@ export const submitSummaryAnswers = (id: number, answers: SummaryAnswersRequestD
 export const createExtractionTask = (version: string) => jsonRequest<TaskCreatedResponseDto>(`/versions/${version}/extract`, { method: 'POST' });
 export const getExtraction = (version: string) => jsonRequest<ExtractionInfoResponseDto>(`/versions/${version}/extract`);
 export const getTask = (id: number) => jsonRequest<TaskResponseDto>(`/tasks/${id}`);
+
+export async function analyzeProjectDraft(file: File): Promise<ProjectDraft> {
+  const data = new FormData();
+  data.append('file', file);
+  return mapProjectDraft(await multipartRequest<ProjectDraftOutputDto>('/ai/project-draft', data));
+}

@@ -91,6 +91,18 @@ export interface TrackedFile {
   status: string;
   versions: FileVersion[];
 }
+export interface ProjectDraft {
+  name: string | null;
+  customerName: string | null;
+  parties: ProjectParty[];
+  contractAmount: string | null;
+  signedDate: string | null;
+  startedDate: string | null;
+  plannedDeliveryDate: string | null;
+  projectType: ProjectType | null;
+  missingFields: string[];
+  notes: string | null;
+}
 export interface ProjectDetail {
   id: string;
   name: string;
