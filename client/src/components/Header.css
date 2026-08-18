@@ -1,0 +1,6 @@
+.user-popover button { color: var(--neutral-700); }
+.user-popover button:last-child { color: var(--danger); }
+.user-popover button:hover { background: var(--neutral-100); }
+.user-popover button:last-child:hover { background: var(--danger-soft); }
+.password-form { display: grid; gap: 15px; }
+.password-form label { display: grid; gap: 7px; color: var(--neutral-700); font-size: var(--font-sm); font-weight: 600; }

@@ -39,6 +39,7 @@ async function request<T>(
   path: string,
   init: RequestInit = {},
   parseResponse: (response: Response) => Promise<T> = (response) => response.json() as Promise<T>,
+  clearAuthOnUnauthorized = true,
 ): Promise<T> {
   const { headers, ...rest } = init;
   const mergedHeaders = {
@@ -51,7 +52,7 @@ async function request<T>(
     try { body = await response.json(); } catch { body = null; }
     const error = body && typeof body === 'object' ? body as Record<string, unknown> : {};
     // 401 一律视为令牌失效：清空内存令牌，由 App 守卫跳转登录页。
-    if (response.status === 401) setAuthToken(null);
+    if (response.status === 401 && clearAuthOnUnauthorized) setAuthToken(null);
     throw new ApiError(
       typeof error.detail === 'string' ? error.detail : '请求失败，请稍后重试',
       typeof error.code === 'string' ? error.code : 'HTTP_ERROR',
@@ -62,9 +63,9 @@ async function request<T>(
   return parseResponse(response);
 }
 
-export function jsonRequest<T>(path: string, init: Omit<RequestInit, 'body'> & { body?: unknown } = {}) {
+export function jsonRequest<T>(path: string, init: Omit<RequestInit, 'body'> & { body?: unknown } = {}, options: { clearAuthOnUnauthorized?: boolean } = {}) {
   const { body, headers, ...rest } = init;
-  return request<T>(path, { ...rest, headers: { 'Content-Type': 'application/json', ...headers }, body: body === undefined ? undefined : JSON.stringify(body) });
+  return request<T>(path, { ...rest, headers: { 'Content-Type': 'application/json', ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }, undefined, options.clearAuthOnUnauthorized);
 }
 
 export function multipartRequest<T>(path: string, formData: FormData) {

@@ -1,0 +1,8 @@
+.llm-config-form { display: grid; gap: 16px; }
+.llm-config-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.llm-config-grid label { display: grid; align-content: start; gap: 7px; color: var(--neutral-700); font-size: var(--font-sm); font-weight: 600; }
+.llm-config-grid .wide { grid-column: span 2; }
+.field-hint { color: var(--muted); font-size: var(--font-xs); font-weight: 400; }
+.llm-config-actions { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; }
+@media (max-width: 900px) { .llm-config-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 600px) { .llm-config-grid { grid-template-columns: 1fr; } .llm-config-grid .wide { grid-column: auto; } .llm-config-actions { grid-template-columns: 1fr; } .llm-config-actions span { display: none; } }

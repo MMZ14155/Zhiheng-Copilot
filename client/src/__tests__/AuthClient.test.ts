@@ -70,4 +70,21 @@ describe('api 令牌钩子与 authApi', () => {
     const init = fetchMock.mock.calls[0][1] as RequestInit
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer token-demo')
   })
+
+  it('authApi.changePassword 按接口字段提交原密码与新密码', async () => {
+    setAuthToken('token-demo', { id: 2, login: 'demo', name: '演示用户', isAdmin: false })
+    fetchMock.mockResolvedValue(new Response(null, { status: 204 }))
+    await authApi.changePassword('old-password', 'new-password')
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    expect(url).toBe('/api/v1/auth/change-password')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body as string)).toEqual({ old_password: 'old-password', new_password: 'new-password' })
+  })
+
+  it('修改密码 401 原样透传 detail 并保留会话以便界面展示', async () => {
+    setAuthToken('token-demo', { id: 2, login: 'demo', name: '演示用户', isAdmin: false })
+    fetchMock.mockResolvedValue(jsonResponse(401, { detail: '原密码错误', code: 'UNAUTHORIZED' }))
+    await expect(authApi.changePassword('wrong-old', 'new-password')).rejects.toMatchObject({ message: '原密码错误', status: 401 })
+    expect(getAuthToken()).toBe('token-demo')
+  })
 })

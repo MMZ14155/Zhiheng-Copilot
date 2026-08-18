@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { adminApi, ApiError, projectsApi, type AdminUser, type ProjectListItem, type ProjectMember, type ProjectMemberRole } from '../api';
 import { Alert, Badge, Button, Card, Empty, Input, Select, Skeleton, Table } from '../components/ui';
+import LlmConfigSection from '../components/LlmConfigSection';
 
 const errorMessage = (reason: unknown, fallback: string) => reason instanceof ApiError ? reason.message : fallback;
 const roleLabels: Record<ProjectMemberRole, string> = { manager: '项目负责人', implementer: '工作人员' };
@@ -173,6 +174,7 @@ export default function Admin() {
           {!membersLoading && !membersError && (members.length === 0 ? <Empty title="暂无项目成员" description="从上方选择用户并分配角色。" /> : <Table label="项目成员列表"><thead><tr><th>姓名</th><th>登录名</th><th>角色</th><th>操作</th></tr></thead><tbody>{members.map((member) => <tr key={member.userId}><td>{member.name}</td><td>{member.login}</td><td><Badge tone={member.role === 'manager' ? 'primary' : 'neutral'}>{roleLabels[member.role]}</Badge></td><td><Button variant="ghost" type="button" disabled={removingUserId === member.userId} onClick={() => void removeMember(member.userId)}>{removingUserId === member.userId ? '移除中…' : '移除'}</Button></td></tr>)}</tbody></Table>)}
         </>}
       </Card>
+      <LlmConfigSection />
     </div>}
     {deleteTarget && <div className="admin-dialog-backdrop"><section className="admin-dialog" role="dialog" aria-modal="true" aria-labelledby="delete-user-title"><h3 id="delete-user-title">确认删除账号</h3><p>确定删除“{deleteTarget.name}（{deleteTarget.login}）”吗？删除后该账号的会话将失效。</p><div><Button variant="secondary" type="button" disabled={deleting} onClick={() => setDeleteTarget(null)}>取消</Button><Button variant="danger" type="button" disabled={deleting} onClick={() => void confirmDelete()}>{deleting ? '删除中…' : '确认删除'}</Button></div></section></div>}
   </div>;

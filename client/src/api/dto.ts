@@ -35,6 +35,9 @@ export interface AdminUserDto { id: number; login: string; name: string; is_admi
 export interface AdminUserCreateDto { login: string; name: string; password: string; is_admin: boolean }
 export interface ProjectMemberDto { user_id: number; login: string; name: string; role: ProjectMemberRoleDto }
 export interface ProjectMemberAssignDto { user_id: number; role: ProjectMemberRoleDto }
+export interface LlmConfigResponseDto { provider: string; base_url: string; model: string; timeout_seconds: number; input_price_per_mtok: string | number; output_price_per_mtok: string | number; api_key_set: boolean; api_key_masked: string | null; source: 'db' | 'env' | 'default' }
+export interface LlmConfigUpdateDto { provider?: string; api_key?: string; base_url?: string; model?: string; timeout_seconds?: number; input_price_per_mtok?: string; output_price_per_mtok?: string }
+export interface LlmConfigTestResponseDto { ok: boolean; detail: string }
 
 export type ProjectStageDto = 'init' | 'planning' | 'executing' | 'accepting' | 'closed';
 export interface AverageMetricDto { value: number | null; sample_count: number }

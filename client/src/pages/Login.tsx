@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ApiError, authApi, setAuthToken } from '../api';
+import './LoginNotice.css';
 
 export default function Login() {
   const navigate = useNavigate();
+  const [notice] = useState(() => authApi.consumeLoginNotice());
   const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -31,6 +33,7 @@ export default function Login() {
       <div className="login-card">
         <div className="login-brand"><span>智</span><div><h2>智衡 Copilot</h2><p className="login-subtitle">项目风险与经营分析助手</p></div></div>
         <div className="login-welcome"><h1>欢迎回来</h1><p>登录后继续管理项目、资料与经营风险</p></div>
+        {notice && <p className="login-success" role="status">{notice}</p>}
         <form onSubmit={(e) => void handleSubmit(e)}>
           <div className="login-field">
             <label>账号</label>
