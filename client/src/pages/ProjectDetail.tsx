@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { aiApi, ApiError, projectsApi } from '../api';
-import type { CollectionOverview, ProjectDetail as ProjectDetailModel, ProjectRisks } from '../api';
+import type { CollectionOverview, ProjectDetail as ProjectDetailModel, ProjectRisks, RenewalChainResponseDto } from '../api';
 import VersionHistory from '../components/VersionHistory';
 import ProcessFiles from '../components/ProcessFiles';
 import TagPanel from '../components/TagPanel';
@@ -34,6 +34,9 @@ export default function ProjectDetail() {
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
+  const [renewalChain, setRenewalChain] = useState<RenewalChainResponseDto | null>(null);
+  const [renewalChainLoading, setRenewalChainLoading] = useState(false);
+  const [renewalChainError, setRenewalChainError] = useState<string | null>(null);
 
   const loadQuestions = useCallback(async () => {
     if (projectId === null) return;
@@ -97,7 +100,21 @@ export default function ProjectDetail() {
     }
   }, [projectId]);
 
-  useEffect(() => { void loadProject(); void loadCollectionOverview(); }, [loadProject, loadCollectionOverview]);
+  const loadRenewalChain = useCallback(async () => {
+    if (projectId === null) return;
+    setRenewalChainLoading(true);
+    setRenewalChainError(null);
+    try {
+      setRenewalChain(await projectsApi.getRenewalChain(projectId));
+    } catch (reason) {
+      console.error('续签链加载失败', reason);
+      setRenewalChainError(reason instanceof ApiError ? reason.message : '续签链加载失败，请稍后重试');
+    } finally {
+      setRenewalChainLoading(false);
+    }
+  }, [projectId]);
+
+  useEffect(() => { void loadProject(); void loadCollectionOverview(); void loadRenewalChain(); }, [loadProject, loadCollectionOverview, loadRenewalChain]);
 
   if (notFound) return <ProjectNotFound />;
   if (loading) return <div className="page-container detail-state" role="status">正在加载项目详情…</div>;
@@ -149,6 +166,13 @@ export default function ProjectDetail() {
             {!questionsLoading && questionsError && <div className="questions-state questions-error" role="alert"><span>{questionsError}</span><button type="button" onClick={() => void loadQuestions()}>重试</button></div>}
             {!questionsLoading && !questionsError && questions.length > 0 && <div className="questions-panel"><h4>待确认问题</h4>{questions.map((question) => <SummaryQuestion key={question} projectId={projectId!} question={question} onCompleted={loadProject} />)}</div>}
           </>}
+        </section>
+        <section className="detail-section">
+          <h3>续签链</h3>
+          {renewalChainLoading && <p className="detail-empty" role="status">正在加载续签链…</p>}
+          {renewalChainError && <div className="questions-state questions-error" role="alert"><span>{renewalChainError}</span><button type="button" onClick={() => void loadRenewalChain()}>重试</button></div>}
+          {!renewalChainLoading && !renewalChainError && (renewalChain === null || renewalChain.items.length <= 1) && <p className="detail-empty">暂无续签链</p>}
+          {!renewalChainLoading && !renewalChainError && renewalChain !== null && renewalChain.items.length > 1 && <ul className="renewal-chain">{renewalChain.items.map((item, index) => <li key={item.id}><span className="renewal-index">{index + 1}</span><Link to={`/projects/${item.id}`}>{item.name}</Link><span className="renewal-meta">{item.customer_name} · {statusLabels[item.status]} · {item.signed_date ?? '未签约'}</span></li>)}</ul>}
         </section></>}
         {activeTab === 'deliverables' && <section className="detail-section deliverable-payment-section"><div className="deliverable-heading"><h3>交付物清单</h3><div className="deadline-countdown">{remainingDays === null || remainingDays === undefined ? '暂无到期预警' : remainingDays < 0 ? `已逾期 ${Math.abs(remainingDays)} 天` : `距交付 ${remainingDays} 天`}</div></div><PaymentOverview overview={collectionOverview} loading={collectionLoading} error={collectionError} onRetry={loadCollectionOverview} /><VersionHistory projectId={projectId!} deliverables={project.deliverables} /></section>}
         {activeTab === 'files' && <section className="detail-section"><h3>过程文件</h3><ProcessFiles projectId={projectId!} onChanged={loadProject} /></section>}

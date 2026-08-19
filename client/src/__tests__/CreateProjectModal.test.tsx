@@ -24,7 +24,7 @@ vi.mock('../api', async (original) => {
   return {
     ...actual,
     aiApi: { ...actual.aiApi, analyzeProjectDraft: vi.fn() },
-    projectsApi: { ...actual.projectsApi, createProject: vi.fn() },
+    projectsApi: { ...actual.projectsApi, listProjects: vi.fn(), createProject: vi.fn(), createProjectWithRenewal: vi.fn() },
   }
 })
 
@@ -40,7 +40,10 @@ const uploadAndAnalyze = async () => {
 }
 
 describe('CreateProjectModal AI 合同分析模式', () => {
-  beforeEach(() => vi.clearAllMocks())
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({ page: 1, size: 1000, total: 0, items: [] })
+  })
   afterEach(() => cleanup())
 
   it('默认进入 AI 模式且表单字段可见', () => {
@@ -123,5 +126,25 @@ describe('CreateProjectModal AI 合同分析模式', () => {
       parties: [{ role: '甲方', name: '甲方公司', contact: '138' }],
     })
     expect('code' in body).toBe(false)
+  })
+
+  it('选择续签来源后使用 createProjectWithRenewal 提交', async () => {
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({
+      page: 1,
+      size: 1000,
+      total: 1,
+      items: [{ id: '5', name: '源项目', code: 'SRC', customerName: '客户', projectType: '软件销售', status: 'active', progress: 100, contractAmount: null, signedDate: '2025-01-01', plannedDeliveryDate: null, updatedAt: '' }],
+    })
+    vi.mocked(projectsApi.createProjectWithRenewal).mockResolvedValueOnce({ project: { id: 9 } as never, link: { id: 2 } as never })
+    const onCreated = vi.fn()
+    render(<CreateProjectModal onClose={() => {}} onCreated={onCreated} />)
+    await waitFor(() => expect(fieldInput('续签来源').querySelectorAll('option').length).toBeGreaterThan(1))
+    await userEvent.selectOptions(fieldInput('续签来源'), '5')
+    await userEvent.type(fieldInput('项目名称'), '续签项目')
+    await userEvent.type(fieldInput('客户名称'), '客户B')
+    await userEvent.click(screen.getByRole('button', { name: '创建项目' }))
+    await waitFor(() => expect(projectsApi.createProjectWithRenewal).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(projectsApi.createProjectWithRenewal).mock.calls[0][1]).toBe(5)
+    expect(vi.mocked(projectsApi.createProject)).not.toHaveBeenCalled()
   })
 })

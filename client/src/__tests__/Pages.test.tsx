@@ -2,7 +2,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Login from '../pages/Login'
 import Statistics from '../pages/Statistics'
 import RiskBoard from '../pages/RiskBoard'
@@ -10,7 +10,7 @@ import ResourceCenterPage from '../pages/ResourceCenterPage'
 import ProjectDetail from '../pages/ProjectDetail'
 import { authApi, projectsApi, statisticsApi } from '../api'
 
-vi.mock('../api', async (original) => { const actual = await original<typeof import('../api')>(); return { ...actual, authApi: { ...actual.authApi, login: vi.fn() }, projectsApi: { ...actual.projectsApi, listProjects: vi.fn(), getProjectRisks: vi.fn(), getProject: vi.fn(), getCollectionOverview: vi.fn() }, statisticsApi: { getStatisticsOverview: vi.fn() } } })
+vi.mock('../api', async (original) => { const actual = await original<typeof import('../api')>(); return { ...actual, authApi: { ...actual.authApi, login: vi.fn() }, projectsApi: { ...actual.projectsApi, listProjects: vi.fn(), getProjectRisks: vi.fn(), getProject: vi.fn(), getCollectionOverview: vi.fn(), getRenewalChain: vi.fn() }, statisticsApi: { getStatisticsOverview: vi.fn() } } })
 vi.mock('../components/ChatArea', () => ({ default: () => <div>聊天区域</div> }))
 vi.mock('../components/CreateProjectModal', () => ({ default: ({ onClose }: { onClose: () => void }) => <div>创建弹窗<button onClick={onClose}>关闭弹窗</button></div> }))
 vi.mock('../components/ResourceCenter', () => ({ default: () => <div>资料中心内容</div> }))
@@ -18,6 +18,9 @@ vi.mock('../components/VersionHistory', () => ({ default: () => <div>版本历�
 vi.mock('../components/TagPanel', () => ({ default: () => <div>标签面板</div> }))
 vi.mock('../components/ProcessFiles', () => ({ default: () => <div>过程文件内容</div> }))
 afterEach(() => { cleanup(); vi.clearAllMocks() })
+beforeEach(() => {
+  vi.mocked(projectsApi.getRenewalChain).mockResolvedValue({ project_id: 1, depth_limit: 20, items: [] })
+})
 const statisticsExtras = { projectTypeDistribution: { 软件销售: 1 }, deliveryDeadlineDistribution: { overdue: 0, due_soon: 0, normal: 1, excluded: 0 }, payment: { contractAmount: 100, invoicedAmount: 80, receivableAmount: 50, receivedAmount: 40, outstandingAmount: 60, overdueAmount: 10, collectionRate: 0.8, dataIncompleteProjects: 0 } }
 const emptyProjectList = { page: 1, size: 100, total: 0, items: [] }
 
@@ -72,5 +75,20 @@ describe('页面', () => {
     await waitFor(() => expect(screen.getByText('逾期金额 375.00 元，请尽快跟进回款')).toBeTruthy())
     const progress = screen.getByRole('progressbar') ?? screen.getByLabelText('回款进度 25%')
     expect((progress.firstElementChild as HTMLElement).style.width).toBe('25%')
+  })
+
+  it('ProjectDetail 展示续签链并跳转到关联项目', async () => {
+    vi.mocked(projectsApi.getProject).mockResolvedValue({ id: '1', name: '详情项目', code: 'P', customerName: '客户', projectType: '软件销售', parties: [], contractAmount: null, signedDate: null, startedDate: null, plannedDeliveryDate: null, status: 'active', progress: 10, notes: null, deliverables: [], latestSummary: null })
+    vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({ level: 'ok', risks: [] })
+    vi.mocked(projectsApi.getCollectionOverview).mockResolvedValue({ contractAmount: null, receivableAmount: 0, receivedAmount: 0, invoicedAmount: 0, overdueAmount: null, collectionRate: null, dataStatus: 'ok', incompleteReasons: [] })
+    vi.mocked(projectsApi.getRenewalChain).mockResolvedValue({ project_id: 1, depth_limit: 20, items: [
+      { id: 1, name: '详情项目', code: 'P', customer_name: '客户', project_type: '软件销售', parties: [], contract_amount: null, signed_date: null, started_date: null, planned_delivery_date: null, status: 'active', progress: 10, notes: null, created_at: 'x', updated_at: 'y', links: null },
+      { id: 2, name: '续签项目', code: 'R', customer_name: '客户', project_type: '软件销售', parties: [], contract_amount: null, signed_date: '2026-01-01', started_date: null, planned_delivery_date: null, status: 'active', progress: 0, notes: null, created_at: 'y', updated_at: 'z', links: null },
+    ] })
+    render(<MemoryRouter initialEntries={['/projects/1']}><Routes><Route path="/projects/:id" element={<ProjectDetail />} /></Routes></MemoryRouter>)
+    await waitFor(() => expect(screen.getAllByText('详情项目').length).toBeGreaterThanOrEqual(2))
+    await waitFor(() => expect(screen.getByText('续签链')).toBeTruthy())
+    const link = screen.getByRole('link', { name: '续签项目' })
+    expect(link.getAttribute('href')).toBe('/projects/2')
   })
 })

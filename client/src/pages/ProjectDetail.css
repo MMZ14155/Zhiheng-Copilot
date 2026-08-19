@@ -203,6 +203,12 @@
 .extraction-result dl { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 0; }
 .extraction-result dt { color: #6b7280; font-size: 11px; }
 .extraction-result dd { margin: 2px 0; font-size: 12px; overflow-wrap: anywhere; }
+.renewal-chain { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.renewal-chain li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; background: #f9fafb; }
+.renewal-index { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: #dbeafe; color: #1d4ed8; font-size: 12px; font-weight: 600; }
+.renewal-chain a { color: #1f2937; font-weight: 500; text-decoration: none; }
+.renewal-chain a:hover { text-decoration: underline; }
+.renewal-meta { margin-left: auto; color: #6b7280; font-size: 12px; }
 
 @media (max-width: 640px) {
   .detail-header { align-items: flex-start; gap: 16px; }

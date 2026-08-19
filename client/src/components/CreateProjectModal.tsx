@@ -1,5 +1,5 @@
 import { useEffect, useId, useState, type ReactNode, type FormEvent } from 'react';
-import { ApiError, aiApi, projectsApi, type ProjectDraft, type ProjectPartyDto, type ProjectTypeDto, type ProjectWriteDto } from '../api';
+import { ApiError, aiApi, projectsApi, type ProjectDraft, type ProjectListItem, type ProjectPartyDto, type ProjectTypeDto, type ProjectWriteDto } from '../api';
 import { PROJECT_TYPES } from '../constants/projectTypes';
 import './CreateProjectModal.css';
 
@@ -42,6 +42,9 @@ export default function CreateProjectModal({ onClose, onCreated }: { onClose:()=
   const [analyzed, setAnalyzed] = useState(false);
   const [analysisError, setAnalysisError] = useState<string|null>(null);
   const [missingFields, setMissingFields] = useState<string[]>([]);
+  const [renewalOptions, setRenewalOptions] = useState<ProjectListItem[]>([]);
+  const [renewalSourceId, setRenewalSourceId] = useState<number | ''>('');
+  const [renewalLoading, setRenewalLoading] = useState(false);
   const busy = submitting || analyzing;
 
   const set = (field: Field, value: string) => { setValues(v => ({...v,[field]:value})); setErrors(e => ({...e,[field]:undefined})); };
@@ -49,6 +52,12 @@ export default function CreateProjectModal({ onClose, onCreated }: { onClose:()=
     const escape = (event: KeyboardEvent) => { if (event.key === 'Escape' && !busy) onClose(); };
     document.addEventListener('keydown', escape); return () => document.removeEventListener('keydown', escape);
   }, [onClose, busy]);
+  useEffect(() => {
+    let cancelled = false;
+    setRenewalLoading(true);
+    projectsApi.listProjects({ size: 1000 }).then(({ items }) => { if (!cancelled) setRenewalOptions(items.filter(p => p.status === 'active')); }).catch((reason: unknown) => { console.error('加载可续签项目失败', reason); }).finally(() => { if (!cancelled) setRenewalLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
   const updateParty = (index:number, field:keyof ProjectPartyDto, value:string) => setParties(rows => rows.map((row,i) => i === index ? {...row,[field]:value} : row));
 
   const applyDraft = (draft: ProjectDraft) => {
@@ -93,7 +102,14 @@ export default function CreateProjectModal({ onClose, onCreated }: { onClose:()=
       parties:parties.map(p => ({role:p.role.trim(),name:p.name.trim(),contact:p.contact?.trim() || null})).filter(p => p.role || p.name || p.contact),
     };
     setSubmitting(true);
-    try { await projectsApi.createProject(body); await onCreated(); onClose(); }
+    try {
+      if (renewalSourceId) {
+        await projectsApi.createProjectWithRenewal(body, Number(renewalSourceId));
+      } else {
+        await projectsApi.createProject(body);
+      }
+      await onCreated(); onClose();
+    }
     catch (reason) { console.error('项目创建失败', reason); setApiError(reason instanceof ApiError ? reason.message : '项目创建失败，请稍后重试'); }
     finally { setSubmitting(false); }
   };
@@ -134,6 +150,13 @@ export default function CreateProjectModal({ onClose, onCreated }: { onClose:()=
           {!parties.length && <div className="parties-empty">暂未添加签约方</div>}
           {parties.map((p,i)=><div className="party-row" key={i}><label>角色<input value={p.role} onChange={e=>updateParty(i,'role',e.target.value)}/></label><label>名称<input value={p.name} onChange={e=>updateParty(i,'name',e.target.value)}/></label><label>联系方式<input value={p.contact??''} onChange={e=>updateParty(i,'contact',e.target.value)}/></label><button type="button" aria-label={`删除第 ${i+1} 个签约方`} onClick={()=>setParties(rows=>rows.filter((_,j)=>j!==i))}>删除</button></div>)}
         </div>
+        <Field label="续签来源">
+          <select value={renewalSourceId} disabled={renewalLoading} onChange={e => setRenewalSourceId(e.target.value === '' ? '' : Number(e.target.value))}>
+            <option value="">不作为续签项目</option>
+            {renewalOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </Field>
+        {renewalSourceId !== '' && <div className="form-renewal-warning">新创建的项目将被标记为「{renewalOptions.find(p => p.id === String(renewalSourceId))?.name}」的续签项目。</div>}
         <Field label="备注"><textarea rows={4} maxLength={10000} value={values.notes} onChange={e=>set('notes',e.target.value)}/></Field>
         <div className="modal-actions"><button type="button" className="secondary-button" onClick={onClose} disabled={busy}>取消</button><button className="primary-button" disabled={busy}>{busy?'创建中…':'创建项目'}</button></div>
       </form>

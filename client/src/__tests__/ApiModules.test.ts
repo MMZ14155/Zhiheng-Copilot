@@ -89,6 +89,15 @@ describe('API domain modules', () => {
     expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/api/v1/projects', '/api/v1/projects/1', '/api/v1/projects/1/links', '/api/v1/links/4', '/api/v1/projects/1/renewal-chain'])
   })
 
+  it('createProjectWithRenewal 先创建项目再建立续签链接', async () => {
+    next({ id: 7, name: '新', code: 'N', customer_name: 'c', project_type: null, parties: [], contract_amount: null, signed_date: null, started_date: null, planned_delivery_date: null, status: 'active', progress: 0, notes: null, created_at: 'x', updated_at: 'y', links: null })
+    next({ id: 3, source_project_id: 5, target_project_id: 7, link_type: 'renewal', note: null, created_at: 'x' })
+    const result = await projects.createProjectWithRenewal({ name: '新', customer_name: 'c' }, 5)
+    expect(result.project.id).toBe(7)
+    expect(result.link?.link_type).toBe('renewal')
+    expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/api/v1/projects', '/api/v1/projects/5/links'])
+  })
+
   it('调用管理端点并映射用户与项目成员', async () => {
     next([{ id: 1, login: 'admin', name: '管理员', is_admin: true, created_at: '2026-08-17T00:00:00Z' }])
     await expect(admin.listUsers()).resolves.toEqual([{ id: 1, login: 'admin', name: '管理员', isAdmin: true, createdAt: '2026-08-17T00:00:00Z' }])
