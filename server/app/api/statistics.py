@@ -1,5 +1,5 @@
 import logging
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import date
 from decimal import Decimal
 
@@ -9,11 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.api.dependencies import get_current_user
-from app.models.contract_info import ContractInfo
-from app.models.file_version import FileVersion
 from app.models.project import Project
 from app.models.project_member import ProjectMember
-from app.models.tracked_file import TrackedFile
 from app.models.user import User
 from app.models.workspace_file import WorkspaceFile
 from app.schemas.statistics import (
@@ -44,52 +41,8 @@ async def _load_deliverable_states(
     session: AsyncSession,
     project_ids: list[int] | None = None,
 ) -> dict[int, list[DeliverableRiskState]]:
-    tracked_stmt = select(TrackedFile)
-    if project_ids is not None:
-        tracked_stmt = tracked_stmt.where(TrackedFile.project_id.in_(project_ids))
-    tracked_files = list((await session.execute(tracked_stmt)).scalars())
-    source_ids = [item.source_file_id for item in tracked_files if item.source_file_id is not None]
-
-    versions: dict[int, list[FileVersion]] = defaultdict(list)
-    contract_pins: dict[int, FileVersion] = {}
-    if source_ids:
-        version_rows = (
-            await session.execute(
-                select(FileVersion)
-                .where(FileVersion.file_id.in_(source_ids))
-                .order_by(FileVersion.uploaded_at, FileVersion.version)
-            )
-        ).scalars()
-        for version in version_rows:
-            versions[version.file_id].append(version)
-
-        pin_rows = await session.execute(
-            select(FileVersion, ContractInfo)
-            .join(ContractInfo, ContractInfo.version == FileVersion.version)
-            .where(FileVersion.file_id.in_(source_ids))
-            .order_by(ContractInfo.created_at.desc(), ContractInfo.id.desc())
-        )
-        for version, _ in pin_rows.all():
-            contract_pins.setdefault(version.file_id, version)
-
-    grouped: dict[int, list[DeliverableRiskState]] = defaultdict(list)
-    for tracked in tracked_files:
-        file_versions = versions.get(tracked.source_file_id or -1, [])
-        status = DeliverableService.calculate_status(
-            tracked,
-            file_versions,
-            contract_pins.get(tracked.source_file_id or -1),
-        )
-        grouped[tracked.project_id].append(
-            DeliverableRiskState(
-                name=tracked.name,
-                category=tracked.category,
-                required=tracked.required,
-                status=status,
-                unfrozen_versions=sum(not version.is_frozen for version in file_versions),
-            )
-        )
-    return grouped
+    # 批量实现已下沉到 DeliverableService，此处保留薄封装以兼容既有调用与测试。
+    return await DeliverableService.list_states_by_projects(session, project_ids)
 
 
 @router.get("/statistics/overview", response_model=StatisticsOverviewResponse)

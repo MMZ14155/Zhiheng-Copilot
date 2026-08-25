@@ -22,25 +22,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["copilot"])
 
 
-async def _project_context(session: AsyncSession, project: Project) -> dict:
-    states = await DeliverableService.list_with_state(session, project.id)
-    deliverables = [
-        DeliverableRiskState(
-            name=tracked.name,
-            category=tracked.category,
-            required=tracked.required,
-            status=status,
-            unfrozen_versions=sum(not version.is_frozen for version in versions),
-        )
-        for tracked, versions, status in states
-    ]
+def _build_context(
+    project: Project,
+    deliverables: list[DeliverableRiskState],
+    latest_summary: Summary | None,
+) -> dict:
     risks = evaluate_project(project, deliverables, load_risk_config(project))
-    latest_summary = await session.scalar(
-        select(Summary)
-        .where(Summary.project_id == project.id)
-        .order_by(Summary.version_no.desc())
-        .limit(1)
-    )
     return {
         "id": project.id,
         "code": project.code,
@@ -58,6 +45,34 @@ async def _project_context(session: AsyncSession, project: Project) -> dict:
             else None
         ),
     }
+
+
+async def _project_contexts(
+    session: AsyncSession, projects: list[Project]
+) -> list[dict]:
+    """批量加载项目上下文：交付物状态与最新总结各一次查询，避免逐项目 N+1。"""
+    ids = [project.id for project in projects]
+    if not ids:
+        return []
+    states_map = await DeliverableService.list_states_by_projects(session, ids)
+    latest_summaries: dict[int, Summary] = {}
+    summary_rows = (
+        await session.scalars(
+            select(Summary)
+            .where(Summary.project_id.in_(ids))
+            .order_by(Summary.project_id, Summary.version_no.desc())
+        )
+    ).all()
+    for summary in summary_rows:
+        latest_summaries.setdefault(summary.project_id, summary)
+    return [
+        _build_context(
+            project,
+            states_map.get(project.id, []),
+            latest_summaries.get(project.id),
+        )
+        for project in projects
+    ]
 
 
 @router.post("/copilot/ask", response_model=CopilotAnswerOutput)
@@ -85,7 +100,7 @@ async def ask_copilot(
             )
         projects = list((await session.scalars(stmt)).all())
 
-    contexts = [await _project_context(session, project) for project in projects]
+    contexts = await _project_contexts(session, projects)
     counts = {"ok": 0, "warn": 0, "block": 0}
     for context in contexts:
         counts[context["risk_level"]] += 1

@@ -271,12 +271,15 @@ async def list_project_risks(
         )
     projects = list((await session.execute(stmt)).scalars().all())
     documents = await load_financial_documents(session, [p.id for p in projects])
+    states_map = await DeliverableService.list_states_by_projects(
+        session, [p.id for p in projects]
+    )
     items: list[ProjectRiskBatchItem] = []
     for project in projects:
         config = load_risk_config(project)
         finance = aggregate_project_finance(documents.get(project.id, []))
         risks = evaluate_project(
-            project, await _risk_deliverables(session, project.id), config, finance,
+            project, states_map.get(project.id, []), config, finance,
         )
         items.append(
             ProjectRiskBatchItem(

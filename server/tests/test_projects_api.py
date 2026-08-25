@@ -144,16 +144,19 @@ def test_project_detail_and_risks(fake_session, users, now, monkeypatch):
 
 def test_list_project_risks_batch(fake_session, users, now, monkeypatch):
     p = project(now)
-    fake_session.execute.return_value = Result([p])
-    monkeypatch.setattr(projects.DeliverableService, "list_with_state", AsyncMock(return_value=[]))
+    # 每次调用依次查询项目列表与交付物（list_states_by_projects 内部）。
+    fake_session.execute.side_effect = [
+        Result([p]), Result([]),
+        Result([p]), Result([]),
+    ]
     monkeypatch.setattr(projects, "load_financial_documents", AsyncMock(return_value={}))
     response = asyncio.run(projects.list_project_risks(fake_session, users.admin))
     assert response.items[0].project_id == 1
     assert response.items[0].level in {"ok", "warn", "block"}
 
     asyncio.run(projects.list_project_risks(fake_session, users.member))
-    list_sql = str(fake_session.execute.call_args.args[0])
-    assert "project_member.user_id" in list_sql
+    sql_texts = [str(call.args[0]) for call in fake_session.execute.call_args_list]
+    assert any("project_member.user_id" in sql for sql in sql_texts)
 
 
 def test_links_and_renewal(fake_session, users, now, monkeypatch):

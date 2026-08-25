@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.errors import conflict, not_found
+from app.api.dependencies import get_current_user, require_project_role
 from app.db.session import get_session
 from app.models.contract_info import ContractInfo
 from app.models.file_version import FileVersion
@@ -19,6 +20,8 @@ from app.models.summary import Summary
 from app.models.summary_input import SummaryInput
 from app.models.task import Task
 from app.models.tracked_file import TrackedFile
+from app.models.user import User
+from app.models.workspace_file import WorkspaceFile
 from app.schemas.ai import (
     ContractInfoResponse,
     InvoiceInfoResponse,
@@ -42,8 +45,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["ai"])
 
 
+# 建项草稿需要登录态：匿名调用会消耗 LLM 配额。
 @router.post("/ai/project-draft", response_model=ProjectDraftOutput)
-async def create_project_draft(file: UploadFile) -> ProjectDraftOutput:
+async def create_project_draft(
+    file: UploadFile,
+    user: User = Depends(get_current_user),
+) -> ProjectDraftOutput:
     filename = file.filename or ""
     content = await file.read()
     safe_name = FileVersionService._validate_file(filename, len(content))
@@ -112,7 +119,9 @@ async def create_summary_task(
     project_id: int,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
+    await require_project_role(session, project_id, user, {"manager", "implementer"})
     if await session.get(Project, project_id) is None:
         raise not_found(f"项目 {project_id} 不存在", code="PROJECT_NOT_FOUND")
     task = Task(
@@ -139,7 +148,9 @@ async def create_summary_regeneration_task(
     body: SummaryAnswersRequest,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
+    await require_project_role(session, project_id, user, {"manager", "implementer"})
     if await session.get(Project, project_id) is None:
         raise not_found(f"项目 {project_id} 不存在", code="PROJECT_NOT_FOUND")
     latest = await session.scalar(
@@ -184,7 +195,12 @@ async def create_summary_regeneration_task(
 
 
 @router.get("/projects/{project_id}/summary", response_model=SummaryResponse)
-async def latest_summary(project_id: int, session: AsyncSession = Depends(get_session)):
+async def latest_summary(
+    project_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    await require_project_role(session, project_id, user)
     if await session.get(Project, project_id) is None:
         raise not_found("项目不存在", code="PROJECT_NOT_FOUND")
     latest_id = (
@@ -209,7 +225,12 @@ async def latest_summary(project_id: int, session: AsyncSession = Depends(get_se
 
 
 @router.get("/projects/{project_id}/summary/history", response_model=SummaryHistoryResponse)
-async def summary_history(project_id: int, session: AsyncSession = Depends(get_session)):
+async def summary_history(
+    project_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    await require_project_role(session, project_id, user)
     if await session.get(Project, project_id) is None:
         raise not_found("项目不存在", code="PROJECT_NOT_FOUND")
     rows = list(
@@ -224,15 +245,34 @@ async def summary_history(project_id: int, session: AsyncSession = Depends(get_s
     return SummaryHistoryResponse(items=_serialize_summaries(rows))
 
 
+async def _require_version_access(
+    session: AsyncSession,
+    version: str,
+    user: User,
+    allowed_roles: set[str] | None = None,
+) -> FileVersion:
+    """解析版本所属项目并校验访问权限。"""
+    file_version = await session.get(FileVersion, version)
+    if not file_version:
+        raise not_found("版本不存在", code="VERSION_NOT_FOUND")
+    project_id = await session.scalar(
+        select(WorkspaceFile.project_id).where(WorkspaceFile.id == file_version.file_id)
+    )
+    if project_id is not None:
+        await require_project_role(session, project_id, user, allowed_roles)
+    return file_version
+
+
 @router.post("/versions/{version}/extract", response_model=TaskCreatedResponse, status_code=202)
 async def create_extract_task(
     version: str,
     background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
 ):
-    file_version = await session.get(FileVersion, version)
-    if not file_version:
-        raise not_found("版本不存在", code="VERSION_NOT_FOUND")
+    file_version = await _require_version_access(
+        session, version, user, {"manager", "implementer"}
+    )
     if file_version.document_type not in {"contract", "invoice", "payment"}:
         raise conflict("该版本不是可识别的材料类型", code="NOT_CONTRACT_VERSION")
     task = Task(
@@ -258,10 +298,12 @@ async def create_extract_task(
     "/versions/{version}/extract",
     response_model=ContractInfoResponse | InvoiceInfoResponse | PaymentInfoResponse,
 )
-async def get_extract(version: str, session: AsyncSession = Depends(get_session)):
-    file_version = await session.get(FileVersion, version)
-    if file_version is None:
-        raise not_found("版本不存在", code="VERSION_NOT_FOUND")
+async def get_extract(
+    version: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    file_version = await _require_version_access(session, version, user)
     model_by_type = {
         "contract": ContractInfo,
         "invoice": InvoiceInfo,
@@ -282,10 +324,16 @@ async def get_extract(version: str, session: AsyncSession = Depends(get_session)
 
 
 @router.get("/tasks/{task_id}", response_model=TaskResponse)
-async def get_task(task_id: int, session: AsyncSession = Depends(get_session)):
+async def get_task(
+    task_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
     task = await session.get(Task, task_id)
     if not task:
         raise not_found("任务不存在", code="TASK_NOT_FOUND")
+    if task.project_id is not None:
+        await require_project_role(session, task.project_id, user)
     usage = (
         await session.execute(
             select(

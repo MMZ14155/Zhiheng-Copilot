@@ -126,34 +126,34 @@ def test_deliverable_endpoints(fake_session, users, now, monkeypatch):
     assert batch.items[0].tag_name == "里程碑" and batch.items[0].file_version == fv.version
 
 
-def test_ai_endpoints(fake_session, now, monkeypatch):
+def test_ai_endpoints(fake_session, users, now, monkeypatch):
     project = Project(id=1)
     async def refresh(obj): obj.id = getattr(obj, "id", None) or 10
     fake_session.refresh.side_effect = refresh
     fake_session.get.return_value = project
     bg = SimpleNamespace(add_task=lambda *args: None)
-    assert asyncio.run(ai.create_summary_task(1, bg, fake_session)).task_id == 10
+    assert asyncio.run(ai.create_summary_task(1, bg, fake_session, users.admin)).task_id == 10
 
     latest = Summary(id=3, project_id=1, version_no=1, pending_questions=["进度？"])
     fake_session.scalar.return_value = latest
     body = SummaryAnswersRequest(answers=[SummaryAnswer(question="进度？", answer="完成"), SummaryAnswer(question="其他", answer="无")])
-    regen = asyncio.run(ai.create_summary_regeneration_task(1, body, bg, fake_session))
+    regen = asyncio.run(ai.create_summary_regeneration_task(1, body, bg, fake_session, users.admin))
     assert regen.accepted_questions == ["进度？"] and regen.ignored_questions == ["其他"]
 
     fv = version(now); fake_session.get.return_value = fv
-    task = asyncio.run(ai.create_extract_task(fv.version, bg, fake_session))
+    task = asyncio.run(ai.create_extract_task(fv.version, bg, fake_session, users.admin))
     assert task.task_id == 10 and fv.parse_status == "processing"
 
     info = SimpleNamespace(id=2, version=fv.version, contract_no=None, party_a=None, party_b=None,
         amount=None, signed_date=None, payment_terms=[], missing_fields=[], raw_output={}, created_at=now)
     fake_session.scalar.return_value = info
-    assert asyncio.run(ai.get_extract(fv.version, fake_session)).type == "contract"
+    assert asyncio.run(ai.get_extract(fv.version, fake_session, users.admin)).type == "contract"
 
     task_obj = Task(id=10, project_id=1, task_type="summary_generation", status="completed", payload={},
         failure_reason=None, started_at=now, finished_at=now, created_at=now, updated_at=now)
     fake_session.get.return_value = task_obj
     fake_session.execute.return_value = Result(one=(1, 2, 3, Decimal("0.1")))
-    assert asyncio.run(ai.get_task(10, fake_session)).llm_usage.call_count == 1
+    assert asyncio.run(ai.get_task(10, fake_session, users.admin)).llm_usage.call_count == 1
 
 
 def test_auth_login_and_me(fake_session, users, monkeypatch):
@@ -193,7 +193,7 @@ def test_statistics_member_filter(fake_session, users, monkeypatch):
 def test_copilot_aggregate_and_access(fake_session, users, monkeypatch):
     project = Project(id=1, code="P", name="项目")
     fake_session.scalars.return_value = Result([project]).scalars()
-    monkeypatch.setattr(copilot, "_project_context", AsyncMock(return_value={"id": 1, "code": "P", "name": "项目", "risk_level": "ok", "risks": [], "latest_summary": None}))
+    monkeypatch.setattr(copilot, "_project_contexts", AsyncMock(return_value=[{"id": 1, "code": "P", "name": "项目", "risk_level": "ok", "risks": [], "latest_summary": None}]))
     async def call(self, **kwargs): return CopilotAnswerOutput(answer="正常", references=[])
     monkeypatch.setattr(copilot.LoggedLlmClient, "call", call)
     answer = asyncio.run(copilot.ask_copilot(CopilotAskRequest(question="状态", project_id=None), fake_session, users.member))

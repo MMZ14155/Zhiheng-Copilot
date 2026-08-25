@@ -12,6 +12,7 @@ from app.models.tag import Tag
 from app.models.tag_snapshot import TagSnapshot
 from app.models.tracked_file import TrackedFile
 from app.models.workspace_file import WorkspaceFile
+from app.services.risk_monitor import DeliverableRiskState
 
 logger = logging.getLogger(__name__)
 
@@ -142,6 +143,67 @@ class DeliverableService:
             len(result),
         )
         return result
+
+    @staticmethod
+    async def list_states_by_projects(
+        session: AsyncSession, project_ids: list[int] | None = None
+    ) -> dict[int, list]:
+        """按项目批量加载交付物风险状态，避免逐项目查询（N+1）。
+
+        project_ids 为 None 时覆盖全部项目；返回 {project_id: [DeliverableRiskState]}。
+        """
+        tracked_stmt = select(TrackedFile)
+        if project_ids is not None:
+            tracked_stmt = tracked_stmt.where(TrackedFile.project_id.in_(project_ids))
+        tracked_files = list((await session.execute(tracked_stmt)).scalars())
+        source_ids = [
+            item.source_file_id
+            for item in tracked_files
+            if item.source_file_id is not None
+        ]
+
+        versions: dict[int, list[FileVersion]] = defaultdict(list)
+        contract_pins: dict[int, FileVersion] = {}
+        if source_ids:
+            version_rows = (
+                await session.execute(
+                    select(FileVersion)
+                    .where(FileVersion.file_id.in_(source_ids))
+                    .order_by(FileVersion.uploaded_at, FileVersion.version)
+                )
+            ).scalars()
+            for version in version_rows:
+                versions[version.file_id].append(version)
+
+            pin_rows = await session.execute(
+                select(FileVersion, ContractInfo)
+                .join(ContractInfo, ContractInfo.version == FileVersion.version)
+                .where(FileVersion.file_id.in_(source_ids))
+                .order_by(ContractInfo.created_at.desc(), ContractInfo.id.desc())
+            )
+            for version, _ in pin_rows.all():
+                contract_pins.setdefault(version.file_id, version)
+
+        grouped: dict[int, list] = defaultdict(list)
+        for tracked in tracked_files:
+            file_versions = versions.get(tracked.source_file_id or -1, [])
+            status = DeliverableService.calculate_status(
+                tracked,
+                file_versions,
+                contract_pins.get(tracked.source_file_id or -1),
+            )
+            grouped[tracked.project_id].append(
+                DeliverableRiskState(
+                    name=tracked.name,
+                    category=tracked.category,
+                    required=tracked.required,
+                    status=status,
+                    unfrozen_versions=sum(
+                        not version.is_frozen for version in file_versions
+                    ),
+                )
+            )
+        return grouped
 
     @staticmethod
     def calculate_status(
