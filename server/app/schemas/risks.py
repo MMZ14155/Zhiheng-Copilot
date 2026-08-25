@@ -82,3 +82,13 @@ class RiskResponse(BaseModel):
     level: RiskLevel
     risks: list[RiskItem]
     config: RiskConfig
+
+
+class ProjectRiskBatchItem(BaseModel):
+    project_id: int
+    level: RiskLevel
+    risks: list[RiskItem]
+
+
+class ProjectRiskBatchResponse(BaseModel):
+    items: list[ProjectRiskBatchItem]

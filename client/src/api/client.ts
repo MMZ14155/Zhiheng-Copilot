@@ -13,6 +13,10 @@ export class ApiError extends Error {
   }
 }
 
+/** 从未知异常中提取面向用户的错误文案。 */
+export const errorMessage = (reason: unknown, fallback: string) =>
+  reason instanceof ApiError ? reason.message : fallback;
+
 // 登录会话仅保存在内存模块变量中（WebView 约束，不使用 localStorage 等持久化），刷新页面后需重新登录。
 let authToken: string | null = null;
 let authUser: CurrentUser | null = null;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { aiApi, ApiError, deliverablesApi, filesApi } from "../api";
+import { aiApi, ApiError, deliverablesApi, errorMessage, filesApi } from "../api";
 import type {
   ExtractionInfoResponseDto,
   FileVersion,
@@ -7,17 +7,13 @@ import type {
   TrackedFile,
 } from "../api";
 import { useTaskPolling } from "../hooks/useTaskPolling";
+import { formatDateTime, shortHash } from "../utils/format";
+import { downloadBlob } from "../utils/download";
 
 interface VersionHistoryProps {
   projectId: number;
   deliverables: ProjectDeliverable[];
 }
-
-const formatDateTime = (value: string) =>
-  new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
@@ -46,19 +42,18 @@ export default function VersionHistory({
       setTrackedFiles(await deliverablesApi.listTrackedFiles(projectId));
     } catch (reason) {
       console.error("交付物版本加载失败", reason);
-      setError(
-        reason instanceof ApiError
-          ? reason.message
-          : "交付物加载失败，请稍后重试",
-      );
+      setError(errorMessage(reason, "交付物加载失败，请稍后重试"));
     } finally {
       setLoading(false);
     }
   }, [projectId]);
 
+  // 依赖交付物 id 签名而非长度：内容变化但数量不变时也能触发刷新。
+  const deliverablesKey = deliverables.map((item) => item.id).join(",");
   useEffect(() => {
     if (deliverables.length > 0) void loadTrackedFiles();
-  }, [loadTrackedFiles, deliverables.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadTrackedFiles, deliverablesKey]);
 
   const download = useCallback(async (version: string) => {
     setDownloadingVersion(version);
@@ -69,20 +64,12 @@ export default function VersionHistory({
     });
     try {
       const { blob, filename } = await filesApi.downloadVersion(version);
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(objectUrl);
+      downloadBlob(blob, filename);
     } catch (reason) {
       console.error("版本下载失败", reason);
       setDownloadErrors((current) => ({
         ...current,
-        [version]:
-          reason instanceof ApiError ? reason.message : "下载失败，请稍后重试",
+        [version]: errorMessage(reason, "下载失败，请稍后重试"),
       }));
     } finally {
       setDownloadingVersion(null);
@@ -125,7 +112,7 @@ export default function VersionHistory({
               <div className="version-current">
                 <div className="version-heading">
                   <code title={version.version}>
-                    {version.version.slice(0, 8)}
+                    {shortHash(version.version)}
                   </code>
                   {version.isFrozen && (
                     <span className="version-badge frozen">已冻结</span>
@@ -190,10 +177,7 @@ function Extraction({ version }: { version: FileVersion }) {
     } catch (reason) {
       if (reason instanceof ApiError && reason.code === "EXTRACTION_NOT_FOUND")
         setMissing(true);
-      else
-        setError(
-          reason instanceof ApiError ? reason.message : "识别结果加载失败",
-        );
+      else setError(errorMessage(reason, "识别结果加载失败"));
     } finally {
       setLoading(false);
     }
@@ -209,9 +193,7 @@ function Extraction({ version }: { version: FileVersion }) {
       polling.start(task.task_id);
     } catch (reason) {
       console.error("识别触发失败", reason);
-      setError(
-        reason instanceof ApiError ? reason.message : "识别任务创建失败",
-      );
+      setError(errorMessage(reason, "识别任务创建失败"));
     }
   };
   if (loading) return <p role="status">正在加载识别结果…</p>;

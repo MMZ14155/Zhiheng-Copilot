@@ -24,6 +24,7 @@ vi.mock("../api", async (original) => {
       ...actual.projectsApi,
       listProjects: vi.fn(),
       getProjectRisks: vi.fn(),
+      listProjectRisksBatch: vi.fn(),
       getProject: vi.fn(),
       getCollectionOverview: vi.fn(),
       getRenewalChain: vi.fn(),
@@ -63,9 +64,10 @@ beforeEach(async () => {
   setAuthToken(null);
   vi.mocked(adminApi.listUsers).mockResolvedValue([]);
   vi.mocked(adminApi.listProjectMembers).mockResolvedValue([]);
+  vi.mocked(projectsApi.listProjectRisksBatch).mockResolvedValue([]);
   vi.mocked(projectsApi.getRenewalChain).mockResolvedValue({
-    project_id: 1,
-    depth_limit: 20,
+    projectId: "1",
+    depthLimit: 20,
     items: [],
   });
 });
@@ -237,10 +239,9 @@ describe("页面", () => {
         },
       ],
     });
-    vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({
-      level: "warn",
-      risks: [],
-    });
+    vi.mocked(projectsApi.listProjectRisksBatch).mockResolvedValue([
+      { projectId: "1", level: "warn", risks: [] },
+    ]);
     render(
       <MemoryRouter>
         <RiskBoard />
@@ -256,7 +257,7 @@ describe("页面", () => {
     await userEvent.click(screen.getByText("关闭弹窗"));
   });
 
-  it("RiskBoard 容忍单个风险失败并处理列表错误", async () => {
+  it("RiskBoard 容忍风险批量失败并处理列表错误", async () => {
     vi.mocked(projectsApi.listProjects)
       .mockResolvedValueOnce({
         page: 1,
@@ -279,7 +280,9 @@ describe("页面", () => {
         ],
       })
       .mockRejectedValueOnce(new Error());
-    vi.mocked(projectsApi.getProjectRisks).mockRejectedValue(new Error());
+    vi.mocked(projectsApi.listProjectRisksBatch).mockRejectedValue(
+      new Error(),
+    );
     render(
       <MemoryRouter>
         <RiskBoard />
@@ -507,44 +510,34 @@ describe("页面", () => {
       incompleteReasons: [],
     });
     vi.mocked(projectsApi.getRenewalChain).mockResolvedValue({
-      project_id: 1,
-      depth_limit: 20,
+      projectId: "1",
+      depthLimit: 20,
       items: [
         {
-          id: 1,
+          id: "1",
           name: "详情项目",
           code: "P",
-          customer_name: "客户",
-          project_type: "软件销售",
-          parties: [],
-          contract_amount: null,
-          signed_date: null,
-          started_date: null,
-          planned_delivery_date: null,
+          customerName: "客户",
+          projectType: "软件销售",
+          contractAmount: null,
+          signedDate: null,
+          plannedDeliveryDate: null,
           status: "active",
           progress: 10,
-          notes: null,
-          created_at: "x",
-          updated_at: "y",
-          links: null,
+          updatedAt: "y",
         },
         {
-          id: 2,
+          id: "2",
           name: "续签项目",
           code: "R",
-          customer_name: "客户",
-          project_type: "软件销售",
-          parties: [],
-          contract_amount: null,
-          signed_date: "2026-01-01",
-          started_date: null,
-          planned_delivery_date: null,
+          customerName: "客户",
+          projectType: "软件销售",
+          contractAmount: null,
+          signedDate: "2026-01-01",
+          plannedDeliveryDate: null,
           status: "active",
           progress: 0,
-          notes: null,
-          created_at: "y",
-          updated_at: "z",
-          links: null,
+          updatedAt: "z",
         },
       ],
     });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { adminApi, ApiError, type LlmConfig } from "../api";
+import { adminApi, errorMessage, type LlmConfig } from "../api";
 import { Alert, Badge, Button, Card, Empty, Input, Skeleton } from "./ui";
 import "./LlmConfigSection.css";
 const sourceLabels = {
@@ -7,8 +7,6 @@ const sourceLabels = {
   env: "环境变量",
   default: "默认配置",
 } as const;
-const message = (reason: unknown, fallback: string) =>
-  reason instanceof ApiError ? reason.message : fallback;
 export default function LlmConfigSection() {
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -53,7 +51,7 @@ export default function LlmConfigSection() {
       apply(await adminApi.getLlmConfig());
     } catch (reason) {
       console.error("AI 配置加载失败", reason);
-      setLoadError(message(reason, "AI 配置加载失败，请稍后重试"));
+      setLoadError(errorMessage(reason, "AI 配置加载失败，请稍后重试"));
       setLoaded(false);
     } finally {
       setLoading(false);
@@ -95,7 +93,7 @@ export default function LlmConfigSection() {
       console.error("AI 配置保存失败", reason);
       setSaveResult({
         ok: false,
-        detail: message(reason, "AI 配置保存失败，请稍后重试"),
+        detail: errorMessage(reason, "AI 配置保存失败，请稍后重试"),
       });
     } finally {
       setSaving(false);
@@ -112,7 +110,7 @@ export default function LlmConfigSection() {
       console.error("AI Key 清除失败", reason);
       setSaveResult({
         ok: false,
-        detail: message(reason, "AI Key 清除失败，请稍后重试"),
+        detail: errorMessage(reason, "AI Key 清除失败，请稍后重试"),
       });
     } finally {
       setSaving(false);
@@ -127,7 +125,7 @@ export default function LlmConfigSection() {
       console.error("AI 配置连接测试失败", reason);
       setTestResult({
         ok: false,
-        detail: message(reason, "连接测试失败，请稍后重试"),
+        detail: errorMessage(reason, "连接测试失败，请稍后重试"),
       });
     } finally {
       setTesting(false);

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { adminApi, ApiError, type AdminUser } from "../api";
+import { adminApi, errorMessage, type AdminUser } from "../api";
 import {
   Alert,
   Badge,
@@ -12,9 +12,6 @@ import {
   Tabs,
 } from "../components/ui";
 import LlmConfigSection from "../components/LlmConfigSection";
-
-const errorMessage = (reason: unknown, fallback: string) =>
-  reason instanceof ApiError ? reason.message : fallback;
 
 export default function Admin() {
   const [users, setUsers] = useState<AdminUser[]>([]);

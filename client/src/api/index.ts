@@ -1,5 +1,6 @@
 export {
   ApiError,
+  errorMessage,
   getAuthToken,
   getAuthUser,
   setAuthToken,

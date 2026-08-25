@@ -77,3 +77,11 @@ class TagSnapshotResponse(BaseModel):
 
 class TagSnapshotListResponse(BaseModel):
     items: list[TagSnapshotResponse]
+
+
+class ProjectTagSnapshotItem(TagSnapshotResponse):
+    tag_name: str
+
+
+class ProjectTagSnapshotListResponse(BaseModel):
+    items: list[ProjectTagSnapshotItem]

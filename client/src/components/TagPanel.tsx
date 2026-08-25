@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
-  ApiError,
+  errorMessage,
   filesApi,
   tagsApi,
   getAuthUser,
   subscribeAuth,
 } from "../api";
 import type { ProjectFile, Tag, TagSnapshot, TagTypeDto } from "../api";
+import { formatDateTime, shortHash } from "../utils/format";
 
 const tagTypes: Array<{ value: TagTypeDto; label: string }> = [
   { value: "demo", label: "演示" },
@@ -15,13 +16,6 @@ const tagTypes: Array<{ value: TagTypeDto; label: string }> = [
   { value: "audit", label: "审计" },
   { value: "custom", label: "自定义" },
 ];
-const errorMessage = (reason: unknown, fallback: string) =>
-  reason instanceof ApiError ? reason.message : fallback;
-const formatDate = (value: string) =>
-  new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 
 export default function TagPanel({ projectId }: { projectId: number }) {
   const currentUser = useSyncExternalStore(
@@ -162,7 +156,7 @@ function TagItem({ tag, files }: { tag: Tag; files: ProjectFile[] }) {
     setLoading(true);
     setError(null);
     try {
-      setSnapshots(await tagsApi.listTagSnapshots(tag.id));
+      setSnapshots(await tagsApi.listTagSnapshots(Number(tag.id)));
     } catch (reason) {
       console.error("标签快照加载失败", reason);
       setError(errorMessage(reason, "快照加载失败，请稍后重试"));
@@ -192,13 +186,13 @@ function TagItem({ tag, files }: { tag: Tag; files: ProjectFile[] }) {
         </span>
         <span>{tag.createdBy}</span>
         <span>{tag.note || "无备注"}</span>
-        <time>{formatDate(tag.createdAt)}</time>
+        <time>{formatDateTime(tag.createdAt)}</time>
         <b>{expanded ? "收起" : "展开"}</b>
       </button>
       {expanded && (
         <div className="snapshot-panel">
           <SnapshotForm
-            tagId={tag.id}
+            tagId={Number(tag.id)}
             files={files}
             onCreated={loadSnapshots}
           />
@@ -224,10 +218,10 @@ function TagItem({ tag, files }: { tag: Tag; files: ProjectFile[] }) {
                 <li key={item.id}>
                   <strong>{item.name}</strong>
                   <code title={item.fileVersion}>
-                    {item.fileVersion.slice(0, 8)}
+                    {shortHash(item.fileVersion)}
                   </code>
                   <span>{item.note || "无备注"}</span>
-                  <time>{formatDate(item.createdAt)}</time>
+                  <time>{formatDateTime(item.createdAt)}</time>
                 </li>
               ))}
             </ul>
@@ -322,7 +316,7 @@ function SnapshotForm({
         </option>
         {versions.map((item) => (
           <option key={item} value={item}>
-            {item.slice(0, 8)}
+            {shortHash(item)}
           </option>
         ))}
       </select>

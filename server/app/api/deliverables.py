@@ -15,6 +15,8 @@ from app.models.tracked_file import TrackedFile
 from app.models.user import User
 from app.schemas.deliverables import (
     CurrentVersionUpdate,
+    ProjectTagSnapshotItem,
+    ProjectTagSnapshotListResponse,
     TagCreate,
     TagListResponse,
     TagResponse,
@@ -195,5 +197,34 @@ async def list_tag_snapshots(tag_id: int, session: AsyncSession = Depends(get_se
         items=[
             TagSnapshotResponse.model_validate(row, from_attributes=True)
             for row in rows
+        ]
+    )
+
+
+# 项目级批量快照：资料中心一次拉取全部标签快照，避免按标签逐个请求。
+@router.get(
+    "/projects/{project_id}/tag-snapshots",
+    response_model=ProjectTagSnapshotListResponse,
+)
+async def list_project_tag_snapshots(project_id: int, session: AsyncSession = Depends(get_session), user: User = Depends(get_current_user)):
+    await require_project_role(session, project_id, user)
+    await DeliverableService.require_project(session, project_id)
+    rows = (
+        await session.execute(
+            select(TagSnapshot, Tag.name)
+            .join(Tag, Tag.id == TagSnapshot.tag_id)
+            .where(Tag.project_id == project_id)
+            .order_by(TagSnapshot.created_at.desc(), TagSnapshot.id.desc())
+        )
+    ).all()
+    return ProjectTagSnapshotListResponse(
+        items=[
+            ProjectTagSnapshotItem(
+                **TagSnapshotResponse.model_validate(
+                    snapshot, from_attributes=True
+                ).model_dump(),
+                tag_name=tag_name,
+            )
+            for snapshot, tag_name in rows
         ]
     )

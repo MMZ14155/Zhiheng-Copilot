@@ -49,6 +49,8 @@ class ProjectBase(BaseModel):
 
 class ProjectCreate(ProjectBase):
     code: str | None = Field(default=None, min_length=1, max_length=80)
+    # 传入续签来源项目时，在同一事务中创建项目并建立续签链接。
+    renewal_source_id: int | None = Field(default=None, gt=0)
 
 
 class ProjectUpdate(BaseModel):

@@ -35,7 +35,12 @@ from app.schemas.projects import (
     RelatedProjectSummary,
     RenewalChainResponse,
 )
-from app.schemas.risks import RiskConfig, RiskResponse
+from app.schemas.risks import (
+    ProjectRiskBatchItem,
+    ProjectRiskBatchResponse,
+    RiskConfig,
+    RiskResponse,
+)
 from app.services.collections import aggregate_collection_overview, load_collection_documents
 from app.services.deliverables import DeliverableService
 from app.services.risk_monitor import (
@@ -202,6 +207,15 @@ async def create_project(
         from app.api.errors import forbidden
         manager = await session.scalar(select(ProjectMember.id).where(ProjectMember.user_id == user.id, ProjectMember.role == "manager").limit(1))
         if manager is None: raise forbidden()
+    # 续签来源校验前置：源项目不存在或无权时直接失败，不产生孤儿项目。
+    if payload.renewal_source_id is not None:
+        source = await session.get(Project, payload.renewal_source_id)
+        if source is None:
+            raise not_found("续签来源项目不存在", code="PROJECT_NOT_FOUND")
+        if not user.is_admin:
+            from app.api.errors import forbidden
+            source_manager = await session.scalar(select(ProjectMember.id).where(ProjectMember.project_id == payload.renewal_source_id, ProjectMember.user_id == user.id, ProjectMember.role == "manager").limit(1))
+            if source_manager is None: raise forbidden()
     generated_code = payload.code is None
     attempts = PROJECT_CODE_CREATE_ATTEMPTS if generated_code else 1
     for attempt in range(attempts):
@@ -225,6 +239,10 @@ async def create_project(
             await session.flush()
             if not user.is_admin:
                 session.add(ProjectMember(project_id=project.id, user_id=user.id, role="manager"))
+            # 续签链接与项目创建同事务提交，任一失败整体回滚。
+            if payload.renewal_source_id is not None:
+                source_id, target_id = _canonical_pair(payload.renewal_source_id, project.id)
+                session.add(ProjectLink(source_project_id=source_id, target_project_id=target_id, link_type="renewal"))
             await session.commit()
             break
         except IntegrityError as exc:
@@ -235,6 +253,38 @@ async def create_project(
     await session.refresh(project)
     logger.info("created project id=%s code=%s", project.id, project.code)
     return _to_project_response(project)
+
+
+# 批量风险评估：一次请求返回当前用户可见全部项目的风险，避免首页/统计页 N+1 请求。
+# 注意必须注册在 "/projects/{project_id}" 之前，否则 "risks" 会被当作路径参数。
+@router.get("/projects/risks", response_model=ProjectRiskBatchResponse)
+async def list_project_risks(
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> ProjectRiskBatchResponse:
+    stmt = select(Project)
+    if not user.is_admin:
+        stmt = stmt.where(
+            Project.id.in_(
+                select(ProjectMember.project_id).where(ProjectMember.user_id == user.id)
+            )
+        )
+    projects = list((await session.execute(stmt)).scalars().all())
+    documents = await load_financial_documents(session, [p.id for p in projects])
+    items: list[ProjectRiskBatchItem] = []
+    for project in projects:
+        config = load_risk_config(project)
+        finance = aggregate_project_finance(documents.get(project.id, []))
+        risks = evaluate_project(
+            project, await _risk_deliverables(session, project.id), config, finance,
+        )
+        items.append(
+            ProjectRiskBatchItem(
+                project_id=project.id, level=aggregate_risk(risks), risks=risks,
+            )
+        )
+    logger.info("evaluated project risks in batch count=%s", len(items))
+    return ProjectRiskBatchResponse(items=items)
 
 
 @router.get("/projects/{project_id}", response_model=ProjectDetailResponse)

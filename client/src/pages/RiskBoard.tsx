@@ -9,6 +9,11 @@ import RiskFilter from "../components/RiskFilter";
 import type { RiskBoardFilter } from "../components/RiskFilter";
 import { PROJECT_TYPES, PROJECT_TYPE_LABELS } from "../constants/projectTypes";
 import {
+  RISK_TYPE_DELIVERY_DEADLINE,
+  RISK_TYPE_PAYMENT_DATA_INCOMPLETE,
+  RISK_TYPE_PAYMENT_OVERDUE,
+} from "../constants/risks";
+import {
   Alert,
   Button,
   Empty,
@@ -43,30 +48,25 @@ export default function RiskBoard() {
     setLoading(true);
     setError(null);
     try {
-      const projects = await projectsApi.listProjects({
-        page: 1,
-        size: 100,
-        projectType:
-          projectTypeFilter === "all" ? undefined : projectTypeFilter,
-      });
-      const riskResults = await Promise.allSettled(
-        projects.items.map((project) =>
-          projectsApi.getProjectRisks(project.id),
-        ),
-      );
+      const [projects, riskItems] = await Promise.all([
+        projectsApi.listProjects({
+          page: 1,
+          size: 100,
+          projectType:
+            projectTypeFilter === "all" ? undefined : projectTypeFilter,
+        }),
+        // 批量接口失败时降级为无风险数据，项目列表仍正常展示。
+        projectsApi.listProjectRisksBatch().catch((reason: unknown) => {
+          console.error("项目风险批量加载失败", reason);
+          return [];
+        }),
+      ]);
+      const riskMap = new Map(riskItems.map((item) => [item.projectId, item]));
       setData({
         ...projects,
-        items: projects.items.map((project, index) => {
-          const result = riskResults[index];
-          if (result.status === "rejected") {
-            console.error(`项目 ${project.id} 风险数据加载失败`, result.reason);
-            return { ...project, riskLevel: null };
-          }
-          return {
-            ...project,
-            riskLevel: result.value.level,
-            risks: result.value.risks,
-          };
+        items: projects.items.map((project) => {
+          const risk = riskMap.get(project.id);
+          return { ...project, riskLevel: risk?.level ?? null, risks: risk?.risks };
         }),
       });
     } catch (reason) {
@@ -96,21 +96,25 @@ export default function RiskBoard() {
           (project) =>
             project.riskLevel === "ok" &&
             !project.risks?.some(
-              (risk) => risk.type === "payment-data-incomplete",
+              (risk) => risk.type === RISK_TYPE_PAYMENT_DATA_INCOMPLETE,
             ),
         ).length ?? 0,
       delivery:
         data?.items.filter((project) =>
-          project.risks?.some((risk) => risk.type === "delivery-deadline"),
+          project.risks?.some(
+            (risk) => risk.type === RISK_TYPE_DELIVERY_DEADLINE,
+          ),
         ).length ?? 0,
       payment:
         data?.items.filter((project) =>
-          project.risks?.some((risk) => risk.type === "payment-overdue"),
+          project.risks?.some(
+            (risk) => risk.type === RISK_TYPE_PAYMENT_OVERDUE,
+          ),
         ).length ?? 0,
       incomplete:
         data?.items.filter((project) =>
           project.risks?.some(
-            (risk) => risk.type === "payment-data-incomplete",
+            (risk) => risk.type === RISK_TYPE_PAYMENT_DATA_INCOMPLETE,
           ),
         ).length ?? 0,
       total: data?.total ?? 0,
@@ -124,14 +128,15 @@ export default function RiskBoard() {
         project.risks?.some((risk) => risk.type === type) ?? false;
       const matchRisk =
         filter === "all" ||
-        (filter === "delivery" && hasRisk("delivery-deadline")) ||
-        (filter === "payment" && hasRisk("payment-overdue")) ||
-        (filter === "incomplete" && hasRisk("payment-data-incomplete")) ||
+        (filter === "delivery" && hasRisk(RISK_TYPE_DELIVERY_DEADLINE)) ||
+        (filter === "payment" && hasRisk(RISK_TYPE_PAYMENT_OVERDUE)) ||
+        (filter === "incomplete" &&
+          hasRisk(RISK_TYPE_PAYMENT_DATA_INCOMPLETE)) ||
         ((filter === "block" || filter === "warn") &&
           project.riskLevel === filter) ||
         (filter === "ok" &&
           project.riskLevel === "ok" &&
-          !hasRisk("payment-data-incomplete"));
+          !hasRisk(RISK_TYPE_PAYMENT_DATA_INCOMPLETE));
       const matchType =
         projectTypeFilter === "all" ||
         project.projectType === projectTypeFilter;

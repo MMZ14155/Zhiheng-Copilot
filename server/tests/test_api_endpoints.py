@@ -120,6 +120,11 @@ def test_deliverable_endpoints(fake_session, users, now, monkeypatch):
     fake_session.execute.return_value = Result([snap])
     assert len(asyncio.run(deliverables.list_tag_snapshots(7, fake_session, users.member)).items) == 1
 
+    # 项目级批量快照：一次返回全部标签的快照并携带 tag_name。
+    fake_session.execute.return_value = Result([(snap, "里程碑")])
+    batch = asyncio.run(deliverables.list_project_tag_snapshots(1, fake_session, users.member))
+    assert batch.items[0].tag_name == "里程碑" and batch.items[0].file_version == fv.version
+
 
 def test_ai_endpoints(fake_session, now, monkeypatch):
     project = Project(id=1)

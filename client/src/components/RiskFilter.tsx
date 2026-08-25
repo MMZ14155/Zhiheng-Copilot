@@ -1,4 +1,4 @@
-import type { RiskLevel } from "../types";
+import type { RiskLevel } from "../api";
 
 export type RiskBoardFilter =
   RiskLevel | "delivery" | "payment" | "incomplete" | "all";

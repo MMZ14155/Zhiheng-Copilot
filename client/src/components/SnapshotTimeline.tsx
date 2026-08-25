@@ -1,20 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, filesApi, snapshotsApi } from "../api";
+import { errorMessage, filesApi, snapshotsApi } from "../api";
 import type {
   SnapshotDetail,
   SnapshotRestoreResult,
   SnapshotSummary,
 } from "../api";
-import { Alert, Button, Empty, Skeleton } from "./ui";
+import { formatDateTime, shortHash } from "../utils/format";
+import { downloadBlob } from "../utils/download";
+import { Alert, Button, Empty, Modal, Skeleton } from "./ui";
 import "./SnapshotTimeline.css";
-
-const formatTime = (value: string) =>
-  new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
-const errorMessage = (reason: unknown, fallback: string) =>
-  reason instanceof ApiError ? reason.message : fallback;
 
 export default function SnapshotTimeline({
   projectId,
@@ -91,14 +85,7 @@ export default function SnapshotTimeline({
     setDownloadError(null);
     try {
       const { blob, filename } = await filesApi.downloadVersion(version);
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = objectUrl;
-      anchor.download = filename;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      URL.revokeObjectURL(objectUrl);
+      downloadBlob(blob, filename);
     } catch (reason) {
       console.error("快照版本下载失败", reason);
       setDownloadError(errorMessage(reason, "下载失败，请稍后重试"));
@@ -107,13 +94,12 @@ export default function SnapshotTimeline({
     }
   };
 
+  const [confirmTarget, setConfirmTarget] = useState<SnapshotSummary | null>(
+    null,
+  );
+
   const restore = async (snapshot: SnapshotSummary) => {
-    if (
-      !globalThis.confirm(
-        `确定恢复到快照 ${snapshot.hash.slice(0, 8)} 吗？此操作会生成新的恢复快照。`,
-      )
-    )
-      return;
+    setConfirmTarget(null);
     setRestoringHash(snapshot.hash);
     setRestoreError(null);
     setRestoreResult(null);
@@ -193,11 +179,11 @@ export default function SnapshotTimeline({
                 </div>
                 <div className="snapshot-meta">
                   <time dateTime={snapshot.createdAt}>
-                    {formatTime(snapshot.createdAt)}
+                    {formatDateTime(snapshot.createdAt)}
                   </time>
                   <span>{snapshot.author}</span>
                   <span>{snapshot.entryCount} 个文件</span>
-                  <code title={snapshot.hash}>{snapshot.hash.slice(0, 8)}</code>
+                  <code title={snapshot.hash}>{shortHash(snapshot.hash)}</code>
                   <Button
                     type="button"
                     variant="ghost"
@@ -209,7 +195,7 @@ export default function SnapshotTimeline({
                     <Button
                       type="button"
                       variant="primary"
-                      onClick={() => restore(snapshot)}
+                      onClick={() => setConfirmTarget(snapshot)}
                       disabled={restoringHash === snapshot.hash}
                     >
                       {restoringHash === snapshot.hash
@@ -249,10 +235,10 @@ export default function SnapshotTimeline({
                               <strong>{entry.path}</strong>
                               <span>{entry.uploader}</span>
                               <time dateTime={entry.uploadedAt}>
-                                {formatTime(entry.uploadedAt)}
+                                {formatDateTime(entry.uploadedAt)}
                               </time>
                               <code title={entry.version}>
-                                {entry.version.slice(0, 8)}
+                                {shortHash(entry.version)}
                               </code>
                               <Button
                                 type="button"
@@ -275,6 +261,35 @@ export default function SnapshotTimeline({
           );
         })}
       </ol>
+      {confirmTarget && (
+        <Modal
+          title="恢复快照"
+          onClose={() => setConfirmTarget(null)}
+          footer={
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setConfirmTarget(null)}
+              >
+                取消
+              </Button>
+              <Button
+                type="button"
+                variant="danger"
+                onClick={() => void restore(confirmTarget)}
+              >
+                确认恢复
+              </Button>
+            </>
+          }
+        >
+          <p>
+            确定恢复到快照 {shortHash(confirmTarget.hash)}
+            吗？此操作会生成新的恢复快照。
+          </p>
+        </Modal>
+      )}
     </div>
   );
 }

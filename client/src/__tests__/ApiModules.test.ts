@@ -17,8 +17,6 @@ import * as ai from "../api/ai";
 import * as statistics from "../api/statistics";
 import * as snapshots from "../api/snapshots";
 import * as admin from "../api/admin";
-import { projects as legacyProjects } from "../data/projects";
-import { docProjects } from "../data/docs";
 
 const response = (body: unknown, status = 200) =>
   ({
@@ -141,13 +139,6 @@ describe("API client", () => {
   });
 });
 
-describe("静态数据模块", () => {
-  it("导出项目与资料种子数据", () => {
-    expect(legacyProjects.length).toBeGreaterThan(0);
-    expect(docProjects.length).toBeGreaterThan(0);
-  });
-});
-
 describe("API domain modules", () => {
   beforeEach(() => vi.stubGlobal("fetch", vi.fn()));
   afterEach(() => vi.unstubAllGlobals());
@@ -260,7 +251,7 @@ describe("API domain modules", () => {
       () => projects.deleteProjectLink(4),
       () => projects.getRenewalChain(1),
     ]) {
-      next({});
+      next({ project_id: 1, depth_limit: 20, items: [] });
       await action();
     }
     expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual([
@@ -272,7 +263,7 @@ describe("API domain modules", () => {
     ]);
   });
 
-  it("createProjectWithRenewal 先创建项目再建立续签链接", async () => {
+  it("创建项目时续签来源随单请求提交", async () => {
     next({
       id: 7,
       name: "新",
@@ -291,24 +282,16 @@ describe("API domain modules", () => {
       updated_at: "y",
       links: null,
     });
-    next({
-      id: 3,
-      source_project_id: 5,
-      target_project_id: 7,
-      link_type: "renewal",
-      note: null,
-      created_at: "x",
+    await projects.createProject({
+      name: "新",
+      customer_name: "c",
+      renewal_source_id: 5,
     });
-    const result = await projects.createProjectWithRenewal(
-      { name: "新", customer_name: "c" },
-      5,
-    );
-    expect(result.project.id).toBe(7);
-    expect(result.link?.link_type).toBe("renewal");
-    expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual([
-      "/api/v1/projects",
-      "/api/v1/projects/5/links",
-    ]);
+    const [url, init] = vi.mocked(fetch).mock.calls[0];
+    expect(url).toBe("/api/v1/projects");
+    expect(JSON.parse(String(init?.body))).toMatchObject({
+      renewal_source_id: 5,
+    });
   });
 
   it("调用管理端点并映射用户与项目成员", async () => {

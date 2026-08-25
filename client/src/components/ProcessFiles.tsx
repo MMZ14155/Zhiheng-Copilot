@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useState } from "react";
-import { ApiError, filesApi } from "../api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { errorMessage, filesApi } from "../api";
 import type { ProjectFile } from "../api";
+import { formatDateTime, shortHash } from "../utils/format";
 
 const accept = ".pdf,.docx,.xlsx,.jpg,.jpeg,.png";
-const message = (reason: unknown, fallback: string) =>
-  reason instanceof ApiError ? reason.message : fallback;
 
 type PendingOperation =
   | {
@@ -18,18 +17,12 @@ type PendingOperation =
   | {
       id: string;
       op: "update";
-      fileId: number;
+      fileId: string;
       name: string;
       file: File;
       changelog: string;
     }
-  | { id: string; op: "remove"; fileId: number; name: string };
-
-const formatTime = (value: string) =>
-  new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  | { id: string; op: "remove"; fileId: string; name: string };
 
 export default function ProcessFiles({
   projectId,
@@ -59,7 +52,7 @@ export default function ProcessFiles({
       setItems(await filesApi.listProjectFiles(projectId));
     } catch (reason) {
       console.error("过程文件列表加载失败", reason);
-      setError(message(reason, "过程文件加载失败，请稍后重试"));
+      setError(errorMessage(reason, "过程文件加载失败，请稍后重试"));
     } finally {
       setLoading(false);
     }
@@ -93,7 +86,7 @@ export default function ProcessFiles({
   };
 
   const stageUpdate = (
-    fileId: number,
+    fileId: string,
     name: string,
     file: File,
     changelog: string,
@@ -109,7 +102,7 @@ export default function ProcessFiles({
     });
   };
 
-  const stageRemove = (fileId: number, name: string) => {
+  const stageRemove = (fileId: string, name: string) => {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     addPending({ id, op: "remove", fileId, name });
   };
@@ -132,11 +125,11 @@ export default function ProcessFiles({
         if (op.op === "update")
           return {
             op: "update" as const,
-            fileId: op.fileId,
+            fileId: Number(op.fileId),
             file: op.file,
             changelog: op.changelog || undefined,
           };
-        return { op: "remove" as const, fileId: op.fileId };
+        return { op: "remove" as const, fileId: Number(op.fileId) };
       });
       await filesApi.workspaceCommit(projectId, {
         message: commitMessage.trim(),
@@ -148,7 +141,7 @@ export default function ProcessFiles({
       await onChanged();
     } catch (reason) {
       console.error("工作区提交失败", reason);
-      setCommitError(message(reason, "提交失败，请稍后重试"));
+      setCommitError(errorMessage(reason, "提交失败，请稍后重试"));
     } finally {
       setCommitting(false);
     }
@@ -245,7 +238,7 @@ export default function ProcessFiles({
                       <strong>{item.name}</strong>
                       {item.latestVersion && (
                         <code title={item.latestVersion.version}>
-                          {item.latestVersion.version.slice(0, 8)}
+                          {shortHash(item.latestVersion.version)}
                         </code>
                       )}
                       {item.isDeliverable && (
@@ -259,7 +252,7 @@ export default function ProcessFiles({
                       <div className="process-file-meta">
                         <span>{item.latestVersion.parseStatus}</span>
                         <time dateTime={item.latestVersion.uploadedAt}>
-                          {formatTime(item.latestVersion.uploadedAt)}
+                          {formatDateTime(item.latestVersion.uploadedAt)}
                         </time>
                       </div>
                     )}
@@ -400,15 +393,13 @@ function ReplaceButton({
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [changelog, setChangelog] = useState("");
-  const inputRef = { current: null as HTMLInputElement | null };
+  const inputRef = useRef<HTMLInputElement | null>(null);
   return (
     <div className="process-replace-inline">
       <input
         type="file"
         accept={accept}
-        ref={(el) => {
-          inputRef.current = el;
-        }}
+        ref={inputRef}
         onChange={(e) => {
           const f = e.target.files?.[0] ?? null;
           setFile(f);

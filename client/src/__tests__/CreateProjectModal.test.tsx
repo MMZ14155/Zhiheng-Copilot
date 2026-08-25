@@ -28,7 +28,6 @@ vi.mock("../api", async (original) => {
       ...actual.projectsApi,
       listProjects: vi.fn(),
       createProject: vi.fn(),
-      createProjectWithRenewal: vi.fn(),
     },
   };
 });
@@ -164,7 +163,7 @@ describe("CreateProjectModal AI 合同分析模式", () => {
     expect("code" in body).toBe(false);
   });
 
-  it("选择续签来源后使用 createProjectWithRenewal 提交", async () => {
+  it("选择续签来源后随创建请求提交 renewal_source_id", async () => {
     vi.mocked(projectsApi.listProjects).mockResolvedValue({
       page: 1,
       size: 1000,
@@ -185,10 +184,9 @@ describe("CreateProjectModal AI 合同分析模式", () => {
         },
       ],
     });
-    vi.mocked(projectsApi.createProjectWithRenewal).mockResolvedValueOnce({
-      project: { id: 9 } as never,
-      link: { id: 2 } as never,
-    });
+    vi.mocked(projectsApi.createProject).mockResolvedValueOnce({
+      id: 9,
+    } as never);
     const onCreated = vi.fn();
     render(<CreateProjectModal onClose={() => {}} onCreated={onCreated} />);
     await waitFor(() =>
@@ -201,11 +199,11 @@ describe("CreateProjectModal AI 合同分析模式", () => {
     await userEvent.type(fieldInput("客户名称"), "客户B");
     await userEvent.click(screen.getByRole("button", { name: "创建项目" }));
     await waitFor(() =>
-      expect(projectsApi.createProjectWithRenewal).toHaveBeenCalledTimes(1),
+      expect(projectsApi.createProject).toHaveBeenCalledTimes(1),
     );
     expect(
-      vi.mocked(projectsApi.createProjectWithRenewal).mock.calls[0][1],
+      vi.mocked(projectsApi.createProject).mock.calls[0][0]
+        .renewal_source_id,
     ).toBe(5);
-    expect(vi.mocked(projectsApi.createProject)).not.toHaveBeenCalled();
   });
 });

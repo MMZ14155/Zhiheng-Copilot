@@ -26,15 +26,16 @@ import "./pages/ProjectDetail.css";
 import "./pages/ResourceCenterPage.css";
 import "./pages/Statistics.css";
 import "./pages/Admin.css";
+import { ROUTES } from "./constants/routes";
 
 function Layout({ isAdmin }: { isAdmin: boolean }) {
   const location = useLocation();
 
   const subtitleMap: Record<string, string> = {
-    "/risk-board": "项目风险与经营分析助手 · 项目经理副驾驶",
-    "/resource-center": "项目资料中心 · 统一资料结构",
-    "/statistics": "统计看板 · 项目经营概览",
-    "/admin": "系统管理 · 账号与 AI 配置",
+    [ROUTES.riskBoard]: "项目风险与经营分析助手 · 项目经理副驾驶",
+    [ROUTES.resourceCenter]: "项目资料中心 · 统一资料结构",
+    [ROUTES.statistics]: "统计看板 · 项目经营概览",
+    [ROUTES.admin]: "系统管理 · 账号与 AI 配置",
   };
 
   const subtitle = subtitleMap[location.pathname] ?? "项目风险与经营分析助手";
@@ -44,17 +45,17 @@ function Layout({ isAdmin }: { isAdmin: boolean }) {
       <Header subtitle={subtitle} />
       <main className="app-main">
         <Routes>
-          <Route path="/risk-board" element={<RiskBoard />} />
+          <Route path={ROUTES.riskBoard} element={<RiskBoard />} />
           <Route path="/projects/:id" element={<ProjectDetail />} />
-          <Route path="/resource-center" element={<ResourceCenterPage />} />
-          <Route path="/statistics" element={<Statistics />} />
+          <Route path={ROUTES.resourceCenter} element={<ResourceCenterPage />} />
+          <Route path={ROUTES.statistics} element={<Statistics />} />
           <Route
-            path="/admin"
+            path={ROUTES.admin}
             element={
-              isAdmin ? <Admin /> : <Navigate to="/risk-board" replace />
+              isAdmin ? <Admin /> : <Navigate to={ROUTES.riskBoard} replace />
             }
           />
-          <Route path="*" element={<Navigate to="/risk-board" replace />} />
+          <Route path="*" element={<Navigate to={ROUTES.riskBoard} replace />} />
         </Routes>
       </main>
     </div>
@@ -88,8 +89,8 @@ export default function App() {
   if (!token) {
     return (
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        <Route path={ROUTES.login} element={<Login />} />
+        <Route path="*" element={<Navigate to={ROUTES.login} replace />} />
       </Routes>
     );
   }

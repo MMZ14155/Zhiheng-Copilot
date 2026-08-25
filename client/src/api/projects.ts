@@ -4,6 +4,8 @@ import {
   mapProjectDetail,
   mapProjectList,
   mapProjectRisks,
+  mapProjectRiskBatchItem,
+  mapRenewalChain,
 } from "./mappers";
 import type {
   CollectionOverviewDto,
@@ -12,6 +14,7 @@ import type {
   ProjectLinkResponseDto,
   ProjectListResponseDto,
   ProjectResponseDto,
+  ProjectRiskBatchResponseDto,
   ProjectRisksResponseDto,
   ProjectUpdateDto,
   ProjectWriteDto,
@@ -26,10 +29,6 @@ export interface ProjectListParams {
   projectType?: string;
   clientName?: string;
   expand?: "links";
-}
-export interface CreateProjectWithRenewalResult {
-  project: ProjectResponseDto;
-  link: ProjectLinkResponseDto | null;
 }
 
 export async function listProjects(params: ProjectListParams = {}) {
@@ -48,18 +47,6 @@ export async function listProjects(params: ProjectListParams = {}) {
 }
 export const createProject = (body: ProjectWriteDto) =>
   jsonRequest<ProjectResponseDto>("/projects", { method: "POST", body });
-export async function createProjectWithRenewal(
-  body: ProjectWriteDto,
-  renewalSourceId?: number | null,
-): Promise<CreateProjectWithRenewalResult> {
-  const project = await createProject(body);
-  if (!renewalSourceId) return { project, link: null };
-  const link = await createProjectLink(renewalSourceId, {
-    target_project_id: project.id,
-    link_type: "renewal",
-  });
-  return { project, link };
-}
 export const getProject = async (id: number) =>
   mapProjectDetail(
     await jsonRequest<ProjectDetailResponseDto>(`/projects/${id}`),
@@ -67,6 +54,11 @@ export const getProject = async (id: number) =>
 export const getProjectRisks = async (id: number | string) =>
   mapProjectRisks(
     await jsonRequest<ProjectRisksResponseDto>(`/projects/${id}/risks`),
+  );
+// 批量风险：首页与统计看板使用，避免逐项目请求（N+1）。
+export const listProjectRisksBatch = async () =>
+  (await jsonRequest<ProjectRiskBatchResponseDto>("/projects/risks")).items.map(
+    mapProjectRiskBatchItem,
   );
 export const getCollectionOverview = async (id: number | string) =>
   mapCollectionOverview(
@@ -83,5 +75,7 @@ export const createProjectLink = (id: number, body: ProjectLinkCreateDto) =>
   });
 export const deleteProjectLink = (id: number) =>
   jsonRequest<void>(`/links/${id}`, { method: "DELETE" });
-export const getRenewalChain = (id: number) =>
-  jsonRequest<RenewalChainResponseDto>(`/projects/${id}/renewal-chain`);
+export const getRenewalChain = async (id: number) =>
+  mapRenewalChain(
+    await jsonRequest<RenewalChainResponseDto>(`/projects/${id}/renewal-chain`),
+  );

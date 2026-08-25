@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, projectsApi, statisticsApi } from "../api";
+import { formatMoney } from "../utils/format";
+import { RISK_TYPE_DELIVERY_DEADLINE } from "../constants/risks";
+import { ROUTES } from "../constants/routes";
 import type {
   AverageMetric,
   ProjectListItem,
@@ -39,10 +42,6 @@ function MetricValue({
 
 const tableMetric = (metric: AverageMetric, percent = false) =>
   metric.value === null ? "-" : `${metric.value}${percent ? "%" : ""}`;
-const money = new Intl.NumberFormat("zh-CN", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
 const deadlineLabels: Record<string, string> = {
   overdue: "已逾期",
   due_soon: "未来 30 天",
@@ -64,40 +63,47 @@ export default function Statistics() {
     setError(null);
     setDeadlineError(null);
     try {
-      const [overviewResult, projectsResult] = await Promise.allSettled([
-        statisticsApi.getStatisticsOverview(),
-        projectsApi.listProjects({ page: 1, size: 100 }),
-      ]);
+      const [overviewResult, projectsResult, risksResult] =
+        await Promise.allSettled([
+          statisticsApi.getStatisticsOverview(),
+          projectsApi.listProjects({ page: 1, size: 100 }),
+          projectsApi.listProjectRisksBatch(),
+        ]);
       if (overviewResult.status === "rejected") throw overviewResult.reason;
       const overview = overviewResult.value;
       setData(overview);
-      if (projectsResult.status === "rejected") {
-        console.error("到期项目清单加载失败", projectsResult.reason);
+      if (
+        projectsResult.status === "rejected" ||
+        risksResult.status === "rejected"
+      ) {
+        const failure =
+          projectsResult.status === "rejected"
+            ? projectsResult.reason
+            : risksResult.status === "rejected"
+              ? risksResult.reason
+              : null;
+        console.error("到期项目清单加载失败", failure);
         setDeadlineProjects([]);
         setDeadlineError(
-          projectsResult.reason instanceof ApiError
-            ? projectsResult.reason.message
+          failure instanceof ApiError
+            ? failure.message
             : "到期项目清单加载失败，请稍后刷新",
         );
         return;
       }
       const projects = projectsResult.value;
-      const riskResults = await Promise.allSettled(
-        projects.items.map((project) =>
-          projectsApi.getProjectRisks(project.id),
-        ),
+      const riskMap = new Map(
+        risksResult.value.map((item) => [item.projectId, item.risks]),
       );
       setDeadlineProjects(
-        projects.items.flatMap((project, index) => {
-          const result = riskResults[index];
-          if (result.status === "rejected") {
-            console.error(`项目 ${project.id} 到期数据加载失败`, result.reason);
-            return [];
-          }
-          const deadline = result.value.risks.find(
-            (risk) =>
-              risk.type === "delivery-deadline" && risk.level === "warn",
-          );
+        projects.items.flatMap((project) => {
+          const deadline = riskMap
+            .get(project.id)
+            ?.find(
+              (risk) =>
+                risk.type === RISK_TYPE_DELIVERY_DEADLINE &&
+                risk.level === "warn",
+            );
           return deadline ? [{ ...project, risks: [deadline] }] : [];
         }),
       );
@@ -178,7 +184,7 @@ export default function Statistics() {
               <div className="stats-label">回款逾期</div>
               <div className="stats-value">
                 {data.payment.overdueAmount > 0
-                  ? `¥${money.format(data.payment.overdueAmount)}`
+                  ? `¥${formatMoney(data.payment.overdueAmount)}`
                   : "0"}
               </div>
             </div>
@@ -226,29 +232,29 @@ export default function Statistics() {
             <div className="stats-card">
               <div className="stats-label">合同金额</div>
               <div className="stats-value money-value">
-                ¥ {money.format(data.payment.contractAmount)}
+                ¥ {formatMoney(data.payment.contractAmount)}
               </div>
             </div>
             <div className="stats-card">
               <div className="stats-label">应收金额</div>
               <div className="stats-value money-value">
-                ¥ {money.format(data.payment.receivableAmount)}
+                ¥ {formatMoney(data.payment.receivableAmount)}
               </div>
             </div>
             <div className="stats-card ok">
               <div className="stats-label">已收金额</div>
               <div className="stats-value money-value">
-                ¥ {money.format(data.payment.receivedAmount)}
+                ¥ {formatMoney(data.payment.receivedAmount)}
               </div>
             </div>
             <button
               type="button"
               className="stats-card block drilldown-card"
-              onClick={() => navigate("/risk-board?filter=payment")}
+              onClick={() => navigate(`${ROUTES.riskBoard}?filter=payment`)}
             >
               <span className="stats-label">逾期金额</span>
               <span className="stats-value money-value">
-                ¥ {money.format(data.payment.overdueAmount)}
+                ¥ {formatMoney(data.payment.overdueAmount)}
               </span>
             </button>
             <div className="stats-card">
@@ -306,7 +312,7 @@ export default function Statistics() {
                     }
                     onClick={() =>
                       (key === "overdue" || key === "due_soon") &&
-                      navigate("/risk-board?filter=delivery")
+                      navigate(`${ROUTES.riskBoard}?filter=delivery`)
                     }
                   >
                     <span>{deadlineLabels[key] ?? key}</span>
@@ -329,7 +335,7 @@ export default function Statistics() {
                     <li key={project.id}>
                       <button
                         type="button"
-                        onClick={() => navigate(`/projects/${project.id}`)}
+                        onClick={() => navigate(ROUTES.project(project.id))}
                       >
                         <span>{project.name}</span>
                         <strong>

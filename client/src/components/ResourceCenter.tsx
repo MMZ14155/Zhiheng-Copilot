@@ -1,12 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { aiApi, ApiError, filesApi, projectsApi, tagsApi } from "../api";
-import type { ProjectFile, ProjectListItem, TagSnapshot } from "../api/models";
+import { aiApi, ApiError, errorMessage, filesApi, projectsApi, tagsApi } from "../api";
+import type {
+  ProjectFile,
+  ProjectListItem,
+  ProjectTagSnapshot,
+} from "../api/models";
+import { formatDateTime, shortHash } from "../utils/format";
+import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
+import { ROUTES } from "../constants/routes";
 
-type SnapshotRow = TagSnapshot & { tagName: string };
 type DetailState = {
   files: ProjectFile[];
-  snapshots: SnapshotRow[];
+  snapshots: ProjectTagSnapshot[];
   summary: string | null;
   filesError: string | null;
   snapshotsError: string | null;
@@ -21,25 +27,12 @@ const emptyDetail: DetailState = {
   snapshotsError: null,
   summaryError: null,
 };
-const errorMessage = (reason: unknown, fallback: string) =>
-  reason instanceof ApiError ? reason.message : fallback;
-const shortHash = (value: string) => value.slice(0, 8);
-const formatTime = (value: string) =>
-  new Intl.DateTimeFormat("zh-CN", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 const statusLabels: Record<string, string> = {
   pending: "待解析",
   processing: "解析中",
   parsed: "已解析",
   completed: "已解析",
   failed: "解析失败",
-};
-const projectStatusLabels: Record<ProjectListItem["status"], string> = {
-  active: "进行中",
-  archived: "已归档",
-  completed: "已完成",
 };
 
 export default function ResourceCenter() {
@@ -75,11 +68,13 @@ export default function ResourceCenter() {
     const currentRequest = ++requestId.current;
     setDetailLoading(true);
     setDetail(emptyDetail);
-    const [fileResult, tagResult, summaryResult] = await Promise.allSettled([
-      filesApi.listProjectFiles(Number(projectId)),
-      tagsApi.listTags(Number(projectId)),
-      aiApi.getLatestSummary(Number(projectId)),
-    ]);
+    const [fileResult, snapshotResult, summaryResult] = await Promise.allSettled(
+      [
+        filesApi.listProjectFiles(Number(projectId)),
+        tagsApi.listProjectTagSnapshots(Number(projectId)),
+        aiApi.getLatestSummary(Number(projectId)),
+      ],
+    );
     if (currentRequest !== requestId.current) return;
     let files: ProjectFile[] = [];
     let filesError: string | null = null;
@@ -91,35 +86,14 @@ export default function ResourceCenter() {
         "资料清单加载失败，请稍后重试",
       );
     }
-    let snapshots: SnapshotRow[] = [];
+    let snapshots: ProjectTagSnapshot[] = [];
     let snapshotsError: string | null = null;
-    if (tagResult.status === "fulfilled") {
-      const results = await Promise.allSettled(
-        tagResult.value.map(async (tag) =>
-          (await tagsApi.listTagSnapshots(tag.id)).map((snapshot) => ({
-            ...snapshot,
-            tagName: tag.name,
-          })),
-        ),
-      );
-      if (currentRequest !== requestId.current) return;
-      const rejected = results.find((result) => result.status === "rejected");
-      if (rejected?.status === "rejected") {
-        console.error("部分版本快照加载失败", rejected.reason);
-        snapshotsError = errorMessage(
-          rejected.reason,
-          "版本快照加载失败，请稍后重试",
-        );
-      } else
-        snapshots = results
-          .flatMap((result) =>
-            result.status === "fulfilled" ? result.value : [],
-          )
-          .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
+    if (snapshotResult.status === "fulfilled") {
+      snapshots = snapshotResult.value;
     } else {
-      console.error("标签列表加载失败", tagResult.reason);
+      console.error("版本快照加载失败", snapshotResult.reason);
       snapshotsError = errorMessage(
-        tagResult.reason,
+        snapshotResult.reason,
         "版本快照加载失败，请稍后重试",
       );
     }
@@ -162,9 +136,7 @@ export default function ResourceCenter() {
   }, [loadDetail, selectedId]);
 
   const selected = projects.find((project) => project.id === selectedId);
-  const fileNames = new Map(
-    detail.files.map((file) => [Number(file.id), file.name]),
-  );
+  const fileNames = new Map(detail.files.map((file) => [file.id, file.name]));
   const retry = () => {
     if (selectedId) void loadDetail(selectedId);
   };
@@ -205,7 +177,7 @@ export default function ResourceCenter() {
               <span>
                 <span className="project-name">{project.name}</span>
                 <span className="project-meta">
-                  {project.code} · {projectStatusLabels[project.status]}
+                  {project.code} · {PROJECT_STATUS_LABELS[project.status]}
                 </span>
               </span>
             </button>
@@ -221,7 +193,7 @@ export default function ResourceCenter() {
               <div>
                 <div className="resource-main-title">{selected.name}</div>
                 <div className="resource-main-subtitle">
-                  {selected.code} · {projectStatusLabels[selected.status]}
+                  {selected.code} · {PROJECT_STATUS_LABELS[selected.status]}
                 </div>
               </div>
             </div>
@@ -236,7 +208,7 @@ export default function ResourceCenter() {
                   <button
                     type="button"
                     className="primary-action"
-                    onClick={() => navigate(`/projects/${selected.id}`)}
+                    onClick={() => navigate(ROUTES.project(selected.id))}
                   >
                     上传过程文件
                   </button>
@@ -297,12 +269,13 @@ export default function ResourceCenter() {
                         className="timeline-item"
                       >
                         <div className="timeline-time">
-                          {formatTime(snapshot.createdAt)}
+                          {formatDateTime(snapshot.createdAt)}
                         </div>
                         <div className="timeline-title">
                           {snapshot.tagName} ·{" "}
-                          {fileNames.get(Number(snapshot.sourceFileId)) ??
-                            snapshot.name}
+                          {(snapshot.sourceFileId !== null
+                            ? fileNames.get(snapshot.sourceFileId)
+                            : undefined) ?? snapshot.name}
                         </div>
                         <div className="timeline-desc">
                           版本{" "}

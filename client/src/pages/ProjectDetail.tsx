@@ -11,7 +11,7 @@ import type {
   CollectionOverview,
   ProjectDetail as ProjectDetailModel,
   ProjectRisks,
-  RenewalChainResponseDto,
+  RenewalChain,
 } from "../api";
 import VersionHistory from "../components/VersionHistory";
 import ProcessFiles from "../components/ProcessFiles";
@@ -20,18 +20,11 @@ import SnapshotTimeline from "../components/SnapshotTimeline";
 import ProjectMembersSection from "../components/ProjectMembersSection";
 import { useTaskPolling } from "../hooks/useTaskPolling";
 import { PROJECT_TYPE_COLORS } from "../constants/projectTypes";
+import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
+import { RISK_TYPE_DELIVERY_DEADLINE, RISK_TYPE_PAYMENT_OVERDUE } from "../constants/risks";
+import { ROUTES } from "../constants/routes";
+import { formatMoney, formatPercentValue } from "../utils/format";
 import { Alert, Skeleton, Tabs } from "../components/ui";
-
-const statusLabels: Record<ProjectDetailModel["status"], string> = {
-  active: "进行中",
-  archived: "已归档",
-  completed: "已完成",
-};
-const money = new Intl.NumberFormat("zh-CN", {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-});
-const percentage = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 2 });
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -54,8 +47,7 @@ export default function ProjectDetail() {
   const [questionsLoading, setQuestionsLoading] = useState(false);
   const [questionsError, setQuestionsError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("overview");
-  const [renewalChain, setRenewalChain] =
-    useState<RenewalChainResponseDto | null>(null);
+  const [renewalChain, setRenewalChain] = useState<RenewalChain | null>(null);
   const [renewalChainLoading, setRenewalChainLoading] = useState(false);
   const [renewalChainError, setRenewalChainError] = useState<string | null>(
     null,
@@ -184,10 +176,10 @@ export default function ProjectDetail() {
   if (!project)
     return <div className="page-container detail-state">暂无项目详情</div>;
   const deadlineRisk = projectRisks?.risks.find(
-    (risk) => risk.type === "delivery-deadline",
+    (risk) => risk.type === RISK_TYPE_DELIVERY_DEADLINE,
   );
   const paymentRisk = projectRisks?.risks.find(
-    (risk) => risk.type === "payment-overdue",
+    (risk) => risk.type === RISK_TYPE_PAYMENT_OVERDUE,
   );
   const remainingDays = deadlineRisk?.remainingDays;
 
@@ -196,7 +188,7 @@ export default function ProjectDetail() {
       <div className="detail-header">
         <div>
           <div className="breadcrumbs">
-            <Link to="/risk-board">项目首页</Link>
+            <Link to={ROUTES.riskBoard}>项目首页</Link>
             <span>/</span>
             <span>项目详情</span>
           </div>
@@ -233,13 +225,16 @@ export default function ProjectDetail() {
                       : undefined
                   }
                 />
-                <Info label="状态" value={statusLabels[project.status]} />
+                <Info
+                  label="状态"
+                  value={PROJECT_STATUS_LABELS[project.status]}
+                />
                 <Info
                   label="合同金额"
                   value={
                     project.contractAmount === null
                       ? null
-                      : `${money.format(project.contractAmount)} 元`
+                      : `${formatMoney(project.contractAmount)} 元`
                   }
                 />
                 <Info label="签约日期" value={project.signedDate} />
@@ -276,7 +271,7 @@ export default function ProjectDetail() {
             {paymentRisk && (
               <Alert>
                 回款已逾期 {paymentRisk.overdueDays ?? 0} 天，逾期金额{" "}
-                {money.format(paymentRisk.overdueAmount ?? 0)} 元
+                {formatMoney(paymentRisk.overdueAmount ?? 0)} 元
               </Alert>
             )}
             {project.parties.length > 0 && (
@@ -382,10 +377,11 @@ export default function ProjectDetail() {
                     {renewalChain.items.map((item, index) => (
                       <li key={item.id}>
                         <span className="renewal-index">{index + 1}</span>
-                        <Link to={`/projects/${item.id}`}>{item.name}</Link>
+                        <Link to={ROUTES.project(item.id)}>{item.name}</Link>
                         <span className="renewal-meta">
-                          {item.customer_name} · {statusLabels[item.status]} ·{" "}
-                          {item.signed_date ?? "未签约"}
+                          {item.customerName} ·{" "}
+                          {PROJECT_STATUS_LABELS[item.status]} ·{" "}
+                          {item.signedDate ?? "未签约"}
                         </span>
                       </li>
                     ))}
@@ -620,7 +616,7 @@ function PaymentOverview({
     ),
   );
   const formatAmount = (amount: number | null) =>
-    amount === null ? "—" : `${money.format(amount)} 元`;
+    amount === null ? "—" : `${formatMoney(amount)} 元`;
 
   return (
     <div className="payment-progress-panel">
@@ -629,13 +625,13 @@ function PaymentOverview({
         <strong>
           {overview.dataStatus === "incomplete"
             ? "数据不完整"
-            : `${percentage.format(collectionPercent)}%`}
+            : `${formatPercentValue(collectionPercent)}%`}
         </strong>
       </div>
       <div
         className="detail-progress-track payment-track"
         role="progressbar"
-        aria-label={`回款进度 ${percentage.format(collectionPercent)}%`}
+        aria-label={`回款进度 ${formatPercentValue(collectionPercent)}%`}
         aria-valuenow={collectionPercent}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -662,7 +658,7 @@ function PaymentOverview({
       </div>
       {overview.overdueAmount !== null && overview.overdueAmount > 0 && (
         <Alert tone="danger">
-          逾期金额 {money.format(overview.overdueAmount)} 元，请尽快跟进回款
+          逾期金额 {formatMoney(overview.overdueAmount)} 元，请尽快跟进回款
         </Alert>
       )}
       {overview.dataStatus === "incomplete" &&
@@ -677,7 +673,7 @@ function ProjectNotFound() {
   return (
     <div className="page-container detail-state">
       <h2 className="page-title">项目不存在</h2>
-      <Link to="/risk-board">返回项目列表</Link>
+      <Link to={ROUTES.riskBoard}>返回项目列表</Link>
     </div>
   );
 }

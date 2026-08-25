@@ -54,6 +54,11 @@ export interface ProjectRisks {
   level: RiskLevel;
   risks: ProjectRisk[];
 }
+export interface ProjectRiskBatchItem {
+  projectId: string;
+  level: RiskLevel;
+  risks: ProjectRisk[];
+}
 export interface CollectionOverview {
   contractAmount: number | null;
   receivableAmount: number | null;
@@ -129,6 +134,11 @@ export interface ProjectList {
   total: number;
   items: ProjectListItem[];
 }
+export interface RenewalChain {
+  projectId: string;
+  depthLimit: number;
+  items: ProjectListItem[];
+}
 export interface ProjectParty {
   role: string;
   name: string;
@@ -165,7 +175,7 @@ export interface FileVersion {
   uploadedAt: string;
 }
 export interface ProjectFile {
-  id: number;
+  id: string;
   name: string;
   isDeliverable: boolean;
   createdAt: string;
@@ -179,7 +189,7 @@ export interface ProjectFile {
   } | null;
 }
 export interface Tag {
-  id: number;
+  id: string;
   name: string;
   type: "demo" | "report" | "meeting" | "audit" | "custom";
   createdBy: string;
@@ -187,12 +197,15 @@ export interface Tag {
   createdAt: string;
 }
 export interface TagSnapshot {
-  id: number;
-  sourceFileId: number | null;
+  id: string;
+  sourceFileId: string | null;
   fileVersion: string;
   name: string;
   note: string | null;
   createdAt: string;
+}
+export interface ProjectTagSnapshot extends TagSnapshot {
+  tagName: string;
 }
 export interface SnapshotSummary {
   hash: string;

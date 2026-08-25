@@ -3,14 +3,21 @@ import type {
   CollectionOverviewDto,
   ProjectDetailResponseDto,
   ProjectDraftOutputDto,
+  ProjectFileResponseDto,
   ProjectListResponseDto,
   ProjectResponseDto,
+  ProjectRiskBatchItemDto,
+  ProjectRiskDto,
   ProjectRisksResponseDto,
+  RenewalChainResponseDto,
   SnapshotDetailResponseDto,
   SnapshotRestoreResponseDto,
   SnapshotSummaryDto,
   SnapshotTimelineResponseDto,
   StatisticsOverviewResponseDto,
+  TagResponseDto,
+  TagSnapshotResponseDto,
+  ProjectTagSnapshotItemDto,
   TrackedFileResponseDto,
 } from "./dto";
 import type {
@@ -18,14 +25,20 @@ import type {
   CollectionOverview,
   ProjectDetail,
   ProjectDraft,
+  ProjectFile,
   ProjectList,
   ProjectListItem,
+  ProjectRiskBatchItem,
   ProjectRisks,
+  RenewalChain,
   SnapshotDetail,
   SnapshotRestoreResult,
   SnapshotSummary,
   SnapshotTimeline,
   StatisticsOverview,
+  Tag,
+  TagSnapshot,
+  ProjectTagSnapshot,
   TrackedFile,
 } from "./models";
 
@@ -48,20 +61,75 @@ export const mapProjectList = (dto: ProjectListResponseDto): ProjectList => ({
   total: dto.total,
   items: dto.items.map(mapProject),
 });
+export const mapRenewalChain = (
+  dto: RenewalChainResponseDto,
+): RenewalChain => ({
+  projectId: String(dto.project_id),
+  depthLimit: dto.depth_limit,
+  items: dto.items.map(mapProject),
+});
+export const mapProjectFile = (dto: ProjectFileResponseDto): ProjectFile => ({
+  id: String(dto.id),
+  name: dto.name,
+  isDeliverable: dto.is_deliverable,
+  createdAt: dto.created_at,
+  updatedAt: dto.updated_at,
+  latestVersion:
+    dto.latest_version === null
+      ? null
+      : {
+          version: dto.latest_version.version,
+          documentType: dto.latest_version.document_type,
+          parseStatus: dto.latest_version.parse_status,
+          sizeBytes: dto.latest_version.size_bytes,
+          uploadedAt: dto.latest_version.uploaded_at,
+        },
+});
+export const mapTag = (dto: TagResponseDto): Tag => ({
+  id: String(dto.id),
+  name: dto.name,
+  type: dto.type,
+  createdBy: dto.created_by,
+  note: dto.note,
+  createdAt: dto.created_at,
+});
+export const mapTagSnapshot = (dto: TagSnapshotResponseDto): TagSnapshot => ({
+  id: String(dto.id),
+  sourceFileId:
+    dto.source_file_id === null ? null : String(dto.source_file_id),
+  fileVersion: dto.file_version,
+  name: dto.name,
+  note: dto.note,
+  createdAt: dto.created_at,
+});
+export const mapProjectTagSnapshot = (
+  dto: ProjectTagSnapshotItemDto,
+): ProjectTagSnapshot => ({
+  ...mapTagSnapshot(dto),
+  tagName: dto.tag_name,
+});
+const mapRiskItem = (risk: ProjectRiskDto) => ({
+  type: risk.type,
+  level: risk.level,
+  reason: risk.reason,
+  recommendation: risk.recommendation,
+  remainingDays: risk.remaining_days,
+  overdueDays: risk.overdue_days,
+  overdueAmount: risk.overdue_amount,
+  dataStatus: risk.data_status,
+});
 export const mapProjectRisks = (
   dto: ProjectRisksResponseDto,
 ): ProjectRisks => ({
   level: dto.level,
-  risks: dto.risks.map((risk) => ({
-    type: risk.type,
-    level: risk.level,
-    reason: risk.reason,
-    recommendation: risk.recommendation,
-    remainingDays: risk.remaining_days,
-    overdueDays: risk.overdue_days,
-    overdueAmount: risk.overdue_amount,
-    dataStatus: risk.data_status,
-  })),
+  risks: dto.risks.map(mapRiskItem),
+});
+export const mapProjectRiskBatchItem = (
+  dto: ProjectRiskBatchItemDto,
+): ProjectRiskBatchItem => ({
+  projectId: String(dto.project_id),
+  level: dto.level,
+  risks: dto.risks.map(mapRiskItem),
 });
 const nullableNumber = (value: string | null) =>
   value === null ? null : Number(value);

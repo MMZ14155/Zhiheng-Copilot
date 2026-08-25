@@ -382,7 +382,7 @@ describe("核心组件", () => {
   it("TagPanel 展开标签并创建快照", async () => {
     vi.mocked(tagsApi.listTags).mockResolvedValue([
       {
-        id: 1,
+        id: "1",
         name: "里程碑",
         type: "report",
         createdBy: "U",
@@ -392,7 +392,7 @@ describe("核心组件", () => {
     ]);
     vi.mocked(filesApi.listProjectFiles).mockResolvedValue([
       {
-        id: 3,
+        id: "3",
         name: "合同",
         isDeliverable: true,
         createdAt: "",

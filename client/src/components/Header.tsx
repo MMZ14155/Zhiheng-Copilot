@@ -14,6 +14,7 @@ import {
   subscribeAuth,
 } from "../api";
 import { Alert, Button, Input, Modal } from "./ui";
+import { ROUTES } from "../constants/routes";
 import "./Header.css";
 
 export default function Header({ subtitle }: { subtitle?: string }) {
@@ -58,7 +59,7 @@ export default function Header({ subtitle }: { subtitle?: string }) {
       await authApi.changePassword(oldPassword, newPassword);
       authApi.setLoginNotice("密码已更新，请重新登录");
       setAuthToken(null);
-      navigate("/login", { replace: true });
+      navigate(ROUTES.login, { replace: true });
     } catch (reason) {
       console.error("密码修改失败", reason);
       setError(
@@ -72,7 +73,7 @@ export default function Header({ subtitle }: { subtitle?: string }) {
   };
   const logout = () => {
     setAuthToken(null);
-    navigate("/login");
+    navigate(ROUTES.login);
   };
   return (
     <>
@@ -89,10 +90,10 @@ export default function Header({ subtitle }: { subtitle?: string }) {
           </div>
         </div>
         <nav className="app-nav">
-          <NavLink to="/risk-board">项目首页</NavLink>
-          <NavLink to="/resource-center">资料中心</NavLink>
-          <NavLink to="/statistics">统计看板</NavLink>
-          {user?.isAdmin && <NavLink to="/admin">管理</NavLink>}
+          <NavLink to={ROUTES.riskBoard}>项目首页</NavLink>
+          <NavLink to={ROUTES.resourceCenter}>资料中心</NavLink>
+          <NavLink to={ROUTES.statistics}>统计看板</NavLink>
+          {user?.isAdmin && <NavLink to={ROUTES.admin}>管理</NavLink>}
         </nav>
         <div className="user-menu" ref={menuRef}>
           <button

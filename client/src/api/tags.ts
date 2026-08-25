@@ -1,5 +1,6 @@
 import { jsonRequest } from "./client";
 import type {
+  ProjectTagSnapshotListResponseDto,
   TagCreateDto,
   TagListResponseDto,
   TagResponseDto,
@@ -7,20 +8,14 @@ import type {
   TagSnapshotListResponseDto,
   TagSnapshotResponseDto,
 } from "./dto";
-import type { Tag, TagSnapshot } from "./models";
+import { mapProjectTagSnapshot, mapTag, mapTagSnapshot } from "./mappers";
+import type { ProjectTagSnapshot, Tag, TagSnapshot } from "./models";
 
 export const createTag = (id: number, body: TagCreateDto) =>
   jsonRequest<TagResponseDto>(`/projects/${id}/tags`, { method: "POST", body });
 export const listTags = async (id: number): Promise<Tag[]> =>
   (await jsonRequest<TagListResponseDto>(`/projects/${id}/tags`)).items.map(
-    (item) => ({
-      id: item.id,
-      name: item.name,
-      type: item.type,
-      createdBy: item.created_by,
-      note: item.note,
-      createdAt: item.created_at,
-    }),
+    mapTag,
   );
 export const createTagSnapshot = (id: number, body: TagSnapshotCreateDto) =>
   jsonRequest<TagSnapshotResponseDto>(`/tags/${id}/snapshots`, {
@@ -30,11 +25,13 @@ export const createTagSnapshot = (id: number, body: TagSnapshotCreateDto) =>
 export const listTagSnapshots = async (id: number): Promise<TagSnapshot[]> =>
   (
     await jsonRequest<TagSnapshotListResponseDto>(`/tags/${id}/snapshots`)
-  ).items.map((item) => ({
-    id: item.id,
-    sourceFileId: item.source_file_id,
-    fileVersion: item.file_version,
-    name: item.name,
-    note: item.note,
-    createdAt: item.created_at,
-  }));
+  ).items.map(mapTagSnapshot);
+// 项目级批量快照：资料中心使用，避免按标签逐个请求（N+1）。
+export const listProjectTagSnapshots = async (
+  projectId: number,
+): Promise<ProjectTagSnapshot[]> =>
+  (
+    await jsonRequest<ProjectTagSnapshotListResponseDto>(
+      `/projects/${projectId}/tag-snapshots`,
+    )
+  ).items.map(mapProjectTagSnapshot);

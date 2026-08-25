@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, authApi, setAuthToken } from "../api";
+import { ROUTES } from "../constants/routes";
 import "./LoginNotice.css";
 
 export default function Login() {
@@ -19,7 +20,7 @@ export default function Login() {
     try {
       const session = await authApi.login(account.trim(), password);
       setAuthToken(session.token, session.user);
-      navigate("/risk-board");
+      navigate(ROUTES.riskBoard);
     } catch (reason) {
       console.error("登录失败", reason);
       setError(

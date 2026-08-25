@@ -72,10 +72,6 @@ describe("SnapshotTimeline", () => {
 
   it("确认恢复后展示结果与 skipped 清单并刷新数据", async () => {
     const onChanged = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal(
-      "confirm",
-      vi.fn(() => true),
-    );
     vi.mocked(snapshotsApi.listSnapshots).mockResolvedValue({
       projectId: 7,
       snapshots: [current, older],
@@ -88,11 +84,13 @@ describe("SnapshotTimeline", () => {
     render(<SnapshotTimeline projectId={7} onChanged={onChanged} />);
     await screen.findByText("早期版本");
     await userEvent.click(screen.getByRole("button", { name: "恢复到此快照" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "确认恢复" }),
+    );
     await screen.findByText("恢复 1 个文件");
     expect(screen.getByText("部分文件未能恢复")).toBeTruthy();
     expect(screen.getByText("缺失.pdf")).toBeTruthy();
     expect(screen.getByText("源版本不存在")).toBeTruthy();
-    expect(globalThis.confirm).toHaveBeenCalled();
     expect(snapshotsApi.restoreSnapshot).toHaveBeenCalledWith(older.hash);
     await waitFor(() =>
       expect(snapshotsApi.listSnapshots).toHaveBeenCalledTimes(2),
@@ -105,20 +103,21 @@ describe("SnapshotTimeline", () => {
       projectId: 7,
       snapshots: [current, older],
     });
-    vi.stubGlobal(
-      "confirm",
-      vi.fn(() => false),
-    );
     render(<SnapshotTimeline projectId={7} onChanged={vi.fn()} />);
     await screen.findByText("早期版本");
     await userEvent.click(screen.getByRole("button", { name: "恢复到此快照" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "取消" }),
+    );
     expect(snapshotsApi.restoreSnapshot).not.toHaveBeenCalled();
 
-    vi.mocked(globalThis.confirm).mockReturnValue(true);
     vi.mocked(snapshotsApi.restoreSnapshot).mockRejectedValue(
       new ApiError("仅项目经理可恢复快照", "FORBIDDEN", 403),
     );
     await userEvent.click(screen.getByRole("button", { name: "恢复到此快照" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "确认恢复" }),
+    );
     await screen.findByText("仅项目经理可恢复快照");
   });
 

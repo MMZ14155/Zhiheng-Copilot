@@ -221,17 +221,11 @@ export default function CreateProjectModal({
           contact: p.contact?.trim() || null,
         }))
         .filter((p) => p.role || p.name || p.contact),
+      renewal_source_id: renewalSourceId ? Number(renewalSourceId) : null,
     };
     setSubmitting(true);
     try {
-      if (renewalSourceId) {
-        await projectsApi.createProjectWithRenewal(
-          body,
-          Number(renewalSourceId),
-        );
-      } else {
-        await projectsApi.createProject(body);
-      }
+      await projectsApi.createProject(body);
       await onCreated();
       onClose();
     } catch (reason) {

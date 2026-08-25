@@ -10,6 +10,7 @@ import type {
   VersionListResponseDto,
   WorkspaceCommitResponseDto,
 } from "./dto";
+import { mapProjectFile } from "./mappers";
 import type { ProjectFile } from "./models";
 
 export interface FileUpload {
@@ -77,23 +78,7 @@ export async function listProjectFiles(
   const response = await jsonRequest<ProjectFileListResponseDto>(
     `/projects/${projectId}/files`,
   );
-  return response.files.map((item) => ({
-    id: item.id,
-    name: item.name,
-    isDeliverable: item.is_deliverable,
-    createdAt: item.created_at,
-    updatedAt: item.updated_at,
-    latestVersion:
-      item.latest_version === null
-        ? null
-        : {
-            version: item.latest_version.version,
-            documentType: item.latest_version.document_type,
-            parseStatus: item.latest_version.parse_status,
-            sizeBytes: item.latest_version.size_bytes,
-            uploadedAt: item.latest_version.uploaded_at,
-          },
-  }));
+  return response.files.map(mapProjectFile);
 }
 export async function downloadVersion(
   version: string,

@@ -1,15 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   adminApi,
-  ApiError,
+  errorMessage,
   type AdminUser,
   type ProjectMember,
   type ProjectMemberRole,
 } from "../api";
 import { Alert, Badge, Button, Empty, Select, Skeleton, Table } from "./ui";
-
-const errorMessage = (reason: unknown, fallback: string) =>
-  reason instanceof ApiError ? reason.message : fallback;
 
 const roleLabels: Record<ProjectMemberRole, string> = {
   manager: "项目负责人",

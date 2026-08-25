@@ -68,6 +68,36 @@ def test_create_update_project(fake_session, users, now, monkeypatch):
     assert updated.name == "已更新" and updated.parties == []
 
 
+def test_create_project_with_renewal_in_one_transaction(fake_session, users, now):
+    source = project(now, 5)
+    fake_session.get.return_value = source
+    payload = ProjectCreate(name="续签项目", customer_name="客户", renewal_source_id=5)
+    # 模拟数据库在 flush 时分配自增主键。
+    async def flush():
+        for item in fake_session.added:
+            if isinstance(item, Project) and item.id is None:
+                item.id = 9
+    fake_session.flush.side_effect = flush
+    async def refresh(obj):
+        obj.id = 9; obj.created_at = obj.updated_at = now
+        obj.stage = obj.budget = obj.cost = obj.planned_days = obj.used_days = None
+        obj.quality_issues = obj.satisfaction = obj.acceptance_result = None
+    fake_session.refresh.side_effect = refresh
+    created = asyncio.run(projects.create_project(payload, fake_session, users.admin))
+    assert created.id == 9
+    link = next((item for item in fake_session.added if isinstance(item, ProjectLink)), None)
+    assert link is not None and link.link_type == "renewal"
+    assert {link.source_project_id, link.target_project_id} == {5, 9}
+
+    # 续签来源不存在时创建整体失败，不产生孤儿项目。
+    fake_session.added.clear()
+    fake_session.get.return_value = None
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(projects.create_project(payload, fake_session, users.admin))
+    assert exc.value.status_code == 404
+    assert not fake_session.added
+
+
 def test_project_type_validation():
     payload = ProjectCreate(name="项目", code="P", customer_name="客户", project_type="软件销售")
     assert payload.project_type == "软件销售"
@@ -110,6 +140,20 @@ def test_project_detail_and_risks(fake_session, users, now, monkeypatch):
     changed = config.model_copy(update={"progress_warn_threshold": 70})
     result = asyncio.run(projects.update_project_risk_config(1, changed, fake_session, users.member))
     assert result.progress_warn_threshold == 70 and p.risk_config
+
+
+def test_list_project_risks_batch(fake_session, users, now, monkeypatch):
+    p = project(now)
+    fake_session.execute.return_value = Result([p])
+    monkeypatch.setattr(projects.DeliverableService, "list_with_state", AsyncMock(return_value=[]))
+    monkeypatch.setattr(projects, "load_financial_documents", AsyncMock(return_value={}))
+    response = asyncio.run(projects.list_project_risks(fake_session, users.admin))
+    assert response.items[0].project_id == 1
+    assert response.items[0].level in {"ok", "warn", "block"}
+
+    asyncio.run(projects.list_project_risks(fake_session, users.member))
+    list_sql = str(fake_session.execute.call_args.args[0])
+    assert "project_member.user_id" in list_sql
 
 
 def test_links_and_renewal(fake_session, users, now, monkeypatch):

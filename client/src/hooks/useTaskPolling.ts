@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { aiApi, ApiError } from "../api";
+import { aiApi, errorMessage } from "../api";
 
 type PollingState = "idle" | "polling" | "completed" | "failed";
 
@@ -8,8 +8,9 @@ interface UseTaskPollingOptions {
   onCompleted?: () => void | Promise<void>;
 }
 
-const readableError = (reason: unknown) =>
-  reason instanceof ApiError ? reason.message : "任务状态获取失败，请稍后重试";
+// 轮询间隔按 1.5 倍指数退避，封顶 6s，避免长任务期间持续高频请求。
+const MAX_INTERVAL_MS = 6000;
+const BACKOFF_FACTOR = 1.5;
 
 export function useTaskPolling({
   intervalMs = 1500,
@@ -32,8 +33,16 @@ export function useTaskPolling({
   }, []);
 
   const poll = useCallback(
-    async (id: number, run: number) => {
+    async (id: number, run: number, attempt: number) => {
       stopTimer();
+      // 页面不可见时不发请求，按原间隔延后重试。
+      if (document.visibilityState === "hidden") {
+        timeoutRef.current = setTimeout(
+          () => void poll(id, run, attempt),
+          intervalMs,
+        );
+        return;
+      }
       try {
         const task = await aiApi.getTask(id);
         if (activeRunRef.current !== run) return;
@@ -47,14 +56,19 @@ export function useTaskPolling({
           setError(task.failure_reason ?? "总结生成失败，请重试");
           return;
         }
-        timeoutRef.current = setTimeout(() => {
-          void poll(id, run);
-        }, intervalMs);
+        const nextInterval = Math.min(
+          intervalMs * Math.pow(BACKOFF_FACTOR, attempt),
+          MAX_INTERVAL_MS,
+        );
+        timeoutRef.current = setTimeout(
+          () => void poll(id, run, attempt + 1),
+          nextInterval,
+        );
       } catch (reason) {
         if (activeRunRef.current !== run) return;
         console.error("任务状态轮询失败", reason);
         setState("failed");
-        setError(readableError(reason));
+        setError(errorMessage(reason, "任务状态获取失败，请稍后重试"));
       }
     },
     [intervalMs, stopTimer],
@@ -67,7 +81,7 @@ export function useTaskPolling({
       setTaskId(id);
       setState("polling");
       setError(null);
-      void poll(id, run);
+      void poll(id, run, 0);
     },
     [poll],
   );

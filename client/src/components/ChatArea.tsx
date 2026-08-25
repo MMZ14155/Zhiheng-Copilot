@@ -1,7 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { aiApi, ApiError } from "../api";
-import type { ChatMessage } from "../types";
+import { ROUTES } from "../constants/routes";
+
+interface ChatMessage {
+  role: "bot" | "user";
+  content: string;
+  references?: string[];
+}
 
 const DEFAULT_QUESTION = "当前项目风险概况";
 const FALLBACK_WELCOME =
@@ -23,11 +29,17 @@ export default function ChatArea({ projectId }: ChatAreaProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const initializedRef = useRef(false);
+  const lastProjectIdRef = useRef<number | undefined>(undefined);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (initializedRef.current) return;
+    // projectId 变化时清空会话并重新加载欢迎消息；同项目重复触发（如 StrictMode）则跳过。
+    const projectChanged = lastProjectIdRef.current !== projectId;
+    lastProjectIdRef.current = projectId;
+    if (initializedRef.current && !projectChanged) return;
     initializedRef.current = true;
+    if (projectChanged) setMessages([]);
+    setIsLoading(true);
 
     void aiApi
       .askCopilot(DEFAULT_QUESTION, projectId)
@@ -123,7 +135,7 @@ export default function ChatArea({ projectId }: ChatAreaProps) {
             {question}
           </button>
         ))}
-        <button onClick={() => navigate("/resource-center")}>
+        <button onClick={() => navigate(ROUTES.resourceCenter)}>
           项目资料中心
         </button>
       </div>

@@ -46,6 +46,8 @@ export interface ProjectWriteDto {
   status?: ProjectStatusDto;
   progress?: number;
   notes?: string | null;
+  /** 续签来源项目 ID：后端在同一事务中创建项目与续签链接。 */
+  renewal_source_id?: number | null;
 }
 export type ProjectUpdateDto = Partial<ProjectWriteDto>;
 export interface ProjectResponseDto {
@@ -138,6 +140,14 @@ export interface ProjectRisksResponseDto {
   level: RiskLevelDto;
   risks: ProjectRiskDto[];
   config: JsonObject;
+}
+export interface ProjectRiskBatchItemDto {
+  project_id: number;
+  level: RiskLevelDto;
+  risks: ProjectRiskDto[];
+}
+export interface ProjectRiskBatchResponseDto {
+  items: ProjectRiskBatchItemDto[];
 }
 export interface CollectionOverviewDto {
   contract_amount: string | null;
@@ -341,6 +351,12 @@ export interface TagSnapshotResponseDto {
 }
 export interface TagSnapshotListResponseDto {
   items: TagSnapshotResponseDto[];
+}
+export interface ProjectTagSnapshotItemDto extends TagSnapshotResponseDto {
+  tag_name: string;
+}
+export interface ProjectTagSnapshotListResponseDto {
+  items: ProjectTagSnapshotItemDto[];
 }
 export interface SnapshotSummaryDto {
   hash: string;
