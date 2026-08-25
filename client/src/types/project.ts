@@ -1,75 +1,45 @@
 /**
  * 项目可见性：当前固定为私有项目
  */
-export type ProjectVisibility = 'private';
+export type ProjectVisibility = "private";
 
 /**
  * 项目状态
  */
 export type ProjectStatus =
-  | 'pending'
-  | 'active'
-  | 'paused'
-  | 'completed'
-  | 'cancelled';
+  "pending" | "active" | "paused" | "completed" | "cancelled";
 
 /**
  * 项目阶段
  */
 export type ProjectStage =
-  | 'init'
-  | 'planning'
-  | 'executing'
-  | 'accepting'
-  | 'closed';
+  "init" | "planning" | "executing" | "accepting" | "closed";
 
 /**
  * 甲方态度
  */
-export type ClientAttitude =
-  | 'positive'
-  | 'neutral'
-  | 'negative'
-  | 'unknown';
+export type ClientAttitude = "positive" | "neutral" | "negative" | "unknown";
 
 /**
  * 验收结果
  */
-export type AcceptanceResult =
-  | 'pending'
-  | 'passed'
-  | 'failed'
-  | 'partial';
+export type AcceptanceResult = "pending" | "passed" | "failed" | "partial";
 
 /**
  * 交付物分类
  */
 export type DeliverableCategory =
-  | '合同'
-  | '成本明细'
-  | '验收材料'
-  | '检测报告'
-  | '交付成果';
+  "合同" | "成本明细" | "验收材料" | "检测报告" | "交付成果";
 
 /**
  * 文件版本状态
  */
-export type FileStatus =
-  | 'ok'
-  | 'missing'
-  | 'old'
-  | 'conflict'
-  | 'frozen';
+export type FileStatus = "ok" | "missing" | "old" | "conflict" | "frozen";
 
 /**
  * 标签类型
  */
-export type TagType =
-  | 'demo'
-  | 'report'
-  | 'meeting'
-  | 'audit'
-  | 'custom';
+export type TagType = "demo" | "report" | "meeting" | "audit" | "custom";
 
 /**
  * 风险规则开关配置

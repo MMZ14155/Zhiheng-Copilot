@@ -3,30 +3,130 @@
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
 }
-.card-customer { margin-top:2px;color:var(--muted);font-size:12px; }
-.project-list-heading button,.project-list-state button { border:1px solid #cbd5e1; border-radius:6px; background:#fff; padding:8px 14px; cursor:pointer; }
-.project-list-actions { display:flex; gap:10px; }
-.project-list-heading .create-project-button { border-color:#2563eb; background:#2563eb; color:#fff; }
-.project-list-heading button:disabled { cursor:wait; opacity:.6; }
-.project-list-state { padding:48px 24px; text-align:center; color:#64748b; background:#fff; border-radius:10px; }
-.project-list-state.error { color:#b91c1c; }
-.project-card-real { border-left:4px solid #2563eb; }
-.card-actions { display:flex; flex-direction:row; flex-wrap:wrap; justify-content:flex-end; align-items:flex-start; gap:4px; }
-.project-risk.block { background:#fee2e2; color:#991b1b; }
-.project-risk.warn { background:#fef3c7; color:#92400e; }
-.project-risk.ok { background:#dcfce7; color:#166534; }
-.project-status.active { background:#dcfce7; color:#166534; }
-.project-status.completed { background:#dbeafe; color:#1e40af; }
-.project-status.archived { background:#e2e8f0; color:#475569; }
-.data-incomplete { background:#ede9fe; color:#6d28d9; }
-.risk-highlights { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
-.risk-highlights span { padding:3px 7px; border-radius:5px; font-size:11px; font-weight:600; }
-.risk-highlights .warn { background:#fef3c7; color:#92400e; }
-.risk-highlights .block { background:#fee2e2; color:#991b1b; }
-.project-progress { display:flex; align-items:center; gap:10px; margin-top:10px; }
-.project-progress strong { font-size:12px; color:var(--text); }
-.project-progress-track { flex:1; height:5px; overflow:hidden; border-radius:999px; background:#e2e8f0; }
-.project-progress-track span { display:block; height:100%; border-radius:inherit; background:#2563eb; }
+.card-customer {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.project-list-heading button,
+.project-list-state button {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #fff;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.project-list-actions {
+  display: flex;
+  gap: 10px;
+}
+.project-list-heading .create-project-button {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #fff;
+}
+.project-list-heading button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+.project-list-state {
+  padding: 48px 24px;
+  text-align: center;
+  color: #64748b;
+  background: #fff;
+  border-radius: 10px;
+}
+.project-list-state.error {
+  color: #b91c1c;
+}
+.project-card-real {
+  border-left: 4px solid transparent;
+}
+.card-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: flex-start;
+  gap: 4px;
+}
+.project-risk.block {
+  background: var(--risk-block-soft);
+  color: var(--risk-block-text);
+}
+.project-risk.warn {
+  background: var(--risk-warn-soft);
+  color: var(--risk-warn-text);
+}
+.project-risk.ok {
+  background: var(--risk-ok-soft);
+  color: var(--risk-ok-text);
+}
+/* 项目状态使用中性色，与风险色区分 */
+.project-status.active {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.project-status.completed {
+  background: var(--risk-ok-soft);
+  color: var(--risk-ok-text);
+}
+.project-status.archived {
+  background: var(--neutral-100);
+  color: var(--meta);
+}
+.risk-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+}
+.risk-highlights span {
+  padding: 3px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.risk-highlights .warn {
+  background: var(--risk-warn-soft);
+  color: var(--risk-warn-text);
+}
+.risk-highlights .block {
+  background: var(--risk-block-soft);
+  color: var(--risk-block-text);
+}
+.project-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.project-progress strong {
+  font-size: 12px;
+  color: var(--text);
+}
+.project-progress-track {
+  flex: 1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+.project-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+/* 进度为 0 时弱化呈现，避免占位信号 */
+.project-progress.idle .project-progress-track {
+  height: 3px;
+  background: var(--neutral-100);
+}
+.project-progress.idle strong {
+  color: var(--meta);
+  font-weight: 500;
+}
 
 .project-card {
   display: block;
@@ -41,9 +141,18 @@
 
 .project-card:hover {
   transform: translateY(-2px);
-  box-shadow:var(--shadow-md);
+  box-shadow: var(--shadow-md);
 }
-.risk-summary{display:-webkit-box;overflow:hidden;margin-top:8px;color:var(--neutral-700);font-size:12px;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:1}
+.risk-summary {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 8px;
+  color: var(--neutral-700);
+  font-size: 12px;
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 1;
+}
 
 .card-header {
   display: flex;
@@ -72,11 +181,17 @@
   gap: 8px;
   margin-top: 6px;
   font-size: 11px;
-  color: #6b7280;
+  color: var(--meta);
+}
+
+.card-meta-line .card-amount {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .card-meta-line span::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 4px;
   height: 4px;

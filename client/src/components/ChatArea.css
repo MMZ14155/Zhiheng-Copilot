@@ -2,7 +2,7 @@
   width: 100%;
   min-width: 0;
   background: #fff;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
 }
@@ -26,8 +26,12 @@
   line-height: 1.6;
 }
 
+.msg.bot .bubble p + p {
+  margin-top: 8px;
+}
+
 .msg.user .bubble {
-  background: #2563eb;
+  background: var(--primary);
   color: #fff;
   border-radius: 12px 12px 4px 12px;
   padding: 12px;
@@ -37,22 +41,26 @@
   max-width: 90%;
 }
 
+/* 来源默认折叠，避免与正文重复抢占视觉 */
 .msg .source {
-  margin-top: 8px;
+  margin-top: 6px;
   font-size: 11px;
-  color: #6b7280;
-  border-left: 2px solid #d1d5db;
-  padding-left: 8px;
+  color: var(--meta);
 }
 
-.msg .source span {
-  display: block;
-  margin-bottom: 2px;
+.msg .source summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.msg .source summary:hover {
+  color: var(--primary);
 }
 
 .msg .source ul {
-  margin: 0;
+  margin: 6px 0 0;
   padding-left: 16px;
+  border-left: 2px solid var(--border);
 }
 
 .msg.pending .bubble {
@@ -61,15 +69,15 @@
 
 .quick-q {
   padding: 12px 16px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
 .quick-q button {
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--neutral-100);
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 6px 12px;
   font-size: 12px;
@@ -77,7 +85,8 @@
 }
 
 .quick-q button:hover {
-  background: #e5e7eb;
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 
 .quick-q button:disabled,
@@ -88,27 +97,32 @@
 
 .chat-input {
   padding: 12px 16px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
   display: flex;
   gap: 8px;
 }
 
 .chat-input input {
   flex: 1;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 8px 14px;
   font-size: 13px;
   outline: none;
 }
 
+.chat-input input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+
 .chat-input input:disabled {
-  background: #f9fafb;
+  background: var(--neutral-50);
   cursor: not-allowed;
 }
 
 .chat-input button {
-  background: #2563eb;
+  background: var(--primary);
   color: #fff;
   border: none;
   border-radius: 20px;

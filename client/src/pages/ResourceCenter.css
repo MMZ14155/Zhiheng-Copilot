@@ -258,7 +258,7 @@
 }
 
 .timeline-item::before {
-  content: '';
+  content: "";
   position: absolute;
   left: -21px;
   top: 2px;
@@ -307,4 +307,113 @@
   color: #1e3a8a;
   line-height: 1.7;
 }
-.resource-dropzone{display:flex;min-height:130px;flex-direction:column;align-items:center;justify-content:center;gap:5px;margin-bottom:16px;border:2px dashed #bfdbfe;border-radius:12px;background:var(--primary-soft);color:var(--primary);cursor:pointer;transition:.2s}.resource-dropzone:hover{border-color:var(--primary);background:#dbeafe}.resource-dropzone small{color:var(--muted)}.resource-dropzone input{position:absolute;width:1px;height:1px;opacity:0}.drop-icon{font-size:26px}.file-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:10px}.file-table{width:100%;border-collapse:collapse}.file-table th,.file-table td{padding:12px;border-bottom:1px solid var(--border);color:var(--muted);font-size:12px;text-align:left}.file-table th{background:var(--neutral-50);color:var(--neutral-700)}.file-table td:first-child{display:flex;align-items:center;gap:8px;color:var(--text)}.file-table button{border:0;background:transparent;color:var(--primary);cursor:pointer}.file-icon{display:grid;width:28px;height:28px;place-items:center;border-radius:7px;background:var(--primary-soft);color:var(--primary)}.resource-action-error{margin-bottom:12px;color:var(--danger);font-size:12px}.resource-sidebar:before{content:'项目 / 分组';display:block;margin-bottom:12px;color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}@media(max-width:767px){.resource-center{display:block;overflow:visible;padding:12px}.resource-sidebar{width:100%;max-height:240px;margin-bottom:12px}.resource-main{padding:16px;overflow:visible}.resource-center-page{overflow:auto!important}.file-table{min-width:650px}}
+.resource-dropzone {
+  display: flex;
+  min-height: 130px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-bottom: 16px;
+  border: 2px dashed #bfdbfe;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  cursor: pointer;
+  transition: 0.2s;
+}
+.resource-dropzone:hover {
+  border-color: var(--primary);
+  background: #dbeafe;
+}
+.resource-dropzone small {
+  color: var(--muted);
+}
+.resource-dropzone input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.drop-icon {
+  font-size: 26px;
+}
+.file-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.file-table th,
+.file-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: left;
+}
+.file-table th {
+  background: var(--neutral-50);
+  color: var(--neutral-700);
+}
+.file-table td:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.file-table button {
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+}
+.file-icon {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.resource-action-error {
+  margin-bottom: 12px;
+  color: var(--danger);
+  font-size: 12px;
+}
+.resource-sidebar:before {
+  content: "项目 / 分组";
+  display: block;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+@media (max-width: 767px) {
+  .resource-center {
+    display: block;
+    overflow: visible;
+    padding: 12px;
+  }
+  .resource-sidebar {
+    width: 100%;
+    max-height: 240px;
+    margin-bottom: 12px;
+  }
+  .resource-main {
+    padding: 16px;
+    overflow: visible;
+  }
+  .resource-center-page {
+    overflow: auto !important;
+  }
+  .file-table {
+    min-width: 650px;
+  }
+}

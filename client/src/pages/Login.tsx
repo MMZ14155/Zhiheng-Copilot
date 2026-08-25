@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ApiError, authApi, setAuthToken } from '../api';
-import './LoginNotice.css';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ApiError, authApi, setAuthToken } from "../api";
+import "./LoginNotice.css";
 
 export default function Login() {
   const navigate = useNavigate();
   const [notice] = useState(() => authApi.consumeLoginNotice());
-  const [account, setAccount] = useState('');
-  const [password, setPassword] = useState('');
+  const [account, setAccount] = useState("");
+  const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -19,10 +19,12 @@ export default function Login() {
     try {
       const session = await authApi.login(account.trim(), password);
       setAuthToken(session.token, session.user);
-      navigate('/risk-board');
+      navigate("/risk-board");
     } catch (reason) {
-      console.error('登录失败', reason);
-      setError(reason instanceof ApiError ? reason.message : '登录失败，请稍后重试');
+      console.error("登录失败", reason);
+      setError(
+        reason instanceof ApiError ? reason.message : "登录失败，请稍后重试",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -31,9 +33,21 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <div className="login-brand"><span>智</span><div><h2>智衡 Copilot</h2><p className="login-subtitle">项目风险与经营分析助手</p></div></div>
-        <div className="login-welcome"><h1>欢迎回来</h1><p>登录后继续管理项目、资料与经营风险</p></div>
-        {notice && <p className="login-success" role="status">{notice}</p>}
+        <div className="login-brand">
+          <span>智</span>
+          <div>
+            <h2>智衡 Copilot</h2>
+          </div>
+        </div>
+        <div className="login-welcome">
+          <h1>欢迎回来</h1>
+          <p>项目风险与经营分析助手 · 登录后继续管理项目与经营风险</p>
+        </div>
+        {notice && (
+          <p className="login-success" role="status">
+            {notice}
+          </p>
+        )}
         <form onSubmit={(e) => void handleSubmit(e)}>
           <div className="login-field">
             <label>账号</label>
@@ -57,12 +71,18 @@ export default function Login() {
               required
             />
           </div>
-          {error && <p className="login-error" role="alert">{error}</p>}
+          {error && (
+            <p className="login-error" role="alert">
+              {error}
+            </p>
+          )}
           <button type="submit" className="login-button" disabled={submitting}>
-            {submitting ? '登录中…' : '登录'}
+            {submitting ? "登录中…" : "登录"}
           </button>
         </form>
-        <p className="login-hint">安全提示 · 登录状态仅保存在内存中，刷新页面后需重新登录</p>
+        <p className="login-hint">
+          安全提示 · 登录状态仅保存在内存中，刷新页面后需重新登录
+        </p>
       </div>
     </div>
   );

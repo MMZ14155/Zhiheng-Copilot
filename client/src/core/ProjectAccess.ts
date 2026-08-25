@@ -1,11 +1,11 @@
-import type { TrackedFile, WorkspaceFile } from '../types/project';
+import type { TrackedFile, WorkspaceFile } from "../types/project";
 
 /**
  * 全局系统角色。
  * 项目内的管理/实施角色不由该字段决定，而由项目数据中的
  * managerId / implementerIds 动态判断。
  */
-export type Role = 'admin' | 'user';
+export type Role = "admin" | "user";
 
 /**
  * 系统用户。
@@ -46,7 +46,10 @@ export interface ProjectPermission {
  * @param project 目标项目
  * @returns 是否可查看
  */
-export function canViewProject(user: User, project: ProjectPermission): boolean {
+export function canViewProject(
+  user: User,
+  project: ProjectPermission,
+): boolean {
   if (user.isAdmin) return true;
   if (user.id === project.managerId) return true;
   if (project.implementerIds.includes(user.id)) return true;
@@ -67,7 +70,7 @@ export function canViewProject(user: User, project: ProjectPermission): boolean 
 export function canViewFile(
   user: User,
   file: WorkspaceFile | TrackedFile,
-  project: ProjectPermission
+  project: ProjectPermission,
 ): boolean {
   void file;
   return canViewProject(user, project);
@@ -84,7 +87,10 @@ export function canViewFile(
  * @param project 目标项目
  * @returns 是否可管理
  */
-export function canManageProject(user: User, project: ProjectPermission): boolean {
+export function canManageProject(
+  user: User,
+  project: ProjectPermission,
+): boolean {
   if (user.isAdmin) return true;
   if (user.id === project.managerId) return true;
   return false;
@@ -102,7 +108,10 @@ export function canManageProject(user: User, project: ProjectPermission): boolea
  * @param project 目标项目
  * @returns 是否可上传过程性文件
  */
-export function canUploadProcessFile(user: User, project: ProjectPermission): boolean {
+export function canUploadProcessFile(
+  user: User,
+  project: ProjectPermission,
+): boolean {
   if (user.isAdmin) return true;
   if (user.id === project.managerId) return true;
   if (project.implementerIds.includes(user.id)) return true;
@@ -116,7 +125,10 @@ export function canUploadProcessFile(user: User, project: ProjectPermission): bo
  * @param user 当前用户
  * @returns 用户可见的项目列表
  */
-export function filterVisibleProjects(projects: ProjectPermission[], user: User): ProjectPermission[] {
+export function filterVisibleProjects(
+  projects: ProjectPermission[],
+  user: User,
+): ProjectPermission[] {
   return projects.filter((project) => canViewProject(user, project));
 }
 
@@ -131,7 +143,7 @@ export function filterVisibleProjects(projects: ProjectPermission[], user: User)
 export function filterVisibleFiles(
   files: (WorkspaceFile | TrackedFile)[],
   user: User,
-  project: ProjectPermission
+  project: ProjectPermission,
 ): (WorkspaceFile | TrackedFile)[] {
   if (!canViewProject(user, project)) return [];
   return files.filter((file) => canViewFile(user, file, project));
@@ -139,12 +151,18 @@ export function filterVisibleFiles(
 
 // ==================== 测试断言示例 ====================
 
-const admin: User = { id: 'U_ADMIN', isAdmin: true, role: 'admin' };
-const userA: User = { id: 'U_A', isAdmin: false, role: 'user' };
-const userB: User = { id: 'U_B', isAdmin: false, role: 'user' };
+const admin: User = { id: "U_ADMIN", isAdmin: true, role: "admin" };
+const userA: User = { id: "U_A", isAdmin: false, role: "user" };
+const userB: User = { id: "U_B", isAdmin: false, role: "user" };
 
-const project1: ProjectPermission = { managerId: 'U_A', implementerIds: ['U_C'] };
-const project2: ProjectPermission = { managerId: 'U_B', implementerIds: ['U_A', 'U_D'] };
+const project1: ProjectPermission = {
+  managerId: "U_A",
+  implementerIds: ["U_C"],
+};
+const project2: ProjectPermission = {
+  managerId: "U_B",
+  implementerIds: ["U_A", "U_D"],
+};
 
 function assert(condition: boolean, message: string): void {
   if (!condition) {
@@ -153,30 +171,30 @@ function assert(condition: boolean, message: string): void {
 }
 
 // 管理员可操作所有项目
-assert(canViewProject(admin, project1), '管理员应能查看项目1');
-assert(canViewProject(admin, project2), '管理员应能查看项目2');
-assert(canManageProject(admin, project1), '管理员应能管理项目1');
-assert(canManageProject(admin, project2), '管理员应能管理项目2');
-assert(canUploadProcessFile(admin, project1), '管理员应能在项目1上传文件');
+assert(canViewProject(admin, project1), "管理员应能查看项目1");
+assert(canViewProject(admin, project2), "管理员应能查看项目2");
+assert(canManageProject(admin, project1), "管理员应能管理项目1");
+assert(canManageProject(admin, project2), "管理员应能管理项目2");
+assert(canUploadProcessFile(admin, project1), "管理员应能在项目1上传文件");
 
 // 用户 A 是项目1的负责人，项目2的实施人
-assert(canViewProject(userA, project1), '用户A作为项目1负责人应能查看');
-assert(canManageProject(userA, project1), '用户A作为项目1负责人应能管理');
-assert(canUploadProcessFile(userA, project1), '用户A作为项目1负责人应能上传');
+assert(canViewProject(userA, project1), "用户A作为项目1负责人应能查看");
+assert(canManageProject(userA, project1), "用户A作为项目1负责人应能管理");
+assert(canUploadProcessFile(userA, project1), "用户A作为项目1负责人应能上传");
 
-assert(canViewProject(userA, project2), '用户A作为项目2实施人应能查看');
-assert(!canManageProject(userA, project2), '用户A作为项目2实施人不应管理');
-assert(canUploadProcessFile(userA, project2), '用户A作为项目2实施人应能上传');
+assert(canViewProject(userA, project2), "用户A作为项目2实施人应能查看");
+assert(!canManageProject(userA, project2), "用户A作为项目2实施人不应管理");
+assert(canUploadProcessFile(userA, project2), "用户A作为项目2实施人应能上传");
 
 // 用户 B 是项目2的负责人
-assert(!canViewProject(userB, project1), '用户B不应查看项目1');
-assert(canViewProject(userB, project2), '用户B作为项目2负责人应能查看');
-assert(canManageProject(userB, project2), '用户B作为项目2负责人应能管理');
-assert(canUploadProcessFile(userB, project2), '用户B作为项目2负责人应能上传');
+assert(!canViewProject(userB, project1), "用户B不应查看项目1");
+assert(canViewProject(userB, project2), "用户B作为项目2负责人应能查看");
+assert(canManageProject(userB, project2), "用户B作为项目2负责人应能管理");
+assert(canUploadProcessFile(userB, project2), "用户B作为项目2负责人应能上传");
 
 const visibleToA = filterVisibleProjects([project1, project2], userA);
-assert(visibleToA.length === 2, '用户A应能看到2个项目');
+assert(visibleToA.length === 2, "用户A应能看到2个项目");
 
 const visibleToB = filterVisibleProjects([project1, project2], userB);
-assert(visibleToB.length === 1, '用户B应能看到1个项目');
-assert(visibleToB[0] === project2, '用户B看到的项目应为项目2');
+assert(visibleToB.length === 1, "用户B应能看到1个项目");
+assert(visibleToB[0] === project2, "用户B看到的项目应为项目2");

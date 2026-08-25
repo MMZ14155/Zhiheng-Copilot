@@ -1,4 +1,4 @@
-export type RiskLevel = 'block' | 'warn' | 'ok';
+export type RiskLevel = "block" | "warn" | "ok";
 
 export interface Project {
   id: string;
@@ -20,7 +20,7 @@ export interface Project {
 export interface DocItem {
   name: string;
   version: string;
-  status: 'ok' | 'missing' | 'old';
+  status: "ok" | "missing" | "old";
   icon: string;
 }
 
@@ -44,7 +44,7 @@ export interface DocProject {
 }
 
 export interface ChatMessage {
-  role: 'bot' | 'user';
+  role: "bot" | "user";
   content: string;
   references?: string[];
 }

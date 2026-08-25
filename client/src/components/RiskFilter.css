@@ -20,44 +20,54 @@
   font-size: 13px;
 }
 
-@media(max-width:767px){
-  .risk-filter { gap: 8px; }
-  .stat-card { min-width: 0; padding: 6px 10px; }
+@media (max-width: 767px) {
+  .risk-filter {
+    gap: 8px;
+  }
+  .stat-card {
+    min-width: 0;
+    padding: 6px 10px;
+  }
 }
 
 .stat-card:hover {
-  border-color: #cbd5e1;
-  background: #f8fafc;
+  border-color: var(--meta-border);
+  background: var(--neutral-50);
+}
+
+/* 零值项弱化呈现，减少视觉噪音 */
+.stat-card.zero {
+  opacity: 0.45;
 }
 
 .stat-card.active.block {
-  border-color: #dc2626;
-  background: #fef2f2;
-  color: #991b1b;
+  border-color: var(--risk-block);
+  background: var(--risk-block-soft);
+  color: var(--risk-block-text);
 }
 
 .stat-card.active.warn,
 .stat-card.active.delivery,
 .stat-card.active.payment {
-  border-color: #d97706;
-  background: #fffbeb;
-  color: #92400e;
+  border-color: var(--risk-warn);
+  background: var(--risk-warn-soft);
+  color: var(--risk-warn-text);
 }
 
 .stat-card.active.ok {
-  border-color: #16a34a;
-  background: #f0fdf4;
-  color: #166534;
+  border-color: var(--risk-ok);
+  background: var(--risk-ok-soft);
+  color: var(--risk-ok-text);
 }
 
 .stat-card.active.incomplete {
-  border-color: #7c3aed;
-  background: #f5f3ff;
-  color: #6d28d9;
+  border-color: var(--meta);
+  background: var(--meta-soft);
+  color: var(--meta);
 }
 
 .stat-card .label {
-  color: #6b7280;
+  color: var(--meta);
 }
 
 .stat-card .value {
@@ -65,9 +75,20 @@
   font-weight: 700;
 }
 
-.stat-card .value.block { color: #dc2626; }
-.stat-card .value.warn,
+.stat-card .value.block {
+  color: var(--risk-block);
+}
+.stat-card .value.warn {
+  color: var(--risk-warn);
+}
 .stat-card .value.delivery,
-.stat-card .value.payment { color: #d97706; }
-.stat-card .value.ok { color: #16a34a; }
-.stat-card .value.incomplete { color: #7c3aed; }
+.stat-card .value.payment {
+  color: var(--risk-warn);
+}
+.stat-card .value.ok {
+  color: var(--risk-ok);
+}
+/* 数据质量类与风险类区分：中性灰 */
+.stat-card .value.incomplete {
+  color: var(--meta);
+}

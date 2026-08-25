@@ -6,7 +6,7 @@ import type {
   Tag,
   TrackedFile,
   WorkspaceFile,
-} from '../types/project';
+} from "../types/project";
 
 /**
  * 将 ArrayBuffer 或 Uint8Array 转换为十六进制字符串。
@@ -17,8 +17,8 @@ import type {
 function bufferToHex(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
   return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /**
@@ -30,7 +30,7 @@ function bufferToHex(buffer: ArrayBuffer): string {
 async function sha256(input: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(input);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   return bufferToHex(hashBuffer);
 }
 
@@ -51,8 +51,8 @@ function normalizeContent(content: ArrayBuffer | Uint8Array): Uint8Array {
  */
 function contentToHex(content: Uint8Array): string {
   return Array.from(content)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
 }
 
 /**
@@ -64,7 +64,7 @@ function contentToHex(content: Uint8Array): string {
  */
 async function hashSingleFile(
   name: string,
-  content: ArrayBuffer | Uint8Array
+  content: ArrayBuffer | Uint8Array,
 ): Promise<string> {
   const normalized = normalizeContent(content);
   const source = `${name}:${contentToHex(normalized)}`;
@@ -88,7 +88,7 @@ async function hashSingleFile(
 export async function generateVersionHash(
   files: { name: string; content: ArrayBuffer | Uint8Array }[],
   uploadedBy: string,
-  changelog: string
+  changelog: string,
 ): Promise<string> {
   const sorted = [...files].sort((a, b) => {
     if (a.name < b.name) return -1;
@@ -102,7 +102,7 @@ export async function generateVersionHash(
     singleHashes.push(singleHash);
   }
 
-  const bundleSource = singleHashes.join('');
+  const bundleSource = singleHashes.join("");
   const bundleHash = await sha256(bundleSource);
 
   const versionSource = `${bundleHash}:${uploadedBy}:${changelog}`;
@@ -121,7 +121,7 @@ export async function generateVersionHash(
 export function promoteToDeliverable(
   file: WorkspaceFile,
   category: DeliverableCategory,
-  required: boolean
+  required: boolean,
 ): TrackedFile {
   const latestVersion = file.versions[file.versions.length - 1];
 
@@ -130,13 +130,13 @@ export function promoteToDeliverable(
     isFrozen: true,
   }));
 
-  const status: FileStatus = trackedVersions.length > 0 ? 'ok' : 'missing';
+  const status: FileStatus = trackedVersions.length > 0 ? "ok" : "missing";
 
   return {
     id: file.id,
     name: file.name,
     category,
-    currentVersion: latestVersion?.version ?? '',
+    currentVersion: latestVersion?.version ?? "",
     versions: trackedVersions,
     required,
     status,
@@ -156,21 +156,28 @@ export function promoteToDeliverable(
 export async function createFrozenVersion(
   files: { fileRef: WorkspaceFile; content: ArrayBuffer | Uint8Array }[],
   uploadedBy: string,
-  changelog: string
+  changelog: string,
 ): Promise<FileVersion> {
   const hashInputs = files.map((f) => ({
     name: f.fileRef.name,
     content: f.content,
   }));
 
-  const versionHash = await generateVersionHash(hashInputs, uploadedBy, changelog);
+  const versionHash = await generateVersionHash(
+    hashInputs,
+    uploadedBy,
+    changelog,
+  );
 
   return {
     version: versionHash,
-    filePath: '',
+    filePath: "",
     uploadedBy,
     uploadedAt: new Date().toISOString(),
-    size: files.reduce((sum, f) => sum + normalizeContent(f.content).byteLength, 0),
+    size: files.reduce(
+      (sum, f) => sum + normalizeContent(f.content).byteLength,
+      0,
+    ),
     hash: versionHash,
     changelog,
     isFrozen: true,
@@ -190,14 +197,15 @@ export function createTagSnapshot(
   tag: Tag,
   sourceFileId: string,
   version: string,
-  note?: string
+  note?: string,
 ): ExtraFile {
   return {
     id: `${tag.id}-${sourceFileId}-${version}`,
     name: `${tag.name} 快照`,
     sourceFileId,
     snapshotVersion: version,
-    note: note ?? `由标签 ${tag.name} 在 ${new Date().toISOString()} 创建的快照`,
+    note:
+      note ?? `由标签 ${tag.name} 在 ${new Date().toISOString()} 创建的快照`,
   };
 }
 
@@ -212,7 +220,7 @@ export function getEffectiveVersion(file: TrackedFile): FileVersion {
   const version = file.versions.find((v) => v.version === file.currentVersion);
   if (!version) {
     throw new Error(
-      `Effective version ${file.currentVersion} not found for file ${file.id}`
+      `Effective version ${file.currentVersion} not found for file ${file.id}`,
     );
   }
   return version;
@@ -227,7 +235,7 @@ export function getEffectiveVersion(file: TrackedFile): FileVersion {
  */
 export function getFileVersionById(
   file: TrackedFile | WorkspaceFile,
-  version: string
+  version: string,
 ): FileVersion | undefined {
   return file.versions.find((v) => v.version === version);
 }

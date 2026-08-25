@@ -1,5 +1,5 @@
 // ==================== 类型定义 ====================
-export * from './types/project';
+export * from "./types/project";
 
 // ==================== 文件流转与版本管理 ====================
 export {
@@ -10,7 +10,7 @@ export {
   getEffectiveVersion,
   getFileVersionById,
   displayVersion,
-} from './core/FileFlow';
+} from "./core/FileFlow";
 
 // ==================== 项目权限控制 ====================
 export {
@@ -20,12 +20,18 @@ export {
   canUploadProcessFile,
   filterVisibleProjects,
   filterVisibleFiles,
-} from './core/ProjectAccess';
+} from "./core/ProjectAccess";
 
 // ==================== 风险监测 ====================
 export {
   getDefaultRiskConfig,
   evaluateProject,
   aggregateRisk,
-} from './core/RiskMonitor';
-export type { Risk, RiskLevel, RiskType, MonitorThresholds, MonitorRiskConfig } from './core/RiskMonitor';
+} from "./core/RiskMonitor";
+export type {
+  Risk,
+  RiskLevel,
+  RiskType,
+  MonitorThresholds,
+  MonitorRiskConfig,
+} from "./core/RiskMonitor";

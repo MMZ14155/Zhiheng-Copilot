@@ -1,11 +1,15 @@
-import type { CurrentUser } from './models';
+import type { CurrentUser } from "./models";
 
-const BASE_URL = '/api/v1';
+const BASE_URL = "/api/v1";
 
 export class ApiError extends Error {
-  constructor(message: string, readonly code: string, readonly status: number) {
+  constructor(
+    message: string,
+    readonly code: string,
+    readonly status: number,
+  ) {
     super(message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 }
 
@@ -14,9 +18,14 @@ let authToken: string | null = null;
 let authUser: CurrentUser | null = null;
 const authListeners = new Set<() => void>();
 
-const notifyAuthListeners = () => { authListeners.forEach((listener) => listener()); };
+const notifyAuthListeners = () => {
+  authListeners.forEach((listener) => listener());
+};
 
-export function setAuthToken(token: string | null, user: CurrentUser | null = null) {
+export function setAuthToken(
+  token: string | null,
+  user: CurrentUser | null = null,
+) {
   authToken = token;
   authUser = token ? user : null;
   notifyAuthListeners();
@@ -27,18 +36,25 @@ export function setAuthUser(user: CurrentUser | null) {
   notifyAuthListeners();
 }
 
-export function getAuthToken() { return authToken; }
-export function getAuthUser() { return authUser; }
+export function getAuthToken() {
+  return authToken;
+}
+export function getAuthUser() {
+  return authUser;
+}
 
 export function subscribeAuth(listener: () => void) {
   authListeners.add(listener);
-  return () => { authListeners.delete(listener); };
+  return () => {
+    authListeners.delete(listener);
+  };
 }
 
 async function request<T>(
   path: string,
   init: RequestInit = {},
-  parseResponse: (response: Response) => Promise<T> = (response) => response.json() as Promise<T>,
+  parseResponse: (response: Response) => Promise<T> = (response) =>
+    response.json() as Promise<T>,
   clearAuthOnUnauthorized = true,
 ): Promise<T> {
   const { headers, ...rest } = init;
@@ -46,16 +62,24 @@ async function request<T>(
     ...(headers as Record<string, string> | undefined),
     ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
   };
-  const response = await fetch(`${BASE_URL}${path}`, { ...rest, headers: mergedHeaders });
+  const response = await fetch(`${BASE_URL}${path}`, {
+    ...rest,
+    headers: mergedHeaders,
+  });
   if (!response.ok) {
     let body: unknown;
-    try { body = await response.json(); } catch { body = null; }
-    const error = body && typeof body === 'object' ? body as Record<string, unknown> : {};
+    try {
+      body = await response.json();
+    } catch {
+      body = null;
+    }
+    const error =
+      body && typeof body === "object" ? (body as Record<string, unknown>) : {};
     // 401 一律视为令牌失效：清空内存令牌，由 App 守卫跳转登录页。
     if (response.status === 401 && clearAuthOnUnauthorized) setAuthToken(null);
     throw new ApiError(
-      typeof error.detail === 'string' ? error.detail : '请求失败，请稍后重试',
-      typeof error.code === 'string' ? error.code : 'HTTP_ERROR',
+      typeof error.detail === "string" ? error.detail : "请求失败，请稍后重试",
+      typeof error.code === "string" ? error.code : "HTTP_ERROR",
       response.status,
     );
   }
@@ -63,13 +87,26 @@ async function request<T>(
   return parseResponse(response);
 }
 
-export function jsonRequest<T>(path: string, init: Omit<RequestInit, 'body'> & { body?: unknown } = {}, options: { clearAuthOnUnauthorized?: boolean } = {}) {
+export function jsonRequest<T>(
+  path: string,
+  init: Omit<RequestInit, "body"> & { body?: unknown } = {},
+  options: { clearAuthOnUnauthorized?: boolean } = {},
+) {
   const { body, headers, ...rest } = init;
-  return request<T>(path, { ...rest, headers: { 'Content-Type': 'application/json', ...headers }, body: body === undefined ? undefined : JSON.stringify(body) }, undefined, options.clearAuthOnUnauthorized);
+  return request<T>(
+    path,
+    {
+      ...rest,
+      headers: { "Content-Type": "application/json", ...headers },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    },
+    undefined,
+    options.clearAuthOnUnauthorized,
+  );
 }
 
 export function multipartRequest<T>(path: string, formData: FormData) {
-  return request<T>(path, { method: 'POST', body: formData });
+  return request<T>(path, { method: "POST", body: formData });
 }
 
 export function blobRequest(path: string, init: RequestInit = {}) {
@@ -79,8 +116,12 @@ export function blobRequest(path: string, init: RequestInit = {}) {
   }));
 }
 
-export function queryString(params: Record<string, string | number | undefined>) {
+export function queryString(
+  params: Record<string, string | number | undefined>,
+) {
   const search = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => { if (value !== undefined) search.set(key, String(value)); });
-  return search.size ? `?${search}` : '';
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined) search.set(key, String(value));
+  });
+  return search.size ? `?${search}` : "";
 }

@@ -1,3 +1,28 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { Button } from './ui';
-export default class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> { state = { failed: false }; static getDerivedStateFromError() { return { failed: true }; } componentDidCatch(error: Error, info: ErrorInfo) { console.error('界面渲染异常', error, info); } render() { if (this.state.failed) return <main className="fatal-error" role="alert"><div><span>!</span><h1>页面暂时无法显示</h1><p>界面渲染时出现异常，请刷新后重试。</p><Button onClick={() => window.location.reload()}>刷新页面</Button></div></main>; return this.props.children; } }
+import { Component, type ErrorInfo, type ReactNode } from "react";
+import { Button } from "./ui";
+export default class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("界面渲染异常", error, info);
+  }
+  render() {
+    if (this.state.failed)
+      return (
+        <main className="fatal-error" role="alert">
+          <div>
+            <span>!</span>
+            <h1>页面暂时无法显示</h1>
+            <p>界面渲染时出现异常，请刷新后重试。</p>
+            <Button onClick={() => window.location.reload()}>刷新页面</Button>
+          </div>
+        </main>
+      );
+    return this.props.children;
+  }
+}

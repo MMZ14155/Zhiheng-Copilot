@@ -1,5 +1,5 @@
-import type { ProjectListItem } from '../api';
-import ProjectCard from './ProjectCard';
+import type { ProjectListItem } from "../api";
+import ProjectCard from "./ProjectCard";
 
 interface ProjectCardGridProps {
   projects: ProjectListItem[];

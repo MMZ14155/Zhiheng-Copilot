@@ -1,4 +1,4 @@
-import ResourceCenter from '../components/ResourceCenter';
+import ResourceCenter from "../components/ResourceCenter";
 
 export default function ResourceCenterPage() {
   return (
