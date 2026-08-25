@@ -28,7 +28,8 @@ services:
       AUTH_DISABLED: ${AUTH_DISABLED:-false}
       AUTH_TOKEN_TTL_HOURS: ${AUTH_TOKEN_TTL_HOURS:-24}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-admin-dev-only}
-      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD:-demo-dev-only}
+      # 默认创建 demo 演示账号；生产环境在 .env 中显式设置 SEED_DEMO_PASSWORD=（空值）即可跳过创建
+      SEED_DEMO_PASSWORD: ${SEED_DEMO_PASSWORD-demo-dev-only}
       LLM_PROVIDER: ${LLM_PROVIDER:-mock}
       KIMI_API_KEY: ${KIMI_API_KEY:-}
       KIMI_BASE_URL: ${KIMI_BASE_URL:-https://api.moonshot.cn/v1}
