@@ -128,6 +128,11 @@ class KimiLlmProvider:
             raise KimiProviderError("Kimi API 返回非法 JSON") from exc
         if not isinstance(data, dict):
             raise KimiProviderError("Kimi API 返回非法 JSON")
+        # 提前做结构校验：模型输出不符合 schema 时视为可重试的失败。
+        try:
+            output_schema.model_validate(data)
+        except Exception as exc:
+            raise KimiProviderError("Kimi API 返回内容不符合预期结构") from exc
         usage = body.get("usage") or {}
         input_tokens = int(usage.get("prompt_tokens") or 0)
         output_tokens = int(usage.get("completion_tokens") or 0)

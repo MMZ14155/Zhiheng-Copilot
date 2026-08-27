@@ -36,9 +36,28 @@ def _normalize_rate(value):
     return number / 100 if is_percent else number
 
 
-# LLM 输出常见的非严格格式：中文日期、百分号小数等，入模前归一化。
+def _normalize_amount(value):
+    """剥离货币符号、千分位与说明文字（¥1,995.00 → 1995.00；1995.00（价税合计）→ 1995.00）。"""
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text:
+        return None
+    cleaned = re.sub(r"[¥￥$€,\s]", "", text)
+    try:
+        return Decimal(cleaned)
+    except InvalidOperation:
+        pass
+    match = re.search(r"-?\d+(?:\.\d+)?", cleaned)
+    if match:
+        return Decimal(match.group())
+    return value
+
+
+# LLM 输出常见的非严格格式：中文日期、百分号小数、货币符号金额等，入模前归一化。
 FlexibleDate = Annotated[date | None, BeforeValidator(_normalize_date)]
 PercentDecimal = Annotated[Decimal | None, BeforeValidator(_normalize_rate)]
+FlexibleDecimal = Annotated[Decimal | None, BeforeValidator(_normalize_amount)]
 
 
 class TaskCreatedResponse(BaseModel):
@@ -140,7 +159,7 @@ class ContractExtractionOutput(BaseModel):
     contract_no: str | None = None
     party_a: str | None = None
     party_b: str | None = None
-    amount: Decimal | None = None
+    amount: FlexibleDecimal = None
     signed_date: FlexibleDate = None
     payment_terms: list[dict[str, str]] = Field(default_factory=list)
     missing_fields: list[str] = Field(default_factory=list)
@@ -156,7 +175,7 @@ class ProjectDraftOutput(BaseModel):
     name: str | None = None
     customer_name: str | None = None
     parties: list[ProjectDraftParty] = Field(default_factory=list)
-    contract_amount: Decimal | None = None
+    contract_amount: FlexibleDecimal = None
     signed_date: FlexibleDate = None
     started_date: FlexibleDate = None
     planned_delivery_date: FlexibleDate = None
@@ -200,8 +219,8 @@ class InvoiceInfoResponse(BaseModel):
 class InvoiceExtractionOutput(BaseModel):
     invoice_no: str | None = None
     issued_date: FlexibleDate = None
-    amount: Decimal | None = None
-    tax_amount: Decimal | None = None
+    amount: FlexibleDecimal = None
+    tax_amount: FlexibleDecimal = None
     tax_rate: PercentDecimal = None
     buyer: str | None = None
     seller: str | None = None
@@ -224,7 +243,7 @@ class PaymentInfoResponse(BaseModel):
 
 
 class PaymentExtractionOutput(BaseModel):
-    amount: Decimal | None = None
+    amount: FlexibleDecimal = None
     payment_date: FlexibleDate = None
     payer: str | None = None
     contract_no: str | None = None

@@ -11,9 +11,10 @@ from app.db.base import Base
 class LlmCall(Base):
     __tablename__ = "llm_call"
     __table_args__ = (
+        # 无归属场景（copilot 全库问答、建项草稿）允许 0 个 owner，其余场景必须恰好 1 个。
         CheckConstraint(
-            "(scene = 'copilot_answer' AND num_nonnulls(task_id, file_version, summary_id, project_id) <= 1) "
-            "OR (scene <> 'copilot_answer' AND num_nonnulls(task_id, file_version, summary_id, project_id) = 1)",
+            "(scene IN ('copilot_answer', 'project_draft') AND num_nonnulls(task_id, file_version, summary_id, project_id) <= 1) "
+            "OR (scene NOT IN ('copilot_answer', 'project_draft') AND num_nonnulls(task_id, file_version, summary_id, project_id) = 1)",
             name="ck_llm_call_single_owner",
         ),
         CheckConstraint("prompt_hash ~ '^[0-9a-f]{64}$'", name="ck_llm_call_prompt_hash"),
