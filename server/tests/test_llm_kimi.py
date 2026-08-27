@@ -370,11 +370,12 @@ def test_extract_injects_document_text_and_persists_result(monkeypatch, tmp_path
     assert prompt_payload["document_text"] == "甲方A 乙方B 金额100万"
     assert "仅依据 document_text 抽取" in prompt_payload["instruction"]
     assert prompt_payload["required_fields"] == [
-        "合同编号",
-        "甲乙方",
-        "金额",
-        "签署日期",
-        "付款条款",
+        "contract_no",
+        "party_a",
+        "party_b",
+        "amount",
+        "signed_date",
+        "payment_terms",
     ]
 
     persisted = session.add.call_args.args[0]
@@ -428,5 +429,5 @@ def test_extract_without_extractor_keeps_metadata_only_prompt(monkeypatch):
         "version": version.version,
         "document_type": "contract",
         "content_hash": version.content_hash,
-        "required_fields": ["合同编号", "甲乙方", "金额", "签署日期", "付款条款"],
+        "required_fields": ["contract_no", "party_a", "party_b", "amount", "signed_date", "payment_terms"],
     }

@@ -29,7 +29,7 @@ class Settings(BaseSettings):
         default="https://api.moonshot.cn/v1", validation_alias="KIMI_BASE_URL"
     )
     kimi_model: str = Field(default="kimi-k2.6", validation_alias="KIMI_MODEL")
-    kimi_timeout_seconds: int = Field(default=60, validation_alias="KIMI_TIMEOUT_SECONDS")
+    kimi_timeout_seconds: int = Field(default=120, validation_alias="KIMI_TIMEOUT_SECONDS")
     kimi_input_price_per_mtok: Decimal = Field(
         default=Decimal("0"), validation_alias="KIMI_INPUT_PRICE_PER_MTOK"
     )

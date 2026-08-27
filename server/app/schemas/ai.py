@@ -1,8 +1,44 @@
+import re
 from datetime import date, datetime
-from decimal import Decimal
-from typing import Literal
+from decimal import Decimal, InvalidOperation
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator, model_validator
+
+_CN_DATE_PATTERN = re.compile(r"^(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?$")
+
+
+def _normalize_date(value):
+    """接受中文日期（2026年08月25日）等写法，统一为 date。"""
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text:
+        return None
+    match = _CN_DATE_PATTERN.match(text)
+    if match:
+        return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    return text.replace("/", "-").replace(".", "-")
+
+
+def _normalize_rate(value):
+    """接受百分号写法（6%），统一为小数（0.06）。"""
+    if not isinstance(value, str):
+        return value
+    text = value.strip()
+    if not text:
+        return None
+    is_percent = text.endswith("%")
+    try:
+        number = Decimal(text.rstrip("%"))
+    except InvalidOperation:
+        return value
+    return number / 100 if is_percent else number
+
+
+# LLM 输出常见的非严格格式：中文日期、百分号小数等，入模前归一化。
+FlexibleDate = Annotated[date | None, BeforeValidator(_normalize_date)]
+PercentDecimal = Annotated[Decimal | None, BeforeValidator(_normalize_rate)]
 
 
 class TaskCreatedResponse(BaseModel):
@@ -105,7 +141,7 @@ class ContractExtractionOutput(BaseModel):
     party_a: str | None = None
     party_b: str | None = None
     amount: Decimal | None = None
-    signed_date: date | None = None
+    signed_date: FlexibleDate = None
     payment_terms: list[dict[str, str]] = Field(default_factory=list)
     missing_fields: list[str] = Field(default_factory=list)
 
@@ -121,9 +157,9 @@ class ProjectDraftOutput(BaseModel):
     customer_name: str | None = None
     parties: list[ProjectDraftParty] = Field(default_factory=list)
     contract_amount: Decimal | None = None
-    signed_date: date | None = None
-    started_date: date | None = None
-    planned_delivery_date: date | None = None
+    signed_date: FlexibleDate = None
+    started_date: FlexibleDate = None
+    planned_delivery_date: FlexibleDate = None
     project_type: Literal["软件销售", "正版化服务", "正版化服务+软件销售"] | None = None
     missing_fields: list[str] = Field(default_factory=list)
     notes: str | None = None
@@ -163,10 +199,10 @@ class InvoiceInfoResponse(BaseModel):
 
 class InvoiceExtractionOutput(BaseModel):
     invoice_no: str | None = None
-    issued_date: date | None = None
+    issued_date: FlexibleDate = None
     amount: Decimal | None = None
     tax_amount: Decimal | None = None
-    tax_rate: Decimal | None = None
+    tax_rate: PercentDecimal = None
     buyer: str | None = None
     seller: str | None = None
     missing_fields: list[str] = Field(default_factory=list)
@@ -189,7 +225,7 @@ class PaymentInfoResponse(BaseModel):
 
 class PaymentExtractionOutput(BaseModel):
     amount: Decimal | None = None
-    payment_date: date | None = None
+    payment_date: FlexibleDate = None
     payer: str | None = None
     contract_no: str | None = None
     remarks: str | None = None

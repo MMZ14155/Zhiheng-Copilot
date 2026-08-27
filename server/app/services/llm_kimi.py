@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -66,7 +67,29 @@ class KimiLlmProvider:
             headers={"Authorization": f"Bearer {api_key}"},
         )
 
-    async def generate(self, prompt: str, output_schema: type[BaseModel]) -> ProviderResult:
+    async def generate(
+        self,
+        prompt: str,
+        output_schema: type[BaseModel],
+        *,
+        max_attempts: int = 3,
+    ) -> ProviderResult:
+        """带自动重试的生成：超时、网络错误或非法 JSON 时按递增间隔重试。
+
+        Kimi 长文档生成的响应时间波动较大，单次失败不应直接判死任务。
+        """
+        last_error: KimiProviderError | None = None
+        for attempt in range(max_attempts):
+            try:
+                return await self._generate_once(prompt, output_schema)
+            except KimiProviderError as exc:
+                last_error = exc
+                if attempt < max_attempts - 1:
+                    await asyncio.sleep(2 * (attempt + 1))
+        assert last_error is not None
+        raise last_error
+
+    async def _generate_once(self, prompt: str, output_schema: type[BaseModel]) -> ProviderResult:
         payload = {
             "model": self.model_name,
             "messages": [{"role": "user", "content": prompt}],
@@ -97,8 +120,10 @@ class KimiLlmProvider:
             raise KimiProviderError("Kimi API 响应结构异常") from exc
         if not content:
             raise KimiProviderError("Kimi API 返回空内容")
+        # 模型偶尔用 markdown 代码块包裹 JSON，先剥离再解析。
+        stripped = re.sub(r"^```(?:json)?\s*|\s*```$", "", content.strip())
         try:
-            data = json.loads(content)
+            data = json.loads(stripped)
         except json.JSONDecodeError as exc:
             raise KimiProviderError("Kimi API 返回非法 JSON") from exc
         if not isinstance(data, dict):

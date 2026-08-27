@@ -200,19 +200,19 @@ class AiTaskExecutor:
                 ContractExtractionOutput,
                 ContractInfo,
                 "contract_extraction",
-                ["合同编号", "甲乙方", "金额", "签署日期", "付款条款"],
+                ["contract_no", "party_a", "party_b", "amount", "signed_date", "payment_terms"],
             ),
             "invoice": (
                 InvoiceExtractionOutput,
                 InvoiceInfo,
                 "invoice_extraction",
-                ["发票号码", "开票日期", "金额", "税额", "税率", "购买方", "销售方"],
+                ["invoice_no", "issued_date", "amount", "tax_amount", "tax_rate", "buyer", "seller"],
             ),
             "payment": (
                 PaymentExtractionOutput,
                 PaymentInfo,
                 "payment_extraction",
-                ["回款金额", "回款日期", "付款方", "对应合同编号", "备注"],
+                ["amount", "payment_date", "payer", "contract_no", "remarks"],
             ),
         }
         config = extraction_config.get(version.document_type)
@@ -230,7 +230,8 @@ class AiTaskExecutor:
         if document_text is not None:
             prompt_payload["document_text"] = document_text
             prompt_payload["instruction"] = (
-                "仅依据 document_text 抽取，缺失字段进 missing_fields，不得编造"
+                "仅依据 document_text 抽取，输出 JSON 的键名必须严格使用 "
+                "required_fields 中的键名，缺失字段进 missing_fields，不得编造"
             )
             logger.info(
                 "injecting document text into extraction prompt version=%s text_length=%s",
