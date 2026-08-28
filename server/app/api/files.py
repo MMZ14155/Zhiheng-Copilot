@@ -1,11 +1,13 @@
 import logging
+from pathlib import Path
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse
 
-from app.api.errors import bad_request, not_found
+from app.api.errors import bad_request, not_found, unsupported_media_type
 from app.api.dependencies import get_current_user, require_project_role
 from app.db.session import get_session
 from app.models.file_version import FileVersion
@@ -27,6 +29,20 @@ from app.services.workspace_commit import WorkspaceCommitService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["files"])
+
+# 仅这些扩展名允许在线预览内联输出；html/svg 等可执行内容类型一律 415 防 XSS
+PREVIEW_MEDIA_TYPES = {
+    ".pdf": "application/pdf",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".gif": "image/gif",
+    ".bmp": "image/bmp",
+    ".webp": "image/webp",
+    ".txt": "text/plain; charset=utf-8",
+    ".md": "text/plain; charset=utf-8",
+    ".log": "text/plain; charset=utf-8",
+}
 
 
 def _version_to_response(fv: FileVersion) -> FileVersionResponse:
@@ -196,12 +212,10 @@ async def list_versions(file_id: int, session: AsyncSession = Depends(get_sessio
     )
 
 
-@router.get("/versions/{version}/download")
-async def download_version(
-    version: str,
-    session: AsyncSession = Depends(get_session),
-    user: User = Depends(get_current_user),
-):
+async def _resolve_version_storage(
+    session: AsyncSession, version: str, user: User
+) -> tuple[FileVersion, Path]:
+    # download 与 preview 共用的版本解析、项目成员鉴权与落盘路径校验，避免两处口径分叉
     fv = await FileVersionService.get_version(session, version)
     project_id = await session.scalar(
         select(WorkspaceFile.project_id).where(WorkspaceFile.id == fv.file_id)
@@ -214,11 +228,19 @@ async def download_version(
         )
         raise not_found(f"版本 {version} 所属文件不存在", code="FILE_NOT_FOUND")
     await require_project_role(session, project_id, user)
-    from pathlib import Path as PPath
-
-    path = PPath(fv.storage_path)
+    path = Path(fv.storage_path)
     if not path.exists():
         raise not_found(f"版本 {version} 的文件存储不存在", code="FILE_STORAGE_MISSING")
+    return fv, path
+
+
+@router.get("/versions/{version}/download")
+async def download_version(
+    version: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    _, path = await _resolve_version_storage(session, version, user)
     media_type_map = {
         ".pdf": "application/pdf",
         ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -229,3 +251,27 @@ async def download_version(
     ext = path.suffix.lower()
     media_type = media_type_map.get(ext, "application/octet-stream")
     return FileResponse(path=str(path), media_type=media_type, filename=path.name)
+
+
+@router.get("/versions/{version}/preview")
+async def preview_version(
+    version: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    _, path = await _resolve_version_storage(session, version, user)
+    ext = path.suffix.lower()
+    media_type = PREVIEW_MEDIA_TYPES.get(ext)
+    if media_type is None:
+        logger.info(
+            "preview rejected unsupported type version=%s ext=%s", version, ext
+        )
+        raise unsupported_media_type(
+            f"文件类型 '{ext}' 不支持在线预览，请改用下载"
+        )
+    logger.info("preview served version=%s ext=%s", version, ext)
+    headers = {
+        "Content-Disposition": f"inline; filename*=UTF-8''{quote(path.name)}",
+        "X-Content-Type-Options": "nosniff",
+    }
+    return FileResponse(path=str(path), media_type=media_type, headers=headers)
