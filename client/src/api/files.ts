@@ -96,6 +96,27 @@ export async function downloadVersion(
   return { blob, filename };
 }
 
+export interface VersionPreview {
+  objectUrl: string;
+  contentType: string;
+  textContent?: string;
+}
+
+export async function previewVersion(version: string): Promise<VersionPreview> {
+  const { blob, headers } = await blobRequest(
+    `/versions/${encodeURIComponent(version)}/preview`,
+  );
+  const contentType = headers.get("content-type") ?? blob.type;
+  const textContent = contentType.toLowerCase().startsWith("text/")
+    ? await blob.text()
+    : undefined;
+  return {
+    objectUrl: URL.createObjectURL(blob),
+    contentType,
+    ...(textContent === undefined ? {} : { textContent }),
+  };
+}
+
 export async function workspaceCommit(
   projectId: number,
   input: WorkspaceCommitInput,

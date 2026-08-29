@@ -135,11 +135,13 @@ export function Modal({
   children,
   footer,
   onClose,
+  className = "",
 }: {
   title: string;
   children: ReactNode;
   footer?: ReactNode;
   onClose: () => void;
+  className?: string;
 }) {
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -156,7 +158,7 @@ export function Modal({
       }}
     >
       <section
-        className="ui-modal"
+        className={`ui-modal ${className}`.trim()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="ui-modal-title"

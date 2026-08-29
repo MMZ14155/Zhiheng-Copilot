@@ -420,6 +420,20 @@ describe("API domain modules", () => {
     expect((await files.downloadVersion("xyz789")).filename).toBe("xyz789");
   });
 
+  it("预览版本返回 Blob URL 并读取文本内容", async () => {
+    const blob = new Blob(["plain text"], { type: "text/plain" });
+    vi.mocked(fetch).mockResolvedValueOnce(
+      blobResponse(blob, { "content-type": "text/plain; charset=utf-8" }),
+    );
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn().mockReturnValue("blob:mock"),
+    });
+    const result = await files.previewVersion("abc123");
+    expect(result.objectUrl).toBe("blob:mock");
+    expect(result.contentType).toContain("text/plain");
+    expect(result.textContent).toBe("plain text");
+  });
+
   it("映射交付物与标签", async () => {
     const tracked = {
       id: 1,

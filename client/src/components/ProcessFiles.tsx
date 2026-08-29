@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage, filesApi } from "../api";
 import type { ProjectFile } from "../api";
 import { formatDateTime, shortHash } from "../utils/format";
+import FilePreview, { isPreviewableFile } from "./FilePreview";
 
 const accept = ".pdf,.docx,.xlsx,.jpg,.jpeg,.png";
 
@@ -38,6 +39,10 @@ export default function ProcessFiles({
   const [commitMessage, setCommitMessage] = useState("");
   const [committing, setCommitting] = useState(false);
   const [commitError, setCommitError] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<{
+    name: string;
+    version: string;
+  } | null>(null);
 
   // 新增文件表单
   const [newFile, setNewFile] = useState<File | null>(null);
@@ -258,6 +263,20 @@ export default function ProcessFiles({
                     )}
                     {!isPendingRemove && !pendingUpdate && (
                       <div className="process-file-actions">
+                        {item.latestVersion && isPreviewableFile(item.name) && (
+                          <button
+                            type="button"
+                            className="secondary"
+                            onClick={() =>
+                              setPreviewTarget({
+                                name: item.name,
+                                version: item.latestVersion!.version,
+                              })
+                            }
+                          >
+                            预览
+                          </button>
+                        )}
                         <ReplaceButton
                           onSelect={(file, changelog) =>
                             stageUpdate(item.id, item.name, file, changelog)
@@ -382,6 +401,12 @@ export default function ProcessFiles({
           </p>
         )}
       </div>
+      {previewTarget && (
+        <FilePreview
+          {...previewTarget}
+          onClose={() => setPreviewTarget(null)}
+        />
+      )}
     </div>
   );
 }

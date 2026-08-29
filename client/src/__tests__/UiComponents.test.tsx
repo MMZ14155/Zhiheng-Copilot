@@ -8,6 +8,7 @@ import {
   Button,
   Empty,
   Input,
+  Modal,
   Skeleton,
   Tabs,
 } from "../components/ui";
@@ -52,5 +53,19 @@ describe("基础 UI 组件", () => {
     );
     expect(change).toHaveBeenCalledWith("b");
     expect(screen.getByRole("status")).toBeTruthy();
+  });
+
+  it("Modal 支持自定义 className 并响应关闭", async () => {
+    const close = vi.fn();
+    render(
+      <Modal title="标题" className="custom-modal" onClose={close}>
+        内容
+      </Modal>,
+    );
+    expect(screen.getByRole("dialog").classList.contains("custom-modal")).toBe(
+      true,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "关闭" }));
+    expect(close).toHaveBeenCalledTimes(1);
   });
 });

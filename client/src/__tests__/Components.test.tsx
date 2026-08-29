@@ -40,6 +40,7 @@ vi.mock("../api", async (original) => {
       listProjectFiles: vi.fn(),
       listFileVersionOptions: vi.fn(),
       downloadVersion: vi.fn(),
+      previewVersion: vi.fn(),
     },
     tagsApi: {
       ...actual.tagsApi,
@@ -355,6 +356,56 @@ describe("核心组件", () => {
     );
     await userEvent.click(screen.getByText("下载"));
     await screen.findByText("下载失败，请稍后重试");
+  });
+
+  it("VersionHistory 为可预览文件显示预览入口并打开 Modal", async () => {
+    vi.mocked(deliverablesApi.listTrackedFiles).mockResolvedValue([
+      {
+        id: "1",
+        sourceFileId: 5,
+        name: "合同.pdf",
+        category: "合同",
+        required: true,
+        currentVersion: "abcdefghijk",
+        status: "ok",
+        versions: [
+          {
+            version: "abcdefghijk",
+            previousVersion: null,
+            uploadedBy: "",
+            changelog: "",
+            parseStatus: "done",
+            documentType: null,
+            sizeBytes: 2048,
+            isFrozen: true,
+            isCurrent: true,
+            uploadedAt: "2026-01-01T00:00:00Z",
+          },
+        ],
+      },
+    ]);
+    vi.mocked(filesApi.previewVersion).mockResolvedValue({
+      objectUrl: "blob:mock",
+      contentType: "application/pdf",
+    });
+    vi.spyOn(globalThis.URL, "createObjectURL").mockReturnValue("blob:mock");
+    render(
+      <VersionHistory
+        projectId={1}
+        deliverables={[
+          {
+            id: "5",
+            name: "合同",
+            createdAt: "",
+            updatedAt: "2026-01-01T00:00:00Z",
+          },
+        ]}
+      />,
+    );
+    await screen.findByRole("button", { name: "预览" });
+    await userEvent.click(screen.getByRole("button", { name: "预览" }));
+    await screen.findByTitle("合同.pdf PDF 预览");
+    expect(filesApi.previewVersion).toHaveBeenCalledWith("abcdefghijk");
   });
 
   it("TagPanel 加载空状态、校验并创建标签", async () => {

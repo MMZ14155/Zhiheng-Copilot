@@ -8,6 +8,7 @@ import type {
 import { formatDateTime, shortHash } from "../utils/format";
 import { downloadBlob } from "../utils/download";
 import { Alert, Button, Empty, Modal, Skeleton } from "./ui";
+import FilePreview, { isPreviewableFile } from "./FilePreview";
 import "./SnapshotTimeline.css";
 
 export default function SnapshotTimeline({
@@ -32,6 +33,10 @@ export default function SnapshotTimeline({
     null,
   );
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [previewTarget, setPreviewTarget] = useState<{
+    name: string;
+    version: string;
+  } | null>(null);
 
   const loadSnapshots = useCallback(async () => {
     setLoading(true);
@@ -240,6 +245,20 @@ export default function SnapshotTimeline({
                               <code title={entry.version}>
                                 {shortHash(entry.version)}
                               </code>
+                              {isPreviewableFile(entry.path) && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  onClick={() =>
+                                    setPreviewTarget({
+                                      name: entry.path,
+                                      version: entry.version,
+                                    })
+                                  }
+                                >
+                                  预览
+                                </Button>
+                              )}
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -289,6 +308,12 @@ export default function SnapshotTimeline({
             吗？此操作会生成新的恢复快照。
           </p>
         </Modal>
+      )}
+      {previewTarget && (
+        <FilePreview
+          {...previewTarget}
+          onClose={() => setPreviewTarget(null)}
+        />
       )}
     </div>
   );

@@ -9,6 +9,7 @@ import type {
 import { useTaskPolling } from "../hooks/useTaskPolling";
 import { formatDateTime, shortHash } from "../utils/format";
 import { downloadBlob } from "../utils/download";
+import FilePreview, { isPreviewableFile } from "./FilePreview";
 
 interface VersionHistoryProps {
   projectId: number;
@@ -34,6 +35,10 @@ export default function VersionHistory({
   const [downloadErrors, setDownloadErrors] = useState<Record<string, string>>(
     {},
   );
+  const [previewTarget, setPreviewTarget] = useState<{
+    name: string;
+    version: string;
+  } | null>(null);
 
   const loadTrackedFiles = useCallback(async () => {
     setLoading(true);
@@ -101,6 +106,7 @@ export default function VersionHistory({
           (item) => item.sourceFileId === Number(deliverable.id),
         );
         const version = trackedFile?.versions.find((v) => v.isCurrent) ?? null;
+        const filename = trackedFile?.name ?? deliverable.name;
         return (
           <article className="deliverable-item" key={deliverable.id}>
             <div className="deliverable-heading">
@@ -116,6 +122,17 @@ export default function VersionHistory({
                   </code>
                   {version.isFrozen && (
                     <span className="version-badge frozen">已冻结</span>
+                  )}
+                  {isPreviewableFile(filename) && (
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() =>
+                        setPreviewTarget({ name: filename, version: version.version })
+                      }
+                    >
+                      预览
+                    </button>
                   )}
                   <button
                     type="button"
@@ -159,6 +176,12 @@ export default function VersionHistory({
           </article>
         );
       })}
+      {previewTarget && (
+        <FilePreview
+          {...previewTarget}
+          onClose={() => setPreviewTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SnapshotTimeline from "../components/SnapshotTimeline";
-import { ApiError, snapshotsApi } from "../api";
+import { ApiError, filesApi, snapshotsApi } from "../api";
 
 vi.mock("../api", async (original) => {
   const actual = await original<typeof import("../api")>();
@@ -13,6 +13,10 @@ vi.mock("../api", async (original) => {
       listSnapshots: vi.fn(),
       getSnapshot: vi.fn(),
       restoreSnapshot: vi.fn(),
+    },
+    filesApi: {
+      ...actual.filesApi,
+      previewVersion: vi.fn(),
     },
   };
 });
@@ -68,6 +72,38 @@ describe("SnapshotTimeline", () => {
     await screen.findByText("合同.pdf");
     expect(snapshotsApi.getSnapshot).toHaveBeenCalledWith(older.hash);
     expect(screen.getByTitle("c".repeat(64)).textContent).toBe("cccccccc");
+  });
+
+  it("快照文件树中可预览文件", async () => {
+    vi.mocked(snapshotsApi.listSnapshots).mockResolvedValue({
+      projectId: 7,
+      snapshots: [older],
+    });
+    vi.mocked(snapshotsApi.getSnapshot).mockResolvedValue({
+      ...older,
+      projectId: 7,
+      entries: [
+        {
+          fileId: 3,
+          path: "合同.pdf",
+          version: "c".repeat(64),
+          uploader: "丙",
+          uploadedAt: "2026-08-16T07:00:00Z",
+        },
+      ],
+    });
+    vi.mocked(filesApi.previewVersion).mockResolvedValue({
+      objectUrl: "blob:mock",
+      contentType: "application/pdf",
+    });
+    vi.spyOn(globalThis.URL, "createObjectURL").mockReturnValue("blob:mock");
+    render(<SnapshotTimeline projectId={7} onChanged={vi.fn()} />);
+    await screen.findByText("早期版本");
+    await userEvent.click(screen.getByRole("button", { name: "展开文件树" }));
+    await screen.findByText("合同.pdf");
+    await userEvent.click(screen.getByRole("button", { name: "预览" }));
+    await screen.findByTitle("合同.pdf PDF 预览");
+    expect(filesApi.previewVersion).toHaveBeenCalledWith("c".repeat(64));
   });
 
   it("确认恢复后展示结果与 skipped 清单并刷新数据", async () => {
