@@ -70,6 +70,10 @@ export function deleteUser(id: number) {
   return jsonRequest<void>(`/admin/users/${id}`, { method: "DELETE" });
 }
 
+export function deleteProject(id: string) {
+  return jsonRequest<void>(`/admin/projects/${id}`, { method: "DELETE" });
+}
+
 export async function listProjectMembers(projectId: number) {
   return (
     await jsonRequest<ProjectMemberDto[]>(

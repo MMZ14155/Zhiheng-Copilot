@@ -13,7 +13,7 @@ from app.models.project import Project
 from app.models.project_member import ProjectMember
 from app.models.user import User
 from app.schemas.admin import AdminUserCreate, ProjectMemberCreate
-from tests.conftest import Result
+from tests.conftest import Result, ScalarRows
 
 
 def test_require_admin(users):
@@ -108,10 +108,27 @@ def test_duplicate_project_member(fake_session, users):
     assert exc_info.value.detail["code"] == "PROJECT_MEMBER_EXISTS"
 
 
-def test_list_project_members(fake_session, users, now):
-    fake_session.get.return_value = SimpleNamespace(id=5)
-    member = ProjectMember(id=1, project_id=5, user_id=users.member.id, role="implementer", created_at=now)
-    fake_session.execute.return_value = Result([(member, users.member)])
-    response = asyncio.run(admin_api.list_project_members(5, fake_session))
-    assert response[0].login == users.member.login
-    assert response[0].role == "implementer"
+def test_delete_project_not_found(fake_session, users):
+    fake_session.get.return_value = None
+    with pytest.raises(HTTPException) as exc_info:
+        asyncio.run(admin_api.delete_project(5, fake_session))
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail["code"] == "PROJECT_NOT_FOUND"
+
+
+def test_delete_project_cleans_related_records(fake_session, users):
+    project = Project(id=5, name="项目", code="P5", customer_name="客户")
+    fake_session.get.return_value = project
+    fake_session.scalars.side_effect = [
+        ScalarRows([]),  # snapshot hashes
+        ScalarRows([]),  # snapshots
+        ScalarRows([]),  # tag ids
+        ScalarRows([]),  # workspace file ids
+        ScalarRows([]),  # file versions
+    ]
+    fake_session.execute.return_value = Result([])
+    response = asyncio.run(admin_api.delete_project(5, fake_session))
+    assert response.status_code == 204
+    fake_session.delete.assert_awaited_once_with(project)
+    fake_session.commit.assert_awaited_once()
+

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { adminApi, errorMessage, type AdminUser } from "../api";
+import { projectsApi, type ProjectListItem } from "../api";
 import {
   Alert,
   Badge,
@@ -27,22 +28,47 @@ export default function Admin() {
   const [deleting, setDeleting] = useState(false);
   const [activeTab, setActiveTab] = useState("accounts");
 
-  const loadOverview = useCallback(async () => {
+  const [projects, setProjects] = useState<ProjectListItem[]>([]);
+  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectError, setProjectError] = useState<string | null>(null);
+  const [deleteProjectTarget, setDeleteProjectTarget] = useState<ProjectListItem | null>(null);
+  const [deletingProject, setDeletingProject] = useState(false);
+
+  const loadUsers = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
       setUsers(await adminApi.listUsers());
     } catch (reason) {
-      console.error("管理数据加载失败", reason);
-      setLoadError(errorMessage(reason, "管理数据加载失败，请稍后重试"));
+      console.error("账号数据加载失败", reason);
+      setLoadError(errorMessage(reason, "账号数据加载失败，请稍后重试"));
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const loadProjects = useCallback(async () => {
+    setProjectsLoading(true);
+    setProjectError(null);
+    try {
+      const result = await projectsApi.listProjects({ size: 1000 });
+      setProjects(result.items);
+    } catch (reason) {
+      console.error("项目数据加载失败", reason);
+      setProjectError(errorMessage(reason, "项目数据加载失败，请稍后重试"));
+    } finally {
+      setProjectsLoading(false);
+    }
+  }, []);
+
+  const loadData = useCallback(() => {
+    void loadUsers();
+    void loadProjects();
+  }, [loadUsers, loadProjects]);
+
   useEffect(() => {
-    void loadOverview();
-  }, [loadOverview]);
+    void loadData();
+  }, [loadData]);
 
   const createUser = async (event: FormEvent) => {
     event.preventDefault();
@@ -89,6 +115,24 @@ export default function Admin() {
     }
   };
 
+  const confirmDeleteProject = async () => {
+    if (!deleteProjectTarget) return;
+    setDeletingProject(true);
+    setProjectError(null);
+    try {
+      await adminApi.deleteProject(deleteProjectTarget.id);
+      setDeleteProjectTarget(null);
+      const result = await projectsApi.listProjects({ size: 1000 });
+      setProjects(result.items);
+    } catch (reason) {
+      console.error("项目删除失败", reason);
+      setProjectError(errorMessage(reason, "项目删除失败，请稍后重试"));
+      setDeleteProjectTarget(null);
+    } finally {
+      setDeletingProject(false);
+    }
+  };
+
   return (
     <div className="page-container admin-page">
       <div className="admin-page-heading">
@@ -99,10 +143,10 @@ export default function Admin() {
         <Button
           variant="secondary"
           type="button"
-          onClick={() => void loadOverview()}
-          disabled={loading}
+          onClick={() => void loadData()}
+          disabled={loading || projectsLoading}
         >
-          {loading ? "加载中…" : "刷新数据"}
+          {loading || projectsLoading ? "加载中…" : "刷新数据"}
         </Button>
       </div>
       {loading && (
@@ -116,7 +160,7 @@ export default function Admin() {
             <Button
               variant="secondary"
               type="button"
-              onClick={() => void loadOverview()}
+              onClick={() => void loadData()}
             >
               重试
             </Button>
@@ -133,6 +177,7 @@ export default function Admin() {
             onChange={setActiveTab}
             tabs={[
               { key: "accounts", label: "账号管理" },
+              { key: "projects", label: "项目管理" },
               { key: "ai", label: "AI 配置" },
             ]}
           />
@@ -233,6 +278,66 @@ export default function Admin() {
             </Card>
           )}
           {activeTab === "ai" && <LlmConfigSection />}
+          {activeTab === "projects" && (
+            <Card className="admin-section">
+              <div className="admin-section-title">
+                <div>
+                  <h3>项目管理</h3>
+                  <p>查看全部项目并删除不再需要的项目。</p>
+                </div>
+                <Badge tone="primary">{projects.length} 个项目</Badge>
+              </div>
+              {projectError && <Alert>{projectError}</Alert>}
+              {projectsLoading ? (
+                <Skeleton rows={4} />
+              ) : projects.length === 0 ? (
+                <Empty title="暂无项目" description="系统中还没有创建项目。" />
+              ) : (
+                <Table label="项目列表">
+                  <thead>
+                    <tr>
+                      <th>项目名称</th>
+                      <th>客户名称</th>
+                      <th>项目类型</th>
+                      <th>状态</th>
+                      <th>更新时间</th>
+                      <th>操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {projects.map((project) => (
+                      <tr key={project.id}>
+                        <td>{project.name}</td>
+                        <td>{project.customerName}</td>
+                        <td>{project.projectType ?? "-"}</td>
+                        <td>
+                          <Badge tone={project.status === "active" ? "success" : "neutral"}>
+                            {project.status === "active" && "进行中"}
+                            {project.status === "archived" && "已归档"}
+                            {project.status === "completed" && "已完成"}
+                          </Badge>
+                        </td>
+                        <td>
+                          {project.updatedAt
+                            ? new Date(project.updatedAt).toLocaleString("zh-CN")
+                            : "-"}
+                        </td>
+                        <td>
+                          <Button
+                            variant="ghost"
+                            type="button"
+                            onClick={() => setDeleteProjectTarget(project)}
+                          >
+                            删除
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              )}
+            </Card>
+          )}
         </>
       )}
       {deleteTarget && (
@@ -264,6 +369,40 @@ export default function Admin() {
                 onClick={() => void confirmDelete()}
               >
                 {deleting ? "删除中…" : "确认删除"}
+              </Button>
+            </div>
+          </section>
+        </div>
+      )}
+      {deleteProjectTarget && (
+        <div className="admin-dialog-backdrop">
+          <section
+            className="admin-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-project-title"
+          >
+            <h3 id="delete-project-title">确认删除项目</h3>
+            <p>
+              确定删除“{deleteProjectTarget.name}（{deleteProjectTarget.code}
+              ）”吗？删除后将无法恢复，项目下的文件、摘要与快照也会被一并清理。
+            </p>
+            <div>
+              <Button
+                variant="secondary"
+                type="button"
+                disabled={deletingProject}
+                onClick={() => setDeleteProjectTarget(null)}
+              >
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                type="button"
+                disabled={deletingProject}
+                onClick={() => void confirmDeleteProject()}
+              >
+                {deletingProject ? "删除中…" : "确认删除"}
               </Button>
             </div>
           </section>

@@ -2,7 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, Response, status
 from pydantic import BaseModel
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,10 +11,21 @@ from app.api.errors import conflict, not_found
 from app.core.security import hash_password
 from app.db.session import get_session
 from app.models.auth_token import AuthToken
+from app.models.file_version import FileVersion
+from app.models.llm_call import LlmCall
 from app.models.project import Project
 from app.models.project_member import ProjectMember
+from app.models.project_link import ProjectLink
+from app.models.snapshot import Snapshot
+from app.models.snapshot_entry import SnapshotEntry
+from app.models.summary import Summary
+from app.models.tag import Tag
+from app.models.tag_snapshot import TagSnapshot
+from app.models.task import Task
+from app.models.tracked_file import TrackedFile
 from app.models.user import User
 from app.models.system_setting import SystemSetting
+from app.models.workspace_file import WorkspaceFile
 from app.schemas.admin import (
     AdminUserCreate,
     AdminUserResponse,
@@ -230,3 +241,86 @@ async def delete_project_member(
     await session.commit()
     logger.info("admin removed project member project_id=%s user_id=%s", project_id, user_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+async def _delete_project_records(session: AsyncSession, project_id: int) -> None:
+    """按外键依赖顺序清理项目关联数据，避免 RESTRICT 约束导致删除失败。"""
+    # LLM 调用记录直接删除
+    await session.execute(delete(LlmCall).where(LlmCall.project_id == project_id))
+
+    # 快照相关：先删快照条目、解除版本引用，再按时间倒序删快照（子快照先于父快照）
+    snapshot_hashes = (
+        await session.scalars(
+            select(Snapshot.hash).where(Snapshot.project_id == project_id)
+        )
+    ).all()
+    if snapshot_hashes:
+        await session.execute(
+            delete(SnapshotEntry).where(SnapshotEntry.snapshot_hash.in_(snapshot_hashes))
+        )
+        await session.execute(
+            update(FileVersion)
+            .where(FileVersion.snapshot_hash.in_(snapshot_hashes))
+            .values(snapshot_hash=None)
+        )
+        snapshots = (
+            await session.scalars(
+                select(Snapshot)
+                .where(Snapshot.project_id == project_id)
+                .order_by(Snapshot.created_at.desc())
+            )
+        ).all()
+        for snapshot in snapshots:
+            await session.delete(snapshot)
+
+    # 摘要、任务、标签
+    await session.execute(delete(Summary).where(Summary.project_id == project_id))
+    await session.execute(delete(Task).where(Task.project_id == project_id))
+
+    tag_ids = (
+        await session.scalars(select(Tag.id).where(Tag.project_id == project_id))
+    ).all()
+    if tag_ids:
+        await session.execute(delete(TagSnapshot).where(TagSnapshot.tag_id.in_(tag_ids)))
+        await session.execute(delete(Tag).where(Tag.id.in_(tag_ids)))
+
+    # 跟踪文件与项目文件/版本（版本按上传时间倒序删，避免 prev_version RESTRICT）
+    await session.execute(delete(TrackedFile).where(TrackedFile.project_id == project_id))
+
+    file_ids = (
+        await session.scalars(
+            select(WorkspaceFile.id).where(WorkspaceFile.project_id == project_id)
+        )
+    ).all()
+    if file_ids:
+        versions = (
+            await session.scalars(
+                select(FileVersion.version)
+                .where(FileVersion.file_id.in_(file_ids))
+                .order_by(FileVersion.uploaded_at.desc())
+            )
+        ).all()
+        for version in versions:
+            await session.execute(
+                delete(FileVersion).where(FileVersion.version == version)
+            )
+        await session.execute(delete(WorkspaceFile).where(WorkspaceFile.id.in_(file_ids)))
+
+    # 项目成员
+    await session.execute(delete(ProjectMember).where(ProjectMember.project_id == project_id))
+
+
+@router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_project(
+    project_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    project = await session.get(Project, project_id)
+    if project is None:
+        raise not_found(f"项目 {project_id} 不存在", code="PROJECT_NOT_FOUND")
+    await _delete_project_records(session, project.id)
+    await session.delete(project)
+    await session.commit()
+    logger.info("admin deleted project id=%s", project_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
