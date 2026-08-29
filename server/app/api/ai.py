@@ -36,7 +36,7 @@ from app.schemas.ai import (
     TaskCreatedResponse,
     TaskResponse,
 )
-from app.services.ai_tasks import AiTaskExecutor
+from app.services.ai_tasks import AiTaskExecutor, create_extraction_task
 from app.services.ai_tasks import NullFileContentExtractor, create_file_content_extractor
 from app.services.file_versions import FileVersionService
 from app.services.llm import LoggedLlmClient
@@ -275,15 +275,10 @@ async def create_extract_task(
     )
     if file_version.document_type not in {"contract", "invoice", "payment"}:
         raise conflict("该版本不是可识别的材料类型", code="NOT_CONTRACT_VERSION")
-    task = Task(
-        task_type="contract_recognition",
-        status="pending",
-        payload={"version": version, "document_type": file_version.document_type},
-    )
-    session.add(task)
-    file_version.parse_status = "processing"
+    task = await create_extraction_task(session, file_version, version)
+    if task is None:  # 上方材料类型校验保证正常情况下不会发生
+        raise conflict("该版本不是可识别的材料类型", code="NOT_CONTRACT_VERSION")
     await session.commit()
-    await session.refresh(task)
     background_tasks.add_task(AiTaskExecutor.run, task.id)
     logger.info(
         "created extraction task task_id=%s version=%s document_type=%s",

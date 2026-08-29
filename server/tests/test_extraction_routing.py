@@ -7,10 +7,45 @@ from fastapi import BackgroundTasks, HTTPException
 
 from app.api.ai import create_extract_task, get_extract
 from app.models.contract_info import ContractInfo
+from app.models.file_version import FileVersion
 from app.models.invoice_info import InvoiceInfo
 from app.models.payment_info import PaymentInfo
+from app.models.task import Task
+from app.schemas.files import FileVersionCreate
+from app.services.ai_tasks import create_extraction_task
 
 ADMIN = SimpleNamespace(id=1, is_admin=True)
+
+
+def test_changelog_defaults_to_empty_string():
+    assert FileVersionCreate(uploaded_by="成员").changelog == ""
+
+
+@pytest.mark.parametrize(
+    ("document_type", "creates_task"),
+    [("contract", True), ("invoice", True), ("payment", True), (None, False), ("other", False)],
+)
+def test_create_extraction_task_routes_supported_types(fake_session, document_type, creates_task):
+    version = FileVersion(
+        version="a" * 64,
+        document_type=document_type,
+        parse_status="pending",
+    )
+
+    task = asyncio.run(create_extraction_task(fake_session, version))
+
+    assert (task is not None) is creates_task
+    if creates_task:
+        assert isinstance(task, Task)
+        assert task.payload == {
+            "version": version.version,
+            "document_type": document_type,
+        }
+        assert version.parse_status == "processing"
+        fake_session.flush.assert_awaited_once()
+    else:
+        assert version.parse_status == "pending"
+        fake_session.flush.assert_not_awaited()
 
 
 @pytest.mark.parametrize("document_type", ["contract", "invoice", "payment"])

@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse
@@ -23,6 +23,7 @@ from app.schemas.files import (
     WorkspaceFileSummary,
 )
 from app.schemas.workspace_commit import WorkspaceCommitRequest, WorkspaceCommitResponse
+from app.services.ai_tasks import AiTaskExecutor, create_extraction_task
 from app.services.file_versions import FileVersionService
 from app.services.snapshots import SnapshotService
 from app.services.workspace_commit import WorkspaceCommitService
@@ -99,6 +100,7 @@ async def list_project_files(
 @router.post("/projects/{project_id}/files", response_model=CreateFileResponse)
 async def create_file(
     project_id: int,
+    background_tasks: BackgroundTasks,
     name: str,
     uploaded_by: str | None = None,
     changelog: str = "",
@@ -125,7 +127,10 @@ async def create_file(
     )
     snapshot = await SnapshotService.create_snapshot(session, project, parent, user.name, changelog)
     file_version.snapshot_hash = snapshot.hash
+    extraction_task = await create_extraction_task(session, file_version)
     await session.commit()
+    if extraction_task is not None:
+        background_tasks.add_task(AiTaskExecutor.run, extraction_task.id)
     return CreateFileResponse(
         file_id=file_version.file_id,
         version=file_version.version,
@@ -137,6 +142,7 @@ async def create_file(
 @router.post("/files/{file_id}/versions", response_model=CreateFileResponse)
 async def append_version(
     file_id: int,
+    background_tasks: BackgroundTasks,
     uploaded_by: str | None = None,
     changelog: str = "",
     file: UploadFile | None = None,
@@ -162,10 +168,13 @@ async def append_version(
         )
         snapshot = await SnapshotService.create_snapshot(session, project, parent, user.name, changelog)
         file_version.snapshot_hash = snapshot.hash
+        extraction_task = await create_extraction_task(session, file_version)
     except Exception:
         await session.rollback()
         raise
     await session.commit()
+    if extraction_task is not None:
+        background_tasks.add_task(AiTaskExecutor.run, extraction_task.id)
     return CreateFileResponse(
         file_id=file_id,
         version=file_version.version,

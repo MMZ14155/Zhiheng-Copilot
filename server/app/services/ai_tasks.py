@@ -28,6 +28,36 @@ from app.services.settings_store import get_effective_llm_settings
 
 logger = logging.getLogger(__name__)
 
+EXTRACTABLE_DOCUMENT_TYPES = {"contract", "invoice", "payment"}
+
+
+async def create_extraction_task(
+    session, version: FileVersion, version_hash: str | None = None
+) -> Task | None:
+    """为可识别文件版本创建任务，任务与版本状态由调用方一并提交。"""
+    if version.document_type not in EXTRACTABLE_DOCUMENT_TYPES:
+        return None
+    task = Task(
+        task_type="contract_recognition",
+        status="pending",
+        payload={
+            "version": version_hash or version.version,
+            "document_type": version.document_type,
+        },
+    )
+    session.add(task)
+    version.parse_status = "processing"
+    await session.flush()
+    if task.id is None:
+        await session.refresh(task)
+    logger.info(
+        "created extraction task task_id=%s version=%s document_type=%s",
+        task.id,
+        version_hash or version.version,
+        version.document_type,
+    )
+    return task
+
 
 class FileContentExtractor(Protocol):
     async def extract_text(self, file_path: str) -> str | None: ...
