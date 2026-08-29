@@ -10,6 +10,7 @@ import {
 import type {
   CollectionOverview,
   ProjectDetail as ProjectDetailModel,
+  ProjectParty,
   ProjectRisks,
   RenewalChain,
 } from "../api";
@@ -24,7 +25,7 @@ import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
 import { RISK_TYPE_DELIVERY_DEADLINE, RISK_TYPE_PAYMENT_OVERDUE } from "../constants/risks";
 import { ROUTES } from "../constants/routes";
 import { formatMoney, formatPercentValue } from "../utils/format";
-import { Alert, Skeleton, Tabs } from "../components/ui";
+import { Alert, Badge, Skeleton, Tabs } from "../components/ui";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -279,11 +280,10 @@ export default function ProjectDetail() {
                 <h3>签约方</h3>
                 <div className="detail-list">
                   {project.parties.map((party, index) => (
-                    <article key={`${party.role}-${party.name}-${index}`}>
-                      <strong>{party.role}</strong>
-                      <span>{party.name}</span>
-                      <small>{party.contact ?? "未填写联系方式"}</small>
-                    </article>
+                    <PartyCard
+                      key={`${party.role}-${party.name}-${index}`}
+                      party={party}
+                    />
                   ))}
                 </div>
               </section>
@@ -310,7 +310,9 @@ export default function ProjectDetail() {
                         ))}
                       </ul>
                     )}
-                    <p>{project.latestSummary.content ?? "暂无总结内容"}</p>
+                    <p className="detail-wrap">
+                      {project.latestSummary.content ?? "暂无总结内容"}
+                    </p>
                   </article>
                   {questionsLoading && (
                     <p className="questions-state" role="status">
@@ -377,8 +379,10 @@ export default function ProjectDetail() {
                     {renewalChain.items.map((item, index) => (
                       <li key={item.id}>
                         <span className="renewal-index">{index + 1}</span>
-                        <Link to={ROUTES.project(item.id)}>{item.name}</Link>
-                        <span className="renewal-meta">
+                        <Link className="detail-wrap" to={ROUTES.project(item.id)}>
+                          {item.name}
+                        </Link>
+                        <span className="renewal-meta detail-wrap">
                           {item.customerName} ·{" "}
                           {PROJECT_STATUS_LABELS[item.status]} ·{" "}
                           {item.signedDate ?? "未签约"}
@@ -446,8 +450,8 @@ export default function ProjectDetail() {
                           : "健康"}
                     </span>
                     <div>
-                      <strong>{risk.reason}</strong>
-                      <p>{risk.recommendation}</p>
+                      <strong className="detail-wrap">{risk.reason}</strong>
+                      <p className="detail-wrap">{risk.recommendation}</p>
                     </div>
                   </article>
                 ))}
@@ -513,7 +517,10 @@ function SummaryQuestion({
 
   return (
     <article className="question-item">
-      <label htmlFor={`summary-answer-${projectId}-${question}`}>
+      <label
+        className="detail-wrap"
+        htmlFor={`summary-answer-${projectId}-${question}`}
+      >
         {question}
       </label>
       <textarea
@@ -543,6 +550,38 @@ function SummaryQuestion({
   );
 }
 
+const PARTY_CONTACT_COLLAPSE_LENGTH = 120;
+
+function PartyCard({ party }: { party: ProjectParty }) {
+  const [expanded, setExpanded] = useState(false);
+  const contact = party.contact ?? "未填写联系方式";
+  const collapsible = contact.length > PARTY_CONTACT_COLLAPSE_LENGTH;
+  const collapsed = collapsible && !expanded;
+  return (
+    <article className="party-card">
+      <div className="party-card-heading">
+        <Badge tone="role">{party.role}</Badge>
+        <span className="party-name detail-wrap">{party.name}</span>
+      </div>
+      <p
+        className={`party-contact detail-wrap${collapsed ? " collapsed" : ""}`}
+      >
+        {contact}
+      </p>
+      {collapsible && (
+        <button
+          type="button"
+          className="party-contact-toggle"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? "收起" : "展开"}
+        </button>
+      )}
+    </article>
+  );
+}
+
 function Info({
   label,
   value,
@@ -558,7 +597,10 @@ function Info({
       {value === null || value === "" ? (
         <strong className="empty">—</strong>
       ) : (
-        <strong style={valueColor ? { color: valueColor } : undefined}>
+        <strong
+          className="detail-wrap"
+          style={valueColor ? { color: valueColor } : undefined}
+        >
           {value}
         </strong>
       )}

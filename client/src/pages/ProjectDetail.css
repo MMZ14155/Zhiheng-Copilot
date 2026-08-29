@@ -29,6 +29,19 @@
 .detail-card > .ui-alert {
   margin: 16px 0;
 }
+/* 详情页 Alert 长文本可断行，避免撑出横向滚动 */
+.detail-card .ui-alert > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* 详情页内表格固定布局，长内容在单元格内断行而非撑破列宽 */
+.detail-card .ui-table {
+  table-layout: fixed;
+}
+.detail-card .ui-table th,
+.detail-card .ui-table td {
+  overflow-wrap: anywhere;
+}
 .risk-list {
   display: grid;
   gap: 10px;
@@ -41,6 +54,12 @@
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--neutral-50);
+}
+.risk-list article > .badge {
+  flex-shrink: 0;
+}
+.risk-list article > div {
+  min-width: 0;
 }
 .risk-list article strong {
   font-size: 13px;
@@ -250,28 +269,58 @@
   display: grid;
   gap: 8px;
 }
-.detail-list article,
+.party-card,
 .summary-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--neutral-50);
 }
-.detail-list article strong {
-  min-width: 80px;
-  font-size: 13px;
+.party-card {
+  display: grid;
+  gap: 6px;
 }
-.detail-list article span {
-  flex: 1;
-  font-size: 13px;
+.party-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
-.detail-list article small {
-  margin-left: auto;
+.party-card-heading .ui-badge {
+  flex-shrink: 0;
+}
+.party-name {
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+.party-contact {
+  margin: 0;
   color: var(--meta);
   font-size: 12px;
+}
+.party-contact.collapsed {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.party-contact-toggle {
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+.party-contact-toggle:hover {
+  text-decoration: underline;
+}
+/* 长串防御：详情页用户/AI 内容容器统一强制断行，防止无空格长串撑破布局 */
+.detail-wrap {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .detail-empty {
   color: var(--meta);
@@ -294,11 +343,15 @@
 .summary-inputs li {
   display: inline-flex;
   align-items: center;
+  max-width: 100%;
   gap: 6px;
   padding: 5px 9px;
   border-radius: 999px;
   color: #1e3a8a;
   background: #dbeafe;
+}
+.summary-inputs li span {
+  overflow-wrap: anywhere;
 }
 .summary-inputs code {
   color: #1d4ed8;
@@ -328,8 +381,10 @@
   cursor: pointer;
 }
 .deliverable-toggle > span:first-child {
+  min-width: 0;
   font-size: 13px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .deliverable-toggle small {
   color: #6b7280;
@@ -399,6 +454,7 @@
 .version-heading code {
   color: #1d4ed8;
   font-weight: 700;
+  overflow-wrap: anywhere;
 }
 .version-heading a {
   margin-left: auto;
@@ -585,6 +641,7 @@
 .process-file-main strong {
   font-size: 14px;
   color: #111827;
+  overflow-wrap: anywhere;
 }
 .process-file-main code {
   color: #1d4ed8;
@@ -757,7 +814,7 @@
 }
 .inline-file-action {
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
 }
@@ -835,7 +892,7 @@
 }
 .tag-toggle {
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) 0.6fr 1fr auto auto;
+  grid-template-columns: minmax(130px, 1fr) minmax(0, 0.6fr) minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -849,7 +906,9 @@
 .tag-toggle > span:first-child {
   display: flex;
   align-items: center;
+  min-width: 0;
   gap: 8px;
+  overflow-wrap: anywhere;
 }
 .tag-toggle small {
   padding: 3px 7px;
@@ -872,7 +931,7 @@
 }
 .snapshot-form {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
   align-items: start;
   gap: 10px;
 }
@@ -889,7 +948,7 @@
 }
 .snapshot-list li {
   display: grid;
-  grid-template-columns: minmax(130px, 1fr) auto 1fr auto;
+  grid-template-columns: minmax(130px, 1fr) auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 12px;
   padding: 10px;
@@ -898,6 +957,7 @@
 }
 .snapshot-list code {
   color: #1d4ed8;
+  overflow-wrap: anywhere;
 }
 .snapshot-list time {
   color: #6b7280;
@@ -916,7 +976,7 @@
 }
 .extraction-result dl {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin: 0;
 }
@@ -947,6 +1007,7 @@
 }
 .renewal-index {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 24px;
@@ -981,14 +1042,6 @@
   }
   .payment-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .detail-list article {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 5px;
-  }
-  .detail-list article small {
-    margin-left: 0;
   }
   .deliverable-toggle {
     grid-template-columns: 1fr auto;
