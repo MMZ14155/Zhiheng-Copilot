@@ -3,6 +3,10 @@ import { errorMessage, filesApi } from "../api";
 import type { ProjectFile } from "../api";
 import { formatDateTime, shortHash } from "../utils/format";
 import FilePreview, { isPreviewableFile } from "./FilePreview";
+import ExtractionDetails, {
+  isExtractableDocumentType,
+  ParseStatusBadge,
+} from "./ExtractionDetails";
 
 const accept = ".pdf,.docx,.xlsx,.jpg,.jpeg,.png";
 
@@ -113,7 +117,6 @@ export default function ProcessFiles({
   };
 
   const commit = async () => {
-    if (!commitMessage.trim()) return setCommitError("请输入提交说明");
     if (pending.length === 0) return setCommitError("没有待提交的改动");
     setCommitting(true);
     setCommitError(null);
@@ -137,7 +140,7 @@ export default function ProcessFiles({
         return { op: "remove" as const, fileId: Number(op.fileId) };
       });
       await filesApi.workspaceCommit(projectId, {
-        message: commitMessage.trim(),
+        message: commitMessage.trim() || undefined,
         operations,
       });
       setPending([]);
@@ -194,6 +197,7 @@ export default function ProcessFiles({
             <textarea
               rows={2}
               value={newChangelog}
+              placeholder="选填"
               onChange={(e) => setNewChangelog(e.target.value)}
             />
           </label>
@@ -246,6 +250,12 @@ export default function ProcessFiles({
                           {shortHash(item.latestVersion.version)}
                         </code>
                       )}
+                      {item.latestVersion && (
+                        <ParseStatusBadge
+                          documentType={item.latestVersion.documentType}
+                          parseStatus={item.latestVersion.parseStatus}
+                        />
+                      )}
                       {item.isDeliverable && (
                         <span className="version-badge frozen">已升格</span>
                       )}
@@ -255,12 +265,21 @@ export default function ProcessFiles({
                     </div>
                     {item.latestVersion && (
                       <div className="process-file-meta">
-                        <span>{item.latestVersion.parseStatus}</span>
                         <time dateTime={item.latestVersion.uploadedAt}>
                           {formatDateTime(item.latestVersion.uploadedAt)}
                         </time>
                       </div>
                     )}
+                    {item.latestVersion &&
+                      isExtractableDocumentType(
+                        item.latestVersion.documentType,
+                      ) &&
+                      item.latestVersion.parseStatus === "parsed" && (
+                        <ExtractionDetails
+                          key={item.latestVersion.version}
+                          version={item.latestVersion.version}
+                        />
+                      )}
                     {!isPendingRemove && !pendingUpdate && (
                       <div className="process-file-actions">
                         {item.latestVersion && isPreviewableFile(item.name) && (
@@ -384,7 +403,7 @@ export default function ProcessFiles({
           <input
             value={commitMessage}
             disabled={committing}
-            placeholder="描述本次改动"
+            placeholder="选填"
             onChange={(e) => setCommitMessage(e.target.value)}
           />
         </label>
@@ -437,7 +456,7 @@ function ReplaceButton({
           <input
             type="text"
             value={changelog}
-            placeholder="变更说明"
+            placeholder="变更说明（选填）"
             onChange={(e) => setChangelog(e.target.value)}
           />
           <button

@@ -409,7 +409,7 @@ export interface WorkspaceRemoveOperationDto {
   file_id: number;
 }
 export interface WorkspaceCommitRequestDto {
-  message: string;
+  message?: string | null;
   operations: Array<
     | WorkspaceAddOperationDto
     | WorkspaceUpdateOperationDto

@@ -32,7 +32,7 @@ export type WorkspaceOperation =
   | { op: "update"; fileId: number; file: File; changelog?: string }
   | { op: "remove"; fileId: number };
 export interface WorkspaceCommitInput {
-  message: string;
+  message?: string;
   operations: WorkspaceOperation[];
 }
 
@@ -154,6 +154,12 @@ export async function workspaceCommit(
   }
   return jsonRequest<WorkspaceCommitResponseDto>(
     `/projects/${projectId}/workspace-commit`,
-    { method: "POST", body: { message: input.message, operations } },
+    {
+      method: "POST",
+      body: {
+        ...(input.message ? { message: input.message } : {}),
+        operations,
+      },
+    },
   );
 }

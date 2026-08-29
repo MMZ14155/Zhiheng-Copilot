@@ -478,6 +478,18 @@
   color: #92400e;
   background: #fef3c7;
 }
+.version-badge.parse-processing {
+  color: #1d4ed8;
+  background: #dbeafe;
+}
+.version-badge.parse-parsed {
+  color: #047857;
+  background: #d1fae5;
+}
+.version-badge.parse-failed {
+  color: #991b1b;
+  background: #fecaca;
+}
 .version-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -967,12 +979,23 @@
   display: grid;
   gap: 10px;
   margin-top: 12px;
+}
+.extraction-panel > .extraction-toggle {
+  justify-self: start;
+}
+.extraction-content {
   padding: 12px;
   border-radius: 8px;
   background: #f0fdf4;
 }
-.extraction-panel > button {
-  justify-self: start;
+.extraction-content .ui-skeleton {
+  padding: 0;
+}
+.extraction-content .ui-skeleton span {
+  height: 32px;
+}
+.extraction-content .ui-alert button {
+  flex-shrink: 0;
 }
 .extraction-result dl {
   display: grid;
