@@ -23,7 +23,11 @@ vi.mock("../api", async (original) => {
   const actual = await original<typeof import("../api")>();
   return {
     ...actual,
-    aiApi: { ...actual.aiApi, analyzeProjectDraft: vi.fn() },
+    aiApi: {
+      ...actual.aiApi,
+      analyzeProjectDraft: vi.fn(),
+      getProjectDraftTask: vi.fn(),
+    },
     projectsApi: {
       ...actual.projectsApi,
       listProjects: vi.fn(),
@@ -45,6 +49,8 @@ const uploadAndAnalyze = async () => {
   await userEvent.click(screen.getByRole("button", { name: "开始分析" }));
 };
 
+const task = { task_id: 1, status: "pending" as const };
+
 describe("CreateProjectModal AI 合同分析模式", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,6 +59,12 @@ describe("CreateProjectModal AI 合同分析模式", () => {
       size: 1000,
       total: 0,
       items: [],
+    });
+    vi.mocked(aiApi.analyzeProjectDraft).mockResolvedValue(task);
+    vi.mocked(aiApi.getProjectDraftTask).mockResolvedValue({
+      status: "completed",
+      failureReason: null,
+      draft,
     });
   });
   afterEach(() => cleanup());
@@ -74,7 +86,6 @@ describe("CreateProjectModal AI 合同分析模式", () => {
   });
 
   it("分析成功后回填各表单字段", async () => {
-    vi.mocked(aiApi.analyzeProjectDraft).mockResolvedValueOnce(draft);
     render(<CreateProjectModal onClose={() => {}} onCreated={() => {}} />);
     await uploadAndAnalyze();
     await waitFor(() =>
@@ -98,7 +109,6 @@ describe("CreateProjectModal AI 合同分析模式", () => {
   });
 
   it("展示 missing_fields 缺失字段提示条", async () => {
-    vi.mocked(aiApi.analyzeProjectDraft).mockResolvedValueOnce(draft);
     render(<CreateProjectModal onClose={() => {}} onCreated={() => {}} />);
     await uploadAndAnalyze();
     const banner = await screen.findByText(/以下字段未能从合同识别，请补充/);
@@ -113,7 +123,6 @@ describe("CreateProjectModal AI 合同分析模式", () => {
     render(<CreateProjectModal onClose={() => {}} onCreated={() => {}} />);
     await uploadAndAnalyze();
     expect(await screen.findByText("合同解析失败")).toBeTruthy();
-    vi.mocked(aiApi.analyzeProjectDraft).mockResolvedValueOnce(draft);
     await userEvent.click(screen.getByRole("button", { name: "重试" }));
     await waitFor(() =>
       expect(fieldInput("项目名称").value).toBe("AI 识别项目"),
@@ -133,7 +142,6 @@ describe("CreateProjectModal AI 合同分析模式", () => {
   });
 
   it("AI 回填后提交体结构与现状一致且不含 code", async () => {
-    vi.mocked(aiApi.analyzeProjectDraft).mockResolvedValueOnce(draft);
     vi.mocked(projectsApi.createProject).mockResolvedValueOnce({
       id: 1,
     } as never);

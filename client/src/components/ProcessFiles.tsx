@@ -8,7 +8,7 @@ import ExtractionDetails, {
   ParseStatusBadge,
 } from "./ExtractionDetails";
 
-const accept = ".pdf,.docx,.xlsx,.jpg,.jpeg,.png";
+const accept = ".pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png";
 
 type PendingOperation =
   | {

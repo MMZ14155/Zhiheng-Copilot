@@ -23,7 +23,7 @@ from app.services.version_hash import VersionHashService
 
 logger = logging.getLogger(__name__)
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".xlsx", ".jpg", ".png"}
+ALLOWED_EXTENSIONS = {".pdf", ".doc", ".docx", ".xlsx", ".jpg", ".png"}
 MAX_FILE_SIZE = 100 * 1024 * 1024
 
 

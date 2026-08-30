@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import tempfile
@@ -7,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.errors import conflict, not_found
+from app.api.errors import bad_request, conflict, not_found, unsupported_media_type
 from app.api.dependencies import get_current_user, require_project_role
 from app.db.session import get_session
 from app.models.contract_info import ContractInfo
@@ -27,7 +26,7 @@ from app.schemas.ai import (
     InvoiceInfoResponse,
     LlmUsageResponse,
     PaymentInfoResponse,
-    ProjectDraftOutput,
+    ProjectDraftTaskResponse,
     SummaryAnswersRequest,
     SummaryAnswersTaskResponse,
     SummaryHistoryResponse,
@@ -37,7 +36,6 @@ from app.schemas.ai import (
     TaskResponse,
 )
 from app.services.ai_tasks import AiTaskExecutor, create_extraction_task
-from app.services.ai_tasks import NullFileContentExtractor, create_file_content_extractor
 from app.services.file_versions import FileVersionService
 from app.services.llm import LoggedLlmClient
 
@@ -45,53 +43,75 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["ai"])
 
 
-# 建项草稿需要登录态：匿名调用会消耗 LLM 配额。
-@router.post("/ai/project-draft", response_model=ProjectDraftOutput)
+PROJECT_DRAFT_EXTENSIONS = {".pdf", ".doc", ".docx"}
+
+
+@router.post("/ai/project-draft", response_model=TaskCreatedResponse, status_code=202)
 async def create_project_draft(
-    file: UploadFile,
+    files: list[UploadFile],
+    background_tasks: BackgroundTasks,
+    session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
-) -> ProjectDraftOutput:
-    filename = file.filename or ""
-    content = await file.read()
-    safe_name = FileVersionService._validate_file(filename, len(content))
-    suffix = os.path.splitext(safe_name)[1]
-    temporary_path: str | None = None
+) -> TaskCreatedResponse:
+    if not files:
+        raise bad_request("请至少上传一个合同文件", code="MISSING_FILE")
+
+    temp_files: list[dict[str, str]] = []
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
-            temporary.write(content)
-            temporary_path = temporary.name
-        extractor = create_file_content_extractor()
-        document_text = None
-        if not isinstance(extractor, NullFileContentExtractor):
-            document_text = await extractor.extract_text(temporary_path)
-        prompt_payload = {
-            "required_fields": [
-                "name", "customer_name", "parties(role/name/contact)",
-                "contract_amount", "signed_date", "started_date",
-                "planned_delivery_date", "project_type", "missing_fields", "notes",
-            ],
-            "instruction": (
-                "仅依据合同文本生成建项草稿，缺失字段必须进入 missing_fields，不得编造。"
-                "project_type 仅能选择 软件销售、正版化服务、正版化服务+软件销售。"
-            ),
-        }
-        if document_text is not None:
-            prompt_payload["document_text"] = document_text
-        result = await LoggedLlmClient().call(
-            project_id=None,
-            scene="project_draft",
-            prompt=json.dumps(prompt_payload, ensure_ascii=False),
-            output_schema=ProjectDraftOutput,
-            request_meta={"filename": safe_name},
-        )
-        logger.info("generated project draft filename=%s", safe_name)
-        return result
-    finally:
-        if temporary_path:
+        for file in files:
+            content = await file.read()
+            safe_name = FileVersionService._validate_file(file.filename or "", len(content))
+            ext = os.path.splitext(safe_name)[1].lower()
+            if ext not in PROJECT_DRAFT_EXTENSIONS:
+                raise unsupported_media_type(
+                    f"不支持的文件类型 '{ext}'，仅接受 PDF 或 Word 文件",
+                    code="UNSUPPORTED_MEDIA_TYPE",
+                )
+            suffix = ext or os.path.splitext(safe_name)[1]
+            with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temporary:
+                temporary.write(content)
+                temp_files.append({"path": temporary.name, "name": safe_name})
+    except Exception:
+        for item in temp_files:
             try:
-                os.unlink(temporary_path)
-            except FileNotFoundError:
+                os.unlink(item["path"])
+            except (FileNotFoundError, OSError):
                 pass
+        raise
+
+    task = Task(
+        task_type="project_draft",
+        status="pending",
+        payload={"files": temp_files, "uploaded_by": user.name},
+    )
+    session.add(task)
+    await session.commit()
+    await session.refresh(task)
+    background_tasks.add_task(AiTaskExecutor.run, task.id)
+    logger.info("created project draft task task_id=%s files=%s", task.id, len(temp_files))
+    return TaskCreatedResponse(task_id=task.id)
+
+
+@router.get("/ai/project-draft/{task_id}", response_model=ProjectDraftTaskResponse)
+async def get_project_draft_task(
+    task_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    task = await session.get(Task, task_id)
+    if task is None or task.task_type != "project_draft":
+        raise not_found("任务不存在", code="TASK_NOT_FOUND")
+    draft = None
+    if task.status == "completed":
+        result = task.payload.get("result")
+        if result is not None:
+            draft = ProjectDraftOutput.model_validate(result)
+    return ProjectDraftTaskResponse(
+        id=task.id,
+        status=task.status,
+        failure_reason=task.failure_reason,
+        draft=draft,
+    )
 
 
 def _serialize_summaries(

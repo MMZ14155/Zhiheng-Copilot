@@ -44,7 +44,7 @@ const initial: Values = {
 };
 
 // 与现有上传入口（ProcessFiles）保持同一 accept 口径。
-const CONTRACT_ACCEPT = ".pdf,.docx,.xlsx,.jpg,.jpeg,.png";
+const CONTRACT_ACCEPT = ".pdf,.doc,.docx,.xlsx,.jpg,.jpeg,.png";
 const MISSING_FIELD_LABELS: Record<string, string> = {
   name: "项目名称",
   customer_name: "客户名称",
@@ -102,7 +102,7 @@ export default function CreateProjectModal({
   const [errors, setErrors] = useState<Errors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [contractFiles, setContractFiles] = useState<File[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
@@ -176,14 +176,18 @@ export default function CreateProjectModal({
   };
 
   const analyze = async () => {
-    if (!contractFile || analyzing) return;
+    if (contractFiles.length === 0 || analyzing) return;
     setAnalyzing(true);
     setAnalysisError(null);
+    setAnalyzed(false);
     try {
-      const draft = await aiApi.analyzeProjectDraft(contractFile);
-      applyDraft(draft);
-      setMissingFields(draft.missingFields);
-      setAnalyzed(true);
+      const task = await aiApi.analyzeProjectDraft(contractFiles);
+      const draft = await pollProjectDraftTask(task.task_id, 30, 1000);
+      if (draft) {
+        applyDraft(draft);
+        setMissingFields(draft.missingFields);
+        setAnalyzed(true);
+      }
     } catch (reason) {
       console.error("合同分析失败", reason);
       setAnalysisError(
@@ -194,6 +198,28 @@ export default function CreateProjectModal({
     } finally {
       setAnalyzing(false);
     }
+  };
+
+  const pollProjectDraftTask = async (
+    taskId: number,
+    maxAttempts: number,
+    intervalMs: number,
+  ): Promise<ProjectDraft | null> => {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const result = await aiApi.getProjectDraftTask(taskId);
+      if (result.status === "completed" && result.draft) {
+        return result.draft;
+      }
+      if (result.status === "failed") {
+        throw new ApiError(
+          result.failureReason || "合同分析失败",
+          "AI_DRAFT_FAILED",
+          500,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    }
+    throw new ApiError("合同分析超时", "AI_DRAFT_TIMEOUT", 504);
   };
 
   const submit = async (event: FormEvent) => {
@@ -298,11 +324,13 @@ export default function CreateProjectModal({
               <label className="ai-file-picker">
                 <input
                   type="file"
+                  multiple
                   aria-label="选择合同文件"
                   accept={CONTRACT_ACCEPT}
                   disabled={analyzing}
                   onChange={(e) => {
-                    setContractFile(e.target.files?.[0] ?? null);
+                    const files = e.target.files ? Array.from(e.target.files) : [];
+                    setContractFiles(files);
                     setAnalysisError(null);
                   }}
                 />
@@ -310,16 +338,23 @@ export default function CreateProjectModal({
                   ⇪
                 </span>
                 <span className="ai-file-picker-text">
-                  {contractFile
-                    ? contractFile.name
+                  {contractFiles.length > 0
+                    ? `已选择 ${contractFiles.length} 个文件`
                     : "点击选择合同文件（PDF / Word / 图片）"}
                 </span>
               </label>
+              {contractFiles.length > 0 && (
+                <ul className="ai-file-list">
+                  {contractFiles.map((file) => (
+                    <li key={file.name}>{file.name}</li>
+                  ))}
+                </ul>
+              )}
               <div className="ai-upload-actions">
                 <button
                   type="button"
                   className="secondary-button"
-                  disabled={!contractFile || analyzing}
+                  disabled={contractFiles.length === 0 || analyzing}
                   onClick={() => void analyze()}
                 >
                   {analyzing ? "分析中…" : "开始分析"}

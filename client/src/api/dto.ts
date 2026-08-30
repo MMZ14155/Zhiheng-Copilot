@@ -516,6 +516,13 @@ export interface PaymentInfoResponseDto {
 export type ExtractionInfoResponseDto =
   ContractInfoResponseDto | InvoiceInfoResponseDto | PaymentInfoResponseDto;
 
+export interface ProjectDraftTaskResponseDto {
+  id: number;
+  status: string;
+  failure_reason: string | null;
+  draft: ProjectDraftOutputDto | null;
+}
+
 // 与后端 ProjectDraftOutput 对齐：contract_amount 为 Decimal，JSON 序列化为字符串；project_type 非法值已由后端归一为 null。
 export interface ProjectDraftOutputDto {
   name: string | null;

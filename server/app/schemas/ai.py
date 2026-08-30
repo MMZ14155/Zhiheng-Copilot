@@ -65,6 +65,13 @@ class TaskCreatedResponse(BaseModel):
     status: Literal["pending"] = "pending"
 
 
+class ProjectDraftTaskResponse(BaseModel):
+    id: int
+    status: str
+    failure_reason: str | None = None
+    draft: ProjectDraftOutput | None = None
+
+
 class SummaryAnswer(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
     answer: str = Field(min_length=1, max_length=10000)

@@ -11,7 +11,7 @@ class Task(Base):
     __tablename__ = "task"
     __table_args__ = (
         CheckConstraint(
-            "task_type IN ('contract_recognition', 'summary_generation', 'summary_regeneration')",
+            "task_type IN ('contract_recognition', 'summary_generation', 'summary_regeneration', 'project_draft')",
             name="ck_task_type",
         ),
         CheckConstraint(

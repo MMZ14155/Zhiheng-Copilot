@@ -1,5 +1,7 @@
+import asyncio
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Protocol
 
@@ -20,6 +22,7 @@ from app.schemas.ai import (
     ContractExtractionOutput,
     InvoiceExtractionOutput,
     PaymentExtractionOutput,
+    ProjectDraftOutput,
     SummaryGenerationOutput,
 )
 from app.services.llm import LoggedLlmClient
@@ -95,6 +98,8 @@ class AiTaskExecutor:
                     await AiTaskExecutor._summary(session, task, regenerate=True)
                 elif task.task_type == "contract_recognition":
                     await AiTaskExecutor._extract(session, task)
+                elif task.task_type == "project_draft":
+                    await AiTaskExecutor._project_draft(session, task)
                 else:
                     raise ValueError(f"不支持的任务类型 {task.task_type}")
                 task.status, task.finished_at = "completed", datetime.now(timezone.utc)
@@ -286,3 +291,56 @@ class AiTaskExecutor:
             setattr(info, field, value)
         info.raw_output = out.model_dump(mode="json")
         version.parse_status = "parsed"
+
+    @staticmethod
+    async def _project_draft(session, task: Task) -> None:
+        payload = task.payload
+        files = payload.get("files", [])
+        if not files:
+            raise ValueError("任务缺少待分析文件")
+        extractor = create_file_content_extractor()
+        if isinstance(extractor, NullFileContentExtractor):
+            raise ValueError("未配置可用的文件内容提取器")
+
+        async def _extract_one(item: dict) -> dict:
+            path = item["path"]
+            name = item["name"]
+            try:
+                text = await extractor.extract_text(path)
+            except Exception as exc:
+                logger.warning("project draft extract failed path=%s error=%s", path, exc)
+                text = None
+            return {"name": name, "text": text or ""}
+
+        try:
+            documents = await asyncio.gather(*[_extract_one(f) for f in files])
+            prompt_payload = {
+                "required_fields": [
+                    "name", "customer_name", "parties(role/name/contact)",
+                    "contract_amount", "signed_date", "started_date",
+                    "planned_delivery_date", "project_type", "missing_fields", "notes",
+                ],
+                "instruction": (
+                    "仅依据提供的合同文本生成建项草稿，缺失字段必须进入 missing_fields，不得编造。"
+                    "project_type 仅能选择 软件销售、正版化服务、正版化服务+软件销售。"
+                    "当提供多份合同时，以主合同为准，其他材料作为补充。"
+                ),
+                "documents": documents,
+            }
+            prompt = json.dumps(prompt_payload, ensure_ascii=False)
+            out = await LoggedLlmClient().call(
+                task_id=task.id,
+                scene="project_draft",
+                prompt=prompt,
+                output_schema=ProjectDraftOutput,
+                request_meta={"files": [f["name"] for f in files]},
+            )
+            task.payload = {**payload, "result": out.model_dump(mode="json")}
+        finally:
+            for item in files:
+                path = item.get("path")
+                if path and os.path.exists(path):
+                    try:
+                        os.unlink(path)
+                    except OSError as exc:
+                        logger.warning("cleanup temp file failed path=%s error=%s", path, exc)

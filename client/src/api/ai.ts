@@ -5,7 +5,7 @@ import type {
   CopilotAskRequestDto,
   CopilotAskResponseDto,
   ExtractionInfoResponseDto,
-  ProjectDraftOutputDto,
+  ProjectDraftTaskResponseDto,
   SummaryAnswersRequestDto,
   SummaryAnswersTaskResponseDto,
   SummaryHistoryResponseDto,
@@ -50,10 +50,24 @@ export const getExtraction = (version: string) =>
 export const getTask = (id: number) =>
   jsonRequest<TaskResponseDto>(`/tasks/${id}`);
 
-export async function analyzeProjectDraft(file: File): Promise<ProjectDraft> {
+export async function analyzeProjectDraft(
+  files: File[],
+): Promise<TaskCreatedResponseDto> {
   const data = new FormData();
-  data.append("file", file);
-  return mapProjectDraft(
-    await multipartRequest<ProjectDraftOutputDto>("/ai/project-draft", data),
-  );
+  for (const file of files) {
+    data.append("files", file);
+  }
+  return multipartRequest<TaskCreatedResponseDto>("/ai/project-draft", data);
 }
+
+export async function getProjectDraftTask(
+  id: number,
+): Promise<{ status: string; failureReason: string | null; draft: ProjectDraft | null }> {
+  const dto = await jsonRequest<ProjectDraftTaskResponseDto>(`/ai/project-draft/${id}`);
+  return {
+    status: dto.status,
+    failureReason: dto.failure_reason,
+    draft: dto.draft ? mapProjectDraft(dto.draft) : null,
+  };
+}
+
