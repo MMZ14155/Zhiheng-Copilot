@@ -169,13 +169,13 @@ export default function VersionHistory({
                     <dd>{version.changelog || "无"}</dd>
                   </div>
                 </dl>
-                {isExtractableDocumentType(version.documentType) &&
-                  version.parseStatus === "parsed" && (
-                    <ExtractionDetails
-                      key={version.version}
-                      version={version.version}
-                    />
-                  )}
+                {isExtractableDocumentType(version.documentType) && (
+                  <ExtractionDetails
+                    key={version.version}
+                    version={version.version}
+                    parseStatus={version.parseStatus}
+                  />
+                )}
               </div>
             )}
           </article>

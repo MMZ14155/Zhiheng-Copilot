@@ -71,6 +71,21 @@ export default function ProcessFiles({
     void loadFiles();
   }, [loadFiles]);
 
+  useEffect(() => {
+    const hasProcessing = items.some(
+      (item) =>
+        item.latestVersion &&
+        isExtractableDocumentType(item.latestVersion.documentType) &&
+        (item.latestVersion.parseStatus === "pending" ||
+          item.latestVersion.parseStatus === "processing"),
+    );
+    if (!hasProcessing) return;
+    const timer = setInterval(() => {
+      void loadFiles();
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [items, loadFiles]);
+
   const addPending = (op: PendingOperation) =>
     setPending((current) => [...current, op]);
   const cancelPending = (id: string) =>
@@ -273,11 +288,11 @@ export default function ProcessFiles({
                     {item.latestVersion &&
                       isExtractableDocumentType(
                         item.latestVersion.documentType,
-                      ) &&
-                      item.latestVersion.parseStatus === "parsed" && (
+                      ) && (
                         <ExtractionDetails
                           key={item.latestVersion.version}
                           version={item.latestVersion.version}
+                          parseStatus={item.latestVersion.parseStatus}
                         />
                       )}
                     {!isPendingRemove && !pendingUpdate && (

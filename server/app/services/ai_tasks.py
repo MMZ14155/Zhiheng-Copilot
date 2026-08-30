@@ -39,6 +39,7 @@ async def create_extraction_task(
 ) -> Task | None:
     """为可识别文件版本创建任务，任务与版本状态由调用方一并提交。"""
     if version.document_type not in EXTRACTABLE_DOCUMENT_TYPES:
+        version.parse_status = "skipped"
         return None
     task = Task(
         task_type="contract_recognition",

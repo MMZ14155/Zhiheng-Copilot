@@ -33,11 +33,18 @@ export function ParseStatusBadge({
   );
 }
 
-export default function ExtractionDetails({ version }: { version: string }) {
+export default function ExtractionDetails({
+  version,
+  parseStatus,
+}: {
+  version: string;
+  parseStatus: string;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [result, setResult] = useState<ExtractionInfoResponseDto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,10 +59,22 @@ export default function ExtractionDetails({ version }: { version: string }) {
     }
   }, [version]);
 
+  const retry = async () => {
+    setRetrying(true);
+    try {
+      await aiApi.createExtractionTask(version);
+    } catch (reason) {
+      console.error("重新触发识别失败", reason);
+      setError(errorMessage(reason, "重新触发识别失败，请稍后重试"));
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   const toggle = () => {
     const nextExpanded = !expanded;
     setExpanded(nextExpanded);
-    if (nextExpanded && !result && !loading) void load();
+    if (nextExpanded && parseStatus === "parsed" && !result && !loading) void load();
   };
 
   return (
@@ -70,8 +89,22 @@ export default function ExtractionDetails({ version }: { version: string }) {
       </button>
       {expanded && (
         <div className="extraction-content">
-          {loading && <Skeleton rows={2} />}
-          {!loading && error && (
+          {parseStatus === "pending" || parseStatus === "processing" ? (
+            <div className="extraction-status">识别中，请稍后…</div>
+          ) : parseStatus === "failed" ? (
+            <div className="extraction-status error">
+              识别失败
+              <button
+                type="button"
+                onClick={() => void retry()}
+                disabled={retrying}
+              >
+                {retrying ? "重试中…" : "重新识别"}
+              </button>
+            </div>
+          ) : loading ? (
+            <Skeleton rows={2} />
+          ) : error ? (
             <Alert
               action={
                 <button type="button" onClick={() => void load()}>
@@ -81,8 +114,9 @@ export default function ExtractionDetails({ version }: { version: string }) {
             >
               {error}
             </Alert>
+          ) : (
+            result && <ExtractionResult result={result} />
           )}
-          {!loading && !error && result && <ExtractionResult result={result} />}
         </div>
       )}
     </div>
