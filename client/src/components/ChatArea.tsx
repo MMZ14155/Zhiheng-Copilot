@@ -9,6 +9,15 @@ interface ChatMessage {
   references?: string[];
 }
 
+export interface RiskSummary {
+  blockCount: number;
+  warnCount: number;
+  okCount: number;
+  deliveryCount: number;
+  paymentCount: number;
+  incompleteCount: number;
+}
+
 const DEFAULT_QUESTION = "当前项目风险概况";
 const FALLBACK_WELCOME =
   "你好，我是智衡Copilot。你可以向我询问项目风险、关键节点和阻塞原因。";
@@ -21,14 +30,44 @@ const QUICK_QUESTIONS = [
 
 interface ChatAreaProps {
   projectId?: number;
+  riskSummary?: RiskSummary;
 }
 
-export default function ChatArea({ projectId }: ChatAreaProps) {
+function buildAutoQuestions(summary: RiskSummary): ChatMessage[] {
+  const parts: string[] = [];
+  if (summary.blockCount > 0) {
+    parts.push(`${summary.blockCount} 个项目存在阻塞风险`);
+  } else if (summary.warnCount > 0) {
+    parts.push(`${summary.warnCount} 个项目存在预警`);
+  }
+  if (summary.deliveryCount > 0) {
+    parts.push(`${summary.deliveryCount} 个项目临近或已逾期交付`);
+  }
+  if (summary.paymentCount > 0) {
+    parts.push(`${summary.paymentCount} 个项目回款逾期`);
+  }
+  if (summary.incompleteCount > 0) {
+    parts.push(`${summary.incompleteCount} 个项目回款数据不完整`);
+  }
+  if (parts.length === 0) return [];
+  const intro = "根据风险引擎最新计算结果，我发现以下需要关注的情况：";
+  const ask = "是否需要我帮你生成跟进建议，或跳转到对应项目筛选？";
+  const body = parts.map((part, index) => `${index + 1}. ${part}`).join("\n");
+  return [
+    {
+      role: "bot",
+      content: `${intro}\n${body}\n\n${ask}`,
+    },
+  ];
+}
+
+export default function ChatArea({ projectId, riskSummary }: ChatAreaProps) {
   const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const initializedRef = useRef(false);
+  const autoAskedRef = useRef(false);
   const lastProjectIdRef = useRef<number | undefined>(undefined);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -55,6 +94,16 @@ export default function ChatArea({ projectId }: ChatAreaProps) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  // 风险引擎结果满足条件时，自动在左侧对话框追加询问。
+  useEffect(() => {
+    if (isLoading || !riskSummary || autoAskedRef.current) return;
+    autoAskedRef.current = true;
+    const autoQuestions = buildAutoQuestions(riskSummary);
+    if (autoQuestions.length) {
+      setMessages((prev) => [...prev, ...autoQuestions]);
+    }
+  }, [isLoading, riskSummary]);
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();

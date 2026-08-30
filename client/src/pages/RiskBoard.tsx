@@ -121,6 +121,17 @@ export default function RiskBoard() {
     }),
     [data],
   );
+  const riskSummary = useMemo(
+    () => ({
+      blockCount: counts.block,
+      warnCount: counts.warn,
+      okCount: counts.ok,
+      deliveryCount: counts.delivery,
+      paymentCount: counts.payment,
+      incompleteCount: counts.incomplete,
+    }),
+    [counts],
+  );
   const filteredProjects = useMemo(() => {
     if (!data) return [];
     return data.items.filter((project) => {
@@ -166,7 +177,7 @@ export default function RiskBoard() {
         >
           <span className="collapse-icon" aria-hidden="true" />
         </button>
-        {chatOpen && <ChatArea />}
+        {chatOpen && <ChatArea riskSummary={riskSummary} />}
       </aside>
       <div className="risk-board">
         <div className="project-list-heading">
