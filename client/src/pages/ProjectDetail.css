@@ -720,17 +720,81 @@
   flex-wrap: wrap;
 }
 .process-replace-inline {
+  display: inline-block;
+}
+.replace-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+  justify-content: center;
+  padding: 24px;
+  background: #0f172a80;
 }
-.process-replace-inline input[type="text"] {
-  flex: 1;
-  min-width: 140px;
-  padding: 6px 8px;
+.replace-modal {
+  width: min(420px, 100%);
+  padding: 20px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 20px 50px #0f172a40;
+}
+.replace-modal h4 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+.replace-modal-file-picker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 14px;
+  margin-bottom: 12px;
+  border: 1.5px dashed #d1d5db;
+  border-radius: 8px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.replace-modal-file-picker:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+  color: #3b82f6;
+}
+.replace-modal-file-picker input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+}
+.replace-modal-file-icon {
+  font-size: 18px;
+}
+.replace-modal-file-text {
+  font-weight: 500;
+}
+.replace-modal input[type="text"] {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 16px;
+  padding: 8px 10px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
+}
+.replace-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.replace-modal-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 .process-pending-update {
   display: flex;

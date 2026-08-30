@@ -435,63 +435,85 @@ function ReplaceButton({
 }: {
   onSelect: (file: File, changelog: string) => void;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [changelog, setChangelog] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
+
+  const close = () => {
+    setIsOpen(false);
+    setFile(null);
+    setChangelog("");
+    if (inputRef.current) inputRef.current.value = "";
+  };
+
+  const confirm = () => {
+    if (!file) return;
+    onSelect(file, changelog);
+    close();
+  };
+
   return (
-    <div className="process-replace-inline">
-      <input
-        type="file"
-        accept={accept}
-        ref={inputRef}
-        onChange={(e) => {
-          const f = e.target.files?.[0] ?? null;
-          setFile(f);
-        }}
-        style={{ display: file ? "none" : "inline" }}
-      />
-      {file && (
-        <>
-          <span>{file.name}</span>
-          <input
-            type="text"
-            value={changelog}
-            placeholder="变更说明（选填）"
-            onChange={(e) => setChangelog(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={() => {
-              onSelect(file, changelog);
-              setFile(null);
-              setChangelog("");
-              if (inputRef.current) inputRef.current.value = "";
-            }}
-          >
-            确认替换
-          </button>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => {
-              setFile(null);
-              setChangelog("");
-              if (inputRef.current) inputRef.current.value = "";
-            }}
-          >
-            取消
-          </button>
-        </>
-      )}
-      {!file && (
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => inputRef.current?.click()}
+    <>
+      <button
+        type="button"
+        className="secondary"
+        onClick={() => setIsOpen(true)}
+      >
+        替换
+      </button>
+      {isOpen && (
+        <div
+          className="replace-modal-backdrop"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) close();
+          }}
         >
-          替换
-        </button>
+          <div className="replace-modal" role="dialog" aria-modal="true">
+            <h4>替换文件</h4>
+            <label className="replace-modal-file-picker">
+              <input
+                type="file"
+                accept={accept}
+                ref={inputRef}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setFile(f);
+                }}
+              />
+              <span className="replace-modal-file-icon" aria-hidden="true">
+                ⇪
+              </span>
+              <span className="replace-modal-file-text">
+                {file ? file.name : "点击选择新文件"}
+              </span>
+            </label>
+            <input
+              type="text"
+              value={changelog}
+              placeholder="变更说明（选填）"
+              onChange={(e) => setChangelog(e.target.value)}
+            />
+            <div className="replace-modal-actions">
+              <button
+                type="button"
+                className="primary"
+                disabled={!file}
+                onClick={confirm}
+              >
+                确认替换
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                onClick={close}
+              >
+                取消
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </div>
+    </>
   );
 }
