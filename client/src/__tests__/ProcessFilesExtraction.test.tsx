@@ -73,7 +73,7 @@ describe("过程文件解析展示", () => {
           files: [
             {
               id: 1,
-              name: "待解析",
+              name: "未识别",
               is_deliverable: false,
               created_at: "",
               updated_at: "",
@@ -117,7 +117,8 @@ describe("过程文件解析展示", () => {
     );
     render(<ProcessFiles projectId={1} onChanged={async () => {}} />);
     await screen.findByText("普通材料", { selector: "strong" });
-    expect(screen.getAllByText("解析中")).toHaveLength(2);
+    expect(screen.getByText("待解析")).toBeTruthy();
+    expect(screen.getByText("解析中")).toBeTruthy();
     expect(screen.getByText("已解析")).toBeTruthy();
     expect(screen.getByText("失败")).toBeTruthy();
     expect(
@@ -125,7 +126,7 @@ describe("过程文件解析展示", () => {
         screen
           .getByText("普通材料", { selector: "strong" })
           .closest("article")!,
-      ).queryByText("解析中"),
+      ).queryByText("待解析"),
     ).toBeNull();
   });
 

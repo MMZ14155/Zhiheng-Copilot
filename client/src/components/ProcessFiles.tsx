@@ -3,7 +3,8 @@ import { errorMessage, filesApi } from "../api";
 import type { ProjectFile } from "../api";
 import { formatDateTime, shortHash } from "../utils/format";
 import FilePreview, { isPreviewableFile } from "./FilePreview";
-import ExtractionDetails, {
+import ParseControls from "./ParseControls";
+import {
   isExtractableDocumentType,
   ParseStatusBadge,
 } from "./ExtractionDetails";
@@ -285,16 +286,15 @@ export default function ProcessFiles({
                         </time>
                       </div>
                     )}
-                    {item.latestVersion &&
-                      isExtractableDocumentType(
-                        item.latestVersion.documentType,
-                      ) && (
-                        <ExtractionDetails
-                          key={item.latestVersion.version}
-                          version={item.latestVersion.version}
-                          parseStatus={item.latestVersion.parseStatus}
-                        />
-                      )}
+                    {item.latestVersion && (
+                      <ParseControls
+                        projectId={projectId}
+                        version={item.latestVersion.version}
+                        documentType={item.latestVersion.documentType}
+                        parseStatus={item.latestVersion.parseStatus}
+                        onChanged={loadFiles}
+                      />
+                    )}
                     {!isPendingRemove && !pendingUpdate && (
                       <div className="process-file-actions">
                         {item.latestVersion && isPreviewableFile(item.name) && (

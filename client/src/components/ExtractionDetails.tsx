@@ -18,13 +18,15 @@ export function ParseStatusBadge({
 }) {
   if (!isExtractableDocumentType(documentType)) return null;
   const status =
-    parseStatus === "pending" || parseStatus === "processing"
-      ? { label: "解析中", className: "processing" }
-      : parseStatus === "parsed"
-        ? { label: "已解析", className: "parsed" }
-        : parseStatus === "failed"
-          ? { label: "失败", className: "failed" }
-          : null;
+    parseStatus === "pending"
+      ? { label: "待解析", className: "pending" }
+      : parseStatus === "processing"
+        ? { label: "解析中", className: "processing" }
+        : parseStatus === "parsed"
+          ? { label: "已解析", className: "parsed" }
+          : parseStatus === "failed"
+            ? { label: "失败", className: "failed" }
+            : null;
   if (!status) return null;
   return (
     <span className={`version-badge parse-${status.className}`}>
