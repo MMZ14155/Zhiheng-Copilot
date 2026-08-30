@@ -283,7 +283,11 @@ class AiTaskExecutor:
             prompt_payload["document_text"] = document_text
             prompt_payload["instruction"] = (
                 "仅依据 document_text 抽取，输出 JSON 的键名必须严格使用 "
-                "required_fields 中的键名，缺失字段进 missing_fields，不得编造"
+                "required_fields 中的键名，缺失字段进 missing_fields，不得编造。"
+                "格式要求：日期统一为 YYYY-MM-DD（如 2026-08-25）；"
+                "金额只输出数字（如 1995.00），不要货币符号、千分位或文字说明；"
+                "税率只输出小数（如 0.06），不要百分号；"
+                "payment_terms 中每个对象必须包含 stage 和 ratio 两个字符串键。"
             )
             logger.info(
                 "injecting document text into extraction prompt version=%s text_length=%s",

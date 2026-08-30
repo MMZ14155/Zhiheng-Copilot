@@ -44,7 +44,7 @@ def test_create_extraction_task_routes_supported_types(fake_session, document_ty
         assert version.parse_status == "processing"
         fake_session.flush.assert_awaited_once()
     else:
-        assert version.parse_status == "pending"
+        assert version.parse_status == "skipped"
         fake_session.flush.assert_not_awaited()
 
 

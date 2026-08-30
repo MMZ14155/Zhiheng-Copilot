@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import BackgroundTasks, HTTPException, UploadFile
+from fastapi import HTTPException, UploadFile
 
 from app.api import ai, auth, copilot, deliverables, files, statistics
 from app.models.file_version import FileVersion
@@ -54,22 +54,18 @@ def test_files_endpoints(fake_session, users, now, monkeypatch, tmp_path):
 
     upload = UploadFile(filename="a.pdf", file=__import__("io").BytesIO(b"ok"))
     monkeypatch.setattr(files.FileVersionService, "create_file_with_first_version", AsyncMock(return_value=(wf, fv)))
-    create_background = BackgroundTasks()
-    created = asyncio.run(files.create_file(1, create_background, "a.pdf", file=upload, session=fake_session, user=users.member))
+    created = asyncio.run(files.create_file(1, "a.pdf", file=upload, session=fake_session, user=users.member))
     assert created.file_id == 2
     assert created.snapshot == snapshot.hash
-    assert fv.parse_status == "processing"
-    assert len(create_background.tasks) == 1
+    assert fv.parse_status == "pending"
     with pytest.raises(HTTPException):
-        asyncio.run(files.create_file(1, BackgroundTasks(), "a.pdf", file=None, session=fake_session, user=users.member))
+        asyncio.run(files.create_file(1, "a.pdf", file=None, session=fake_session, user=users.member))
 
     fake_session.scalar.return_value = 1
     monkeypatch.setattr(files.FileVersionService, "append_version", AsyncMock(return_value=fv))
-    append_background = BackgroundTasks()
-    appended = asyncio.run(files.append_version(2, append_background, file=upload, session=fake_session, user=users.member))
+    appended = asyncio.run(files.append_version(2, file=upload, session=fake_session, user=users.member))
     assert appended.version == fv.version
     assert appended.snapshot == snapshot.hash
-    assert len(append_background.tasks) == 1
     monkeypatch.setattr(files.FileVersionService, "get_version_chain", AsyncMock(return_value=[fv]))
     assert len(asyncio.run(files.list_versions(2, fake_session, users.member)).versions) == 1
 

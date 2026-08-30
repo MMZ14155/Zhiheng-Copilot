@@ -55,18 +55,25 @@ export default function ProcessFiles({
   const [newDocType, setNewDocType] = useState("");
   const [newChangelog, setNewChangelog] = useState("");
 
-  const loadFiles = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setItems(await filesApi.listProjectFiles(projectId));
-    } catch (reason) {
-      console.error("过程文件列表加载失败", reason);
-      setError(errorMessage(reason, "过程文件加载失败，请稍后重试"));
-    } finally {
-      setLoading(false);
-    }
-  }, [projectId]);
+  const loadFiles = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (!options?.silent) {
+        setLoading(true);
+      }
+      setError(null);
+      try {
+        setItems(await filesApi.listProjectFiles(projectId));
+      } catch (reason) {
+        console.error("过程文件列表加载失败", reason);
+        setError(errorMessage(reason, "过程文件加载失败，请稍后重试"));
+      } finally {
+        if (!options?.silent) {
+          setLoading(false);
+        }
+      }
+    },
+    [projectId],
+  );
 
   useEffect(() => {
     void loadFiles();
@@ -77,12 +84,11 @@ export default function ProcessFiles({
       (item) =>
         item.latestVersion &&
         isExtractableDocumentType(item.latestVersion.documentType) &&
-        (item.latestVersion.parseStatus === "pending" ||
-          item.latestVersion.parseStatus === "processing"),
+        item.latestVersion.parseStatus === "processing",
     );
     if (!hasProcessing) return;
     const timer = setInterval(() => {
-      void loadFiles();
+      void loadFiles({ silent: true });
     }, 3000);
     return () => clearInterval(timer);
   }, [items, loadFiles]);

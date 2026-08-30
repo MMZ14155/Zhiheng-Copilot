@@ -9,22 +9,34 @@ _CN_DATE_PATTERN = re.compile(r"^(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*�
 
 
 def _normalize_date(value):
-    """接受中文日期（2026年08月25日）等写法，统一为 date。"""
-    if not isinstance(value, str):
+    """接受中文日期、ISO 及常见分隔符，统一为 date；无法解析时返回 None。"""
+    if value is None:
+        return None
+    if isinstance(value, date):
         return value
+    if not isinstance(value, str):
+        return None
     text = value.strip()
     if not text:
         return None
     match = _CN_DATE_PATTERN.match(text)
     if match:
         return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
-    return text.replace("/", "-").replace(".", "-")
+    normalized = text.replace("/", "-").replace(".", "-")
+    try:
+        return date.fromisoformat(normalized)
+    except ValueError:
+        return None
 
 
 def _normalize_rate(value):
-    """接受百分号写法（6%），统一为小数（0.06）。"""
+    """接受百分号或小数，统一为 Decimal；无法解析时返回 None。"""
+    if value is None:
+        return None
+    if isinstance(value, (int, Decimal)):
+        return Decimal(value) if isinstance(value, int) else value
     if not isinstance(value, str):
-        return value
+        return None
     text = value.strip()
     if not text:
         return None
@@ -32,14 +44,18 @@ def _normalize_rate(value):
     try:
         number = Decimal(text.rstrip("%"))
     except InvalidOperation:
-        return value
+        return None
     return number / 100 if is_percent else number
 
 
 def _normalize_amount(value):
-    """剥离货币符号、千分位与说明文字（¥1,995.00 → 1995.00；1995.00（价税合计）→ 1995.00）。"""
+    """剥离货币符号、千分位与说明文字，统一为 Decimal；无法解析时返回 None。"""
+    if value is None:
+        return None
+    if isinstance(value, (int, Decimal)):
+        return Decimal(value) if isinstance(value, int) else value
     if not isinstance(value, str):
-        return value
+        return None
     text = value.strip()
     if not text:
         return None
@@ -50,8 +66,11 @@ def _normalize_amount(value):
         pass
     match = re.search(r"-?\d+(?:\.\d+)?", cleaned)
     if match:
-        return Decimal(match.group())
-    return value
+        try:
+            return Decimal(match.group())
+        except InvalidOperation:
+            pass
+    return None
 
 
 # LLM 输出常见的非严格格式：中文日期、百分号小数、货币符号金额等，入模前归一化。

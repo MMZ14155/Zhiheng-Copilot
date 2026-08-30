@@ -39,7 +39,7 @@ def test_run_ignores_unknown_and_completes(fake_session, monkeypatch):
     monkeypatch.setattr(AiTaskExecutor, "_summary", work)
     asyncio.run(AiTaskExecutor.run(1))
     assert task.status == "completed"
-    assert fake_session.commit.await_count == 2
+    assert fake_session.commit.await_count == 3
     work.assert_awaited_once()
 
 
