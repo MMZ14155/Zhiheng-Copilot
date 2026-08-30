@@ -63,6 +63,8 @@ describe("CreateProjectModal AI 合同分析模式", () => {
     vi.mocked(aiApi.analyzeProjectDraft).mockResolvedValue(task);
     vi.mocked(aiApi.getProjectDraftTask).mockResolvedValue({
       status: "completed",
+      stage: "completed",
+      progress: 100,
       failureReason: null,
       draft,
     });

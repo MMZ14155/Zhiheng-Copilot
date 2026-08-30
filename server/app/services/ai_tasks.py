@@ -91,6 +91,7 @@ class AiTaskExecutor:
                 return
             task.status, task.started_at = "running", datetime.now(timezone.utc)
             await session.commit()
+            await AiTaskExecutor._set_stage(session, task, "running", 0)
             try:
                 if task.task_type == "summary_generation":
                     await AiTaskExecutor._summary(session, task)
@@ -120,6 +121,18 @@ class AiTaskExecutor:
                             version.parse_status = "failed"
                     await session.commit()
                 logger.exception("AI task failed task_id=%s", task_id)
+
+    @staticmethod
+    async def _set_stage(
+        session, task: Task, stage: str, progress: int | None = None
+    ) -> None:
+        task.payload = {
+            **task.payload,
+            "stage": stage,
+            **({"progress": progress} if progress is not None else {}),
+        }
+        await session.commit()
+        logger.info("task stage updated task_id=%s stage=%s progress=%s", task.id, stage, progress)
 
     @staticmethod
     async def _summary(session, task: Task, regenerate: bool = False) -> None:
@@ -207,6 +220,7 @@ class AiTaskExecutor:
             ensure_ascii=False,
             default=str,
         )
+        await AiTaskExecutor._set_stage(session, task, "analyzing", 50)
         out = await LoggedLlmClient().call(
             task_id=task.id,
             scene="project_summary",
@@ -224,6 +238,7 @@ class AiTaskExecutor:
             out.content,
         )
         task.payload = {**task.payload, "summary_id": summary.id, "version_no": number}
+        await AiTaskExecutor._set_stage(session, task, "completed", 100)
 
     @staticmethod
     async def _extract(session, task: Task) -> None:
@@ -255,6 +270,7 @@ class AiTaskExecutor:
             raise ValueError(f"不支持识别的材料类型 {version.document_type}")
         output_schema, model, scene, required_fields = config
         extractor = create_file_content_extractor()
+        await AiTaskExecutor._set_stage(session, task, "extracting", 30)
         document_text = await extractor.extract_text(version.storage_path)
         prompt_payload = {
             "version": version.version,
@@ -273,6 +289,7 @@ class AiTaskExecutor:
                 version.version,
                 len(document_text),
             )
+        await AiTaskExecutor._set_stage(session, task, "generating", 80)
         prompt = json.dumps(prompt_payload, ensure_ascii=False)
         out = await LoggedLlmClient().call(
             task_id=task.id,
@@ -291,6 +308,7 @@ class AiTaskExecutor:
             setattr(info, field, value)
         info.raw_output = out.model_dump(mode="json")
         version.parse_status = "parsed"
+        await AiTaskExecutor._set_stage(session, task, "completed", 100)
 
     @staticmethod
     async def _project_draft(session, task: Task) -> None:
@@ -301,6 +319,8 @@ class AiTaskExecutor:
         extractor = create_file_content_extractor()
         if isinstance(extractor, NullFileContentExtractor):
             raise ValueError("未配置可用的文件内容提取器")
+
+        await AiTaskExecutor._set_stage(session, task, "extracting", 10)
 
         async def _extract_one(item: dict) -> dict:
             path = item["path"]
@@ -314,6 +334,7 @@ class AiTaskExecutor:
 
         try:
             documents = await asyncio.gather(*[_extract_one(f) for f in files])
+            await AiTaskExecutor._set_stage(session, task, "generating", 60)
             prompt_payload = {
                 "required_fields": [
                     "name", "customer_name", "parties(role/name/contact)",
@@ -335,6 +356,7 @@ class AiTaskExecutor:
                 output_schema=ProjectDraftOutput,
                 request_meta={"files": [f["name"] for f in files]},
             )
+            await AiTaskExecutor._set_stage(session, task, "completed", 100)
             task.payload = {**payload, "result": out.model_dump(mode="json")}
         finally:
             for item in files:

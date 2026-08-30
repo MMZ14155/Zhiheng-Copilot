@@ -442,6 +442,8 @@ export interface TaskResponseDto {
   project_id: number | null;
   task_type: string;
   status: string;
+  stage: string | null;
+  progress: number | null;
   payload: JsonObject;
   failure_reason: string | null;
   started_at: string | null;
@@ -519,6 +521,15 @@ export type ExtractionInfoResponseDto =
 export interface ProjectDraftTaskResponseDto {
   id: number;
   status: string;
+  failure_reason: string | null;
+  draft: ProjectDraftOutputDto | null;
+}
+
+export interface ProjectDraftTaskResponseDto {
+  id: number;
+  status: string;
+  stage: string | null;
+  progress: number | null;
   failure_reason: string | null;
   draft: ProjectDraftOutputDto | null;
 }

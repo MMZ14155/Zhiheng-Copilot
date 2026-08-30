@@ -13,6 +13,8 @@ const task = (status: string, failure_reason: string | null = null) => ({
   project_id: null,
   task_type: "summary",
   status,
+  stage: null,
+  progress: null,
   payload: {},
   failure_reason,
   started_at: null,

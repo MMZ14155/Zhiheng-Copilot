@@ -298,6 +298,29 @@
   color: var(--risk-warn-text);
   font-size: 13px;
 }
+.ai-progress-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.ai-progress-label {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 13px;
+}
+.ai-progress-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border);
+  overflow: hidden;
+}
+.ai-progress-bar {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--primary);
+  transition: width 0.3s ease;
+}
 .ai-success-note {
   padding: 11px 13px;
   border: 1px solid #bbf7d0;

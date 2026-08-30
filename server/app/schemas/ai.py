@@ -68,6 +68,8 @@ class TaskCreatedResponse(BaseModel):
 class ProjectDraftTaskResponse(BaseModel):
     id: int
     status: str
+    stage: str | None = None
+    progress: int | None = None
     failure_reason: str | None = None
     draft: ProjectDraftOutput | None = None
 
@@ -112,6 +114,8 @@ class TaskResponse(BaseModel):
     project_id: int | None
     task_type: str
     status: str
+    stage: str | None = None
+    progress: int | None = None
     payload: dict
     failure_reason: str | None
     started_at: datetime | None

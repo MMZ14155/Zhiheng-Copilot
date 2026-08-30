@@ -62,10 +62,18 @@ export async function analyzeProjectDraft(
 
 export async function getProjectDraftTask(
   id: number,
-): Promise<{ status: string; failureReason: string | null; draft: ProjectDraft | null }> {
+): Promise<{
+  status: string;
+  stage: string | null;
+  progress: number | null;
+  failureReason: string | null;
+  draft: ProjectDraft | null;
+}> {
   const dto = await jsonRequest<ProjectDraftTaskResponseDto>(`/ai/project-draft/${id}`);
   return {
     status: dto.status,
+    stage: dto.stage,
+    progress: dto.progress,
     failureReason: dto.failure_reason,
     draft: dto.draft ? mapProjectDraft(dto.draft) : null,
   };

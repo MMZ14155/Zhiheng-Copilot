@@ -56,6 +56,12 @@ const MISSING_FIELD_LABELS: Record<string, string> = {
   project_type: "项目类型",
   notes: "备注",
 };
+const STAGE_LABELS: Record<string, string> = {
+  extracting: "正在提取文件内容…",
+  generating: "正在生成项目草稿…",
+  analyzing: "正在分析合同…",
+  completed: "分析完成",
+};
 
 function validate(v: Values): Errors {
   const e: Errors = {};
@@ -106,6 +112,10 @@ export default function CreateProjectModal({
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysisProgress, setAnalysisProgress] = useState<{
+    stage: string | null;
+    progress: number;
+  }>({ stage: null, progress: 0 });
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [renewalOptions, setRenewalOptions] = useState<ProjectListItem[]>([]);
   const [renewalSourceId, setRenewalSourceId] = useState<number | "">("");
@@ -180,9 +190,16 @@ export default function CreateProjectModal({
     setAnalyzing(true);
     setAnalysisError(null);
     setAnalyzed(false);
+    setAnalysisProgress({ stage: "preparing", progress: 0 });
     try {
       const task = await aiApi.analyzeProjectDraft(contractFiles);
-      const draft = await pollProjectDraftTask(task.task_id, 30, 1000);
+      const draft = await pollProjectDraftTask(
+        task.task_id,
+        120,
+        1000,
+        ({ stage, progress }) =>
+          setAnalysisProgress({ stage: stage ?? "analyzing", progress }),
+      );
       if (draft) {
         applyDraft(draft);
         setMissingFields(draft.missingFields);
@@ -204,9 +221,14 @@ export default function CreateProjectModal({
     taskId: number,
     maxAttempts: number,
     intervalMs: number,
+    onProgress: (progress: { stage: string | null; progress: number }) => void,
   ): Promise<ProjectDraft | null> => {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const result = await aiApi.getProjectDraftTask(taskId);
+      onProgress({
+        stage: result.stage,
+        progress: result.progress ?? (result.status === "completed" ? 100 : 0),
+      });
       if (result.status === "completed" && result.draft) {
         return result.draft;
       }
@@ -364,10 +386,25 @@ export default function CreateProjectModal({
                 </p>
               </div>
               {analyzing && (
-                <div className="ai-skeleton">
-                  <div className="skeleton-line short" />
-                  <div className="skeleton-line" />
-                  <div className="skeleton-line" />
+                <div className="ai-progress-panel">
+                  <div className="ai-progress-label">
+                    <span>
+                      {STAGE_LABELS[analysisProgress.stage ?? ""] ??
+                        "正在分析…"}
+                    </span>
+                    <span>{analysisProgress.progress}%</span>
+                  </div>
+                  <div className="ai-progress-track">
+                    <div
+                      className="ai-progress-bar"
+                      style={{
+                        width: `${Math.min(
+                          100,
+                          Math.max(0, analysisProgress.progress),
+                        )}%`,
+                      }}
+                    />
+                  </div>
                 </div>
               )}
               {analysisError && !analyzing && (

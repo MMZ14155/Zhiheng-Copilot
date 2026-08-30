@@ -102,6 +102,8 @@ async def get_project_draft_task(
     if task is None or task.task_type != "project_draft":
         raise not_found("任务不存在", code="TASK_NOT_FOUND")
     draft = None
+    stage = task.payload.get("stage")
+    progress = task.payload.get("progress")
     if task.status == "completed":
         result = task.payload.get("result")
         if result is not None:
@@ -109,6 +111,8 @@ async def get_project_draft_task(
     return ProjectDraftTaskResponse(
         id=task.id,
         status=task.status,
+        stage=stage,
+        progress=progress,
         failure_reason=task.failure_reason,
         draft=draft,
     )
@@ -371,8 +375,11 @@ async def get_task(
         "created_at",
         "updated_at",
     )
+    payload = task.payload or {}
     return TaskResponse(
         **{x: getattr(task, x) for x in fields},
+        stage=payload.get("stage"),
+        progress=payload.get("progress"),
         llm_usage=LlmUsageResponse(
             call_count=usage[0], input_tokens=usage[1], output_tokens=usage[2], cost=usage[3]
         ),
