@@ -21,6 +21,7 @@ import TagPanel from "../components/TagPanel";
 import SnapshotTimeline from "../components/SnapshotTimeline";
 import ProjectMembersSection from "../components/ProjectMembersSection";
 import ProjectNotesEditor from "../components/ProjectNotesEditor";
+import ProjectBasicInfoEditor from "../components/ProjectBasicInfoEditor";
 import { useTaskPolling } from "../hooks/useTaskPolling";
 import { PROJECT_TYPE_COLORS } from "../constants/projectTypes";
 import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
@@ -37,6 +38,7 @@ export default function ProjectDetail() {
   const isAdmin = currentUser?.isAdmin === true;
   const [project, setProject] = useState<ProjectDetailModel | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [editingBasicInfo, setEditingBasicInfo] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [projectRisks, setProjectRisks] = useState<ProjectRisks | null>(null);
@@ -201,6 +203,8 @@ export default function ProjectDetail() {
     );
   if (!project)
     return <div className="page-container detail-state">暂无项目详情</div>;
+  const canEditBasicInfo =
+    isAdmin || project.managerIds.includes(currentUser?.id ?? -1);
   const deadlineRisk = projectRisks?.risks.find(
     (risk) => risk.type === RISK_TYPE_DELIVERY_DEADLINE,
   );
@@ -247,7 +251,18 @@ export default function ProjectDetail() {
         {activeTab === "overview" && (
           <>
             <section className="detail-section">
-              <h3>基础信息</h3>
+              <div className="detail-section-header">
+                <h3>基础信息</h3>
+                {canEditBasicInfo && (
+                  <Button
+                    variant="secondary"
+                    type="button"
+                    onClick={() => setEditingBasicInfo(true)}
+                  >
+                    编辑基础信息
+                  </Button>
+                )}
+              </div>
               <div className="detail-grid">
                 <Info label="项目名称" value={project.name} />
                 <Info label="客户" value={project.customerName} />
@@ -511,6 +526,14 @@ export default function ProjectDetail() {
           </section>
         )}
       </div>
+      {editingBasicInfo && project && (
+        <ProjectBasicInfoEditor
+          project={project}
+          isOpen={editingBasicInfo}
+          onClose={() => setEditingBasicInfo(false)}
+          onSaved={loadProject}
+        />
+      )}
       {showDeleteDialog && (
         <Modal
           title="确认删除项目"

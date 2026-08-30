@@ -83,6 +83,16 @@
   color: var(--text);
   margin: 0 0 10px;
 }
+.detail-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+.detail-section-header h3 {
+  margin-bottom: 0;
+}
 .deliverable-heading,
 .payment-progress-heading {
   display: flex;
