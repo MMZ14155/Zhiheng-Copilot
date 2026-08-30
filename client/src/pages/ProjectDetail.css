@@ -98,6 +98,53 @@
   font-size: 12px;
   font-weight: 600;
 }
+
+.project-notes-editor {
+  margin-top: 16px;
+}
+
+.project-notes-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.project-notes-header h4 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--neutral-700);
+}
+
+.project-notes-body,
+.project-notes-empty {
+  margin: 0;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.project-notes-empty {
+  color: var(--muted);
+}
+
+.project-notes-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.project-notes-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
 .payment-progress-panel {
   margin-bottom: 16px;
   padding: 14px;

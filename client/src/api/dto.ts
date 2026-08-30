@@ -100,6 +100,7 @@ export interface LatestSummaryDto {
 export interface ProjectDetailResponseDto extends ProjectResponseDto {
   deliverables: DeliverableSummaryDto[];
   latest_summary: LatestSummaryDto | null;
+  manager_ids: number[];
 }
 export interface ProjectListResponseDto {
   page: number;

@@ -55,7 +55,6 @@ class ProjectCreate(ProjectBase):
 
 class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
-    code: str | None = Field(default=None, min_length=1, max_length=80)
     project_type: ProjectType | None = None
     customer_name: str | None = Field(default=None, min_length=1, max_length=200)
     parties: list[ProjectParty] | None = None
@@ -81,6 +80,10 @@ class ProjectUpdate(BaseModel):
         if value is not None and len(value) == 0:
             return []
         return value
+
+
+class ProjectNotesUpdate(BaseModel):
+    notes: str | None = Field(default=None, max_length=10000)
 
 
 class ProjectLinkCreate(BaseModel):
@@ -152,6 +155,7 @@ class ProjectResponse(BaseModel):
 class ProjectDetailResponse(ProjectResponse):
     deliverables: list[DeliverableSummary] = Field(default_factory=list)
     latest_summary: LatestSummary | None = None
+    manager_ids: list[int] = Field(default_factory=list)
 
 
 class CollectionOverviewResponse(BaseModel):
@@ -164,8 +168,14 @@ class CollectionOverviewResponse(BaseModel):
     data_status: Literal["ok", "incomplete"]
     incomplete_reasons: list[str]
 
-    @field_serializer("contract_amount", "receivable_amount", "received_amount",
-        "invoiced_amount", "overdue_amount", "collection_rate")
+    @field_serializer(
+        "contract_amount",
+        "receivable_amount",
+        "received_amount",
+        "invoiced_amount",
+        "overdue_amount",
+        "collection_rate",
+    )
     def serialize_decimal(self, value: Decimal | None) -> str | None:
         return str(value) if value is not None else None
 

@@ -29,6 +29,7 @@ from app.schemas.projects import (
     ProjectLinkCreate,
     ProjectLinkResponse,
     ProjectListResponse,
+    ProjectNotesUpdate,
     ProjectResponse,
     ProjectType,
     ProjectUpdate,
@@ -340,6 +341,15 @@ async def get_project(
         if summary
         else None
     )
+    manager_ids = (
+        await session.scalars(
+            select(ProjectMember.user_id).where(
+                ProjectMember.project_id == project_id,
+                ProjectMember.role == "manager",
+            )
+        )
+    ).all()
+    response.manager_ids = list(manager_ids)
     logger.info("fetched project detail id=%s", project_id)
     return response
 
@@ -383,6 +393,22 @@ async def update_project(
         raise conflict("项目编码已存在", code="PROJECT_CODE_EXISTS") from exc
     await session.refresh(project)
     logger.info("updated project id=%s", project_id)
+    return _to_project_response(project)
+
+
+@router.patch("/projects/{project_id}/notes", response_model=ProjectResponse)
+async def update_project_notes(
+    project_id: int,
+    payload: ProjectNotesUpdate,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> ProjectResponse:
+    await require_project_role(session, project_id, user, {"manager"})
+    project = await _get_project_or_404(session, project_id)
+    project.notes = payload.notes
+    await session.commit()
+    await session.refresh(project)
+    logger.info("updated project notes id=%s", project_id)
     return _to_project_response(project)
 
 

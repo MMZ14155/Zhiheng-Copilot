@@ -68,6 +68,11 @@ export const getCollectionOverview = async (id: number | string) =>
   );
 export const updateProject = (id: number, body: ProjectUpdateDto) =>
   jsonRequest<ProjectResponseDto>(`/projects/${id}`, { method: "PATCH", body });
+export const updateProjectNotes = (id: number, notes: string | null) =>
+  jsonRequest<ProjectResponseDto>(`/projects/${id}/notes`, {
+    method: "PATCH",
+    body: { notes },
+  });
 export const createProjectLink = (id: number, body: ProjectLinkCreateDto) =>
   jsonRequest<ProjectLinkResponseDto>(`/projects/${id}/links`, {
     method: "POST",

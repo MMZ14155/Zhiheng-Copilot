@@ -51,6 +51,7 @@ const baseProject: ProjectDetailModel = {
   status: "active",
   progress: 10,
   notes: null,
+  managerIds: [],
   deliverables: [],
   latestSummary: null,
 };

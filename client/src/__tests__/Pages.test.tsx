@@ -313,6 +313,7 @@ describe("页面", () => {
       status: "active",
       progress: 10,
       notes: null,
+      managerIds: [],
       deliverables: [],
       latestSummary: null,
     });
@@ -377,8 +378,7 @@ describe("页面", () => {
       plannedDeliveryDate: null,
       status: "active",
       progress: 0,
-      notes: null,
-      deliverables: [],
+      notes: null,      managerIds: [],      deliverables: [],
       latestSummary: null,
     });
     vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({
@@ -436,6 +436,7 @@ describe("页面", () => {
       status: "active",
       progress: 10,
       notes: null,
+      managerIds: [],
       deliverables: [],
       latestSummary: null,
     });
@@ -492,6 +493,7 @@ describe("页面", () => {
       status: "active",
       progress: 10,
       notes: null,
+      managerIds: [],
       deliverables: [],
       latestSummary: null,
     });

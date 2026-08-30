@@ -278,4 +278,5 @@ export interface ProjectDetail {
   notes: string | null;
   deliverables: ProjectDeliverable[];
   latestSummary: ProjectLatestSummary | null;
+  managerIds: number[];
 }

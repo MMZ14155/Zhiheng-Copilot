@@ -232,6 +232,7 @@ export const mapProjectDetail = (
             fileVersion: input.file_version,
           })),
         },
+  managerIds: dto.manager_ids ?? [],
 });
 
 export const mapProjectDraft = (dto: ProjectDraftOutputDto): ProjectDraft => ({

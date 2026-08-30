@@ -19,6 +19,7 @@ import ProcessFiles from "../components/ProcessFiles";
 import TagPanel from "../components/TagPanel";
 import SnapshotTimeline from "../components/SnapshotTimeline";
 import ProjectMembersSection from "../components/ProjectMembersSection";
+import ProjectNotesEditor from "../components/ProjectNotesEditor";
 import { useTaskPolling } from "../hooks/useTaskPolling";
 import { PROJECT_TYPE_COLORS } from "../constants/projectTypes";
 import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
@@ -259,7 +260,12 @@ export default function ProjectDetail() {
                   <span style={{ width: `${project.progress}%` }} />
                 </div>
               </div>
-              <Info label="备注" value={project.notes} />
+              <ProjectNotesEditor
+                projectId={projectId!}
+                notes={project.notes}
+                canEdit={isAdmin || project.managerIds.includes(currentUser?.id ?? -1)}
+                onUpdate={(notes) => setProject((prev) => (prev ? { ...prev, notes } : prev))}
+              />
             </section>
             {remainingDays !== null && remainingDays !== undefined && (
               <Alert tone={remainingDays < 0 ? "danger" : "warning"}>

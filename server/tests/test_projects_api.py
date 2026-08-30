@@ -11,8 +11,8 @@ from sqlalchemy.exc import IntegrityError
 from app.api import projects
 from app.models.project import Project
 from app.models.project_link import ProjectLink
-from app.schemas.projects import ProjectCreate, ProjectLinkCreate, ProjectParty, ProjectUpdate
-from tests.conftest import Result
+from app.schemas.projects import ProjectCreate, ProjectLinkCreate, ProjectParty, ProjectUpdate, ProjectNotesUpdate
+from tests.conftest import Result, ScalarRows
 
 
 def project(now, ident=1):
@@ -127,9 +127,11 @@ def test_project_detail_and_risks(fake_session, users, now, monkeypatch):
     p = project(now)
     fake_session.get.return_value = p
     fake_session.execute.side_effect = [Result([]), Result([])]
+    fake_session.scalars.return_value = ScalarRows([])
     monkeypatch.setattr(projects, "require_project_role", AsyncMock())
     detail = asyncio.run(projects.get_project(1, fake_session, users.member))
     assert detail.id == 1 and detail.latest_summary is None
+    assert detail.manager_ids == []
 
     monkeypatch.setattr(projects.DeliverableService, "list_with_state", AsyncMock(return_value=[]))
     monkeypatch.setattr(projects, "load_financial_documents", AsyncMock(return_value={}))
@@ -157,6 +159,29 @@ def test_list_project_risks_batch(fake_session, users, now, monkeypatch):
     asyncio.run(projects.list_project_risks(fake_session, users.member))
     sql_texts = [str(call.args[0]) for call in fake_session.execute.call_args_list]
     assert any("project_member.user_id" in sql for sql in sql_texts)
+
+
+def test_update_project_notes(fake_session, users, now, monkeypatch):
+    p = project(now)
+    fake_session.get.return_value = p
+    monkeypatch.setattr(projects, "require_project_role", AsyncMock())
+    updated = asyncio.run(
+        projects.update_project_notes(
+            1, ProjectNotesUpdate(notes="新的备注"), fake_session, users.member
+        )
+    )
+    assert updated.notes == "新的备注"
+    fake_session.commit.assert_awaited_once()
+
+
+def test_get_project_detail_includes_manager_ids(fake_session, users, now, monkeypatch):
+    p = project(now)
+    fake_session.get.return_value = p
+    fake_session.execute.side_effect = [Result([]), Result([])]
+    fake_session.scalars.return_value = ScalarRows([users.admin.id])
+    monkeypatch.setattr(projects, "require_project_role", AsyncMock())
+    detail = asyncio.run(projects.get_project(1, fake_session, users.member))
+    assert detail.manager_ids == [users.admin.id]
 
 
 def test_links_and_renewal(fake_session, users, now, monkeypatch):
