@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   aiApi,
   ApiError,
   getAuthUser,
   projectsApi,
+  adminApi,
   subscribeAuth,
 } from "../api";
 import type {
@@ -26,14 +27,18 @@ import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
 import { RISK_TYPE_DELIVERY_DEADLINE, RISK_TYPE_PAYMENT_OVERDUE } from "../constants/risks";
 import { ROUTES } from "../constants/routes";
 import { formatMoney, formatPercentValue } from "../utils/format";
-import { Alert, Badge, Skeleton, Tabs } from "../components/ui";
+import { Alert, Badge, Button, Modal, Skeleton, Tabs } from "../components/ui";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const projectId = id !== undefined && /^\d+$/.test(id) ? Number(id) : null;
+  const navigate = useNavigate();
   const currentUser = useSyncExternalStore(subscribeAuth, getAuthUser);
   const isAdmin = currentUser?.isAdmin === true;
   const [project, setProject] = useState<ProjectDetailModel | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [projectRisks, setProjectRisks] = useState<ProjectRisks | null>(null);
   const [riskError, setRiskError] = useState<string | null>(null);
   const [collectionOverview, setCollectionOverview] =
@@ -153,6 +158,25 @@ export default function ProjectDetail() {
     }
   }, [projectId]);
 
+  const handleDeleteProject = async () => {
+    if (projectId === null || !isAdmin) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await adminApi.deleteProject(String(projectId));
+      setShowDeleteDialog(false);
+      navigate(ROUTES.riskBoard);
+    } catch (reason) {
+      console.error("项目删除失败", reason);
+      setDeleteError(
+        reason instanceof ApiError
+          ? reason.message
+          : "项目删除失败，请稍后重试",
+      );
+      setDeleting(false);
+    }
+  };
+
   useEffect(() => {
     void loadProject();
     void loadCollectionOverview();
@@ -196,6 +220,15 @@ export default function ProjectDetail() {
           </div>
           <h2 className="page-title">{project.name}</h2>
         </div>
+        {isAdmin && (
+          <Button
+            variant="danger"
+            type="button"
+            onClick={() => setShowDeleteDialog(true)}
+          >
+            删除项目
+          </Button>
+        )}
       </div>
       <div className="detail-card">
         <Tabs
@@ -478,6 +511,37 @@ export default function ProjectDetail() {
           </section>
         )}
       </div>
+      {showDeleteDialog && (
+        <Modal
+          title="确认删除项目"
+          onClose={() => {
+            if (!deleting) setShowDeleteDialog(false);
+          }}
+          footer={
+            <>
+              <Button
+                variant="secondary"
+                type="button"
+                disabled={deleting}
+                onClick={() => setShowDeleteDialog(false)}
+              >
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                type="button"
+                disabled={deleting}
+                onClick={() => void handleDeleteProject()}
+              >
+                {deleting ? "删除中…" : "确认删除"}
+              </Button>
+            </>
+          }
+        >
+          <p>确定删除“{project.name}”吗？删除后将无法恢复。</p>
+          {deleteError && <Alert>{deleteError}</Alert>}
+        </Modal>
+      )}
     </div>
   );
 }
