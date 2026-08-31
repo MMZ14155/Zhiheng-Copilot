@@ -2,7 +2,9 @@ import asyncio
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import func, select
 
@@ -25,6 +27,7 @@ from app.schemas.ai import (
     SummaryGenerationOutput,
 )
 from app.services.llm import LoggedLlmClient
+from app.services.multimodal_client import call_multimodal_document
 from app.services.text_extraction import (
     FileContentExtractor,
     KimiFileContentExtractor,
@@ -46,6 +49,26 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 EXTRACTABLE_DOCUMENT_TYPES = {"contract", "invoice", "payment"}
+
+_RE_AMOUNT = re.compile(
+    r"价税合计[\s：:]?([\d,]+(?:\.\d{1,2})?)|金额[\s：:]?([\d,]+(?:\.\d{1,2})?)",
+    re.UNICODE,
+)
+
+
+def _extract_fallback_amount(documents: list[dict[str, str]]) -> Decimal | None:
+    """当 LLM 未返回合同金额时，从文档文本中兜底提取金额（如发票价税合计）。"""
+    for doc in documents:
+        text = (doc.get("text") or "").replace(",", "")
+        for match in _RE_AMOUNT.finditer(text):
+            raw = match.group(1) or match.group(2)
+            if raw:
+                try:
+                    return Decimal(raw)
+                except Exception:
+                    continue
+    return None
+
 
 
 async def create_extraction_task(
@@ -279,8 +302,34 @@ class AiTaskExecutor:
                 extract_path=version.extract_path,
             )
         except MultimodalRequiredError as exc:
-            version.parse_status = "multimodal_required"
-            raise ValueError(f"文件文本提取无效，需要多模态模型处理: {exc}") from exc
+            logger.info("file extraction falling back to multimodal version=%s error=%s", version.version, exc)
+            await AiTaskExecutor._set_stage(session, task, "multimodal", 70)
+            instruction = (
+                f"请根据上传的{version.document_type}文档图片，抽取所需字段并输出纯 JSON。"
+                "输出必须是可被 json.loads 直接解析的纯 JSON 对象，不要 Markdown 代码块，不要任何解释。"
+                "缺失字段必须进入 missing_fields 数组，不得编造。"
+                "日期统一为 YYYY-MM-DD（如 2026-08-25）；"
+                "金额只输出数字（如 1995.00），不要货币符号、千分位或文字说明；"
+                "税率只输出小数（如 0.06），不要百分号；"
+                "payment_terms 中每个对象必须包含 stage 和 ratio 两个字符串键。"
+            )
+            out = await call_multimodal_document(
+                file_path=version.storage_path,
+                output_schema=output_schema,
+                instruction=instruction,
+            )
+            info = await session.scalar(
+                select(model).where(model.version == version.version)
+            )
+            if not info:
+                info = model(version=version.version)
+                session.add(info)
+            for field, value in out.model_dump(mode="python").items():
+                setattr(info, field, value)
+            info.raw_output = out.model_dump(mode="json")
+            version.parse_status = "parsed"
+            await AiTaskExecutor._set_stage(session, task, "completed", 100)
+            return
         prompt_payload = {
             "version": version.version,
             "document_type": version.document_type,
@@ -340,6 +389,8 @@ class AiTaskExecutor:
             name = item["name"]
             try:
                 text = await extractor.extract_text(path)
+            except MultimodalRequiredError:
+                raise
             except Exception as exc:
                 logger.warning("project draft extract failed path=%s error=%s", path, exc)
                 text = None
@@ -373,6 +424,34 @@ class AiTaskExecutor:
                 output_schema=ProjectDraftOutput,
                 request_meta={"files": [f["name"] for f in files]},
             )
+            if out.contract_amount is None:
+                fallback_amount = _extract_fallback_amount(documents)
+                if fallback_amount is not None:
+                    out.contract_amount = fallback_amount
+            await AiTaskExecutor._set_stage(session, task, "completed", 100)
+            task.payload = {**payload, "result": out.model_dump(mode="json")}
+        except MultimodalRequiredError as exc:
+            logger.info("project draft falling back to multimodal task_id=%s error=%s", task.id, exc)
+            await AiTaskExecutor._set_stage(session, task, "multimodal", 70)
+            # 以主文件（第一份合同）进行多模态分析
+            primary = files[0]
+            instruction = (
+                "请根据上传的合同文档图片，提取建项所需信息并生成项目草稿。"
+                "输出必须是可被 json.loads 直接解析的纯 JSON 对象，不要 Markdown 代码块，不要任何解释。"
+                "缺失字段必须进入 missing_fields 数组，不得编造。"
+                "project_type 只能为 软件销售、正版化服务、正版化服务+软件销售 之一，无法确认时留空。"
+                "日期统一为 YYYY-MM-DD（如 2026-08-25），金额只输出纯数字（如 1995.00），不要货币符号、千分位或中文说明。"
+                "parties 中每个对象必须包含 role、name、contact 三个键，contact 无法确认时置 null。"
+            )
+            out = await call_multimodal_document(
+                file_path=primary["path"],
+                output_schema=ProjectDraftOutput,
+                instruction=instruction,
+            )
+            if out.contract_amount is None:
+                fallback_amount = _extract_fallback_amount(documents)
+                if fallback_amount is not None:
+                    out.contract_amount = fallback_amount
             await AiTaskExecutor._set_stage(session, task, "completed", 100)
             task.payload = {**payload, "result": out.model_dump(mode="json")}
         finally:

@@ -75,6 +75,7 @@ function toAnalysisStep(stage: string | null): AnalysisStep {
       return "extract";
     case "analyzing":
     case "generating":
+    case "multimodal":
       return "parse";
     case "completed":
       return "done";
@@ -411,6 +412,7 @@ export default function CreateProjectModal({
               </div>
               {analyzing && (
                 <div className="ai-progress-panel">
+                  <p className="ai-progress-title">AI 处理进度</p>
                   <ol className="ai-stepper" aria-label="分析进度">
                     {[
                       ["upload", "上传"] as const,

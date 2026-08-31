@@ -9,7 +9,8 @@ import pytest
 
 from app.core.config import Settings
 from app.models.contract_info import ContractInfo
-from app.schemas.ai import ContractExtractionOutput
+from app.core.extraction import MultimodalRequiredError
+from app.schemas.ai import ContractExtractionOutput, ProjectDraftOutput
 from app.services import ai_tasks, llm
 from app.services.ai_tasks import (
     AiTaskExecutor,
@@ -391,7 +392,7 @@ def test_extract_injects_document_text_and_persists_result(monkeypatch, tmp_path
     assert fake_audit.added[0].provider == "kimi"
 
 
-def test_extract_without_text_raises_multimodal_required(monkeypatch):
+def test_extract_without_text_falls_back_to_multimodal(monkeypatch):
     version = SimpleNamespace(
         version="b" * 64,
         document_type="contract",
@@ -404,14 +405,109 @@ def test_extract_without_text_raises_multimodal_required(monkeypatch):
     session = AsyncMock()
     session.get.return_value = version
     session.scalar.return_value = None
+    session.add = Mock()
 
+    async def fake_call(*args, **kwargs):
+        return ContractExtractionOutput(
+            contract_no="HT-2026-001",
+            party_a="甲方A",
+            party_b="乙方B",
+            amount=Decimal("1000000.00"),
+            signed_date="2026-01-01",
+            missing_fields=["payment_terms"],
+        )
+
+    monkeypatch.setattr(
+        "app.services.ai_tasks.call_multimodal_document",
+        fake_call,
+    )
     monkeypatch.setattr(
         "app.services.llm_kimi.create_llm_provider",
         lambda: MockLlmProvider(),
     )
     _patch_audit_session(monkeypatch)
 
-    with pytest.raises(ValueError, match="多模态"):
-        asyncio.run(AiTaskExecutor._extract(session, task))
+    asyncio.run(AiTaskExecutor._extract(session, task))
 
-    assert version.parse_status == "multimodal_required"
+    persisted = session.add.call_args.args[0]
+    assert isinstance(persisted, ContractInfo)
+    assert persisted.contract_no == "HT-2026-001"
+    assert persisted.party_a == "甲方A"
+    assert persisted.raw_output["contract_no"] == "HT-2026-001"
+    assert version.parse_status == "parsed"
+
+
+def test_project_draft_without_text_falls_back_to_multimodal(monkeypatch, tmp_path):
+    file_path = tmp_path / "contract.pdf"
+    file_path.write_text("not a pdf")
+    task = SimpleNamespace(
+        id=2,
+        payload={"files": [{"path": str(file_path), "name": "contract.pdf"}]},
+    )
+    session = AsyncMock()
+    session.add = Mock()
+
+    class RaisingExtractor:
+        async def extract_text(self, path: str) -> str:
+            raise MultimodalRequiredError("文本提取无效，需要多模态")
+
+    async def fake_call(*args, **kwargs):
+        return ProjectDraftOutput(
+            name="项目 A",
+            customer_name="客户 A",
+            contract_amount=Decimal("1000000.00"),
+            signed_date="2026-01-01",
+            missing_fields=["started_date"],
+        )
+
+    monkeypatch.setattr(
+        "app.services.ai_tasks.create_file_content_extractor",
+        lambda _=None: RaisingExtractor(),
+    )
+    monkeypatch.setattr(
+        "app.services.ai_tasks.call_multimodal_document",
+        fake_call,
+    )
+    _patch_audit_session(monkeypatch)
+
+    asyncio.run(AiTaskExecutor._project_draft(session, task))
+
+    assert task.payload["result"]["name"] == "项目 A"
+    assert task.payload["result"]["customer_name"] == "客户 A"
+    assert task.payload["result"]["missing_fields"] == ["started_date"]
+
+
+def test_project_draft_fills_amount_from_invoice_text(monkeypatch, tmp_path):
+    file_path = tmp_path / "invoice.pdf"
+    file_path.write_text("dummy")
+    task = SimpleNamespace(
+        id=3,
+        payload={"files": [{"path": str(file_path), "name": "invoice.pdf"}]},
+    )
+    session = AsyncMock()
+    session.add = Mock()
+
+    class FakeExtractor:
+        async def extract_text(self, path: str) -> str:
+            return "价税合计：1,995.00\n"
+
+    class FakeLlmClient:
+        async def call(self, **kwargs):
+            return ProjectDraftOutput(
+                name="发票项目",
+                customer_name="客户",
+                contract_amount=None,
+                signed_date=None,
+                missing_fields=["signed_date"],
+            )
+
+    monkeypatch.setattr(
+        "app.services.ai_tasks.create_file_content_extractor",
+        lambda _=None: FakeExtractor(),
+    )
+    monkeypatch.setattr("app.services.ai_tasks.LoggedLlmClient", FakeLlmClient)
+    _patch_audit_session(monkeypatch)
+
+    asyncio.run(AiTaskExecutor._project_draft(session, task))
+
+    assert task.payload["result"]["contract_amount"] == "1995.00"
