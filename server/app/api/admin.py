@@ -263,15 +263,29 @@ async def _delete_project_records(session: AsyncSession, project_id: int) -> Non
             .where(FileVersion.snapshot_hash.in_(snapshot_hashes))
             .values(snapshot_hash=None)
         )
-        snapshots = (
-            await session.scalars(
-                select(Snapshot)
-                .where(Snapshot.project_id == project_id)
-                .order_by(Snapshot.created_at.desc())
+        # 逐层删除叶子快照，避免 snapshot 自引用 RESTRICT 外键冲突
+        while True:
+            leaf_hashes = (
+                await session.scalars(
+                    select(Snapshot.hash)
+                    .where(
+                        Snapshot.project_id == project_id,
+                        ~Snapshot.hash.in_(
+                            select(Snapshot.parent_hash)
+                            .where(
+                                Snapshot.project_id == project_id,
+                                Snapshot.parent_hash.is_not(None),
+                            )
+                            .scalar_subquery()
+                        ),
+                    )
+                )
+            ).all()
+            if not leaf_hashes:
+                break
+            await session.execute(
+                delete(Snapshot).where(Snapshot.hash.in_(leaf_hashes))
             )
-        ).all()
-        for snapshot in snapshots:
-            await session.delete(snapshot)
 
     # 摘要、任务、标签
     await session.execute(delete(Summary).where(Summary.project_id == project_id))

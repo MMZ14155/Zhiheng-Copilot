@@ -289,12 +289,13 @@ class AiTaskExecutor:
         if document_text is not None:
             prompt_payload["document_text"] = document_text
             prompt_payload["instruction"] = (
-                "仅依据 document_text 抽取，输出 JSON 的键名必须严格使用 "
-                "required_fields 中的键名，缺失字段进 missing_fields，不得编造。"
+                "仅依据 document_text 抽取，输出必须是可被 json.loads 直接解析的纯 JSON 对象，不要 Markdown 代码块，不要任何解释。"
+                "JSON 键名必须严格使用 required_fields 中的键名，缺失字段进 missing_fields，不得编造。"
                 "格式要求：日期统一为 YYYY-MM-DD（如 2026-08-25）；"
                 "金额只输出数字（如 1995.00），不要货币符号、千分位或文字说明；"
                 "税率只输出小数（如 0.06），不要百分号；"
                 "payment_terms 中每个对象必须包含 stage 和 ratio 两个字符串键。"
+                "如果某项信息在文本中无法确认，必须将其放入 missing_fields，不要猜测。"
             )
             logger.info(
                 "injecting document text into extraction prompt version=%s text_length=%s",
@@ -354,8 +355,12 @@ class AiTaskExecutor:
                     "planned_delivery_date", "project_type", "missing_fields", "notes",
                 ],
                 "instruction": (
-                    "仅依据提供的合同文本生成建项草稿，缺失字段必须进入 missing_fields，不得编造。"
-                    "project_type 仅能选择 软件销售、正版化服务、正版化服务+软件销售。"
+                    "仅依据提供的合同文本生成建项草稿。"
+                    "输出必须是可被 json.loads 直接解析的纯 JSON 对象，不要 Markdown 代码块，不要任何解释。"
+                    "缺失字段必须进入 missing_fields 数组，不得编造。"
+                    "project_type 只能为 软件销售、正版化服务、正版化服务+软件销售 之一，无法确认时留空。"
+                    "日期统一为 YYYY-MM-DD（如 2026-08-25），金额只输出纯数字（如 1995.00），不要货币符号、千分位或中文说明。"
+                    "parties 中每个对象必须包含 role、name、contact 三个键，contact 无法确认时置 null。"
                     "当提供多份合同时，以主合同为准，其他材料作为补充。"
                 ),
                 "documents": documents,

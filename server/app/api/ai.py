@@ -26,6 +26,7 @@ from app.schemas.ai import (
     InvoiceInfoResponse,
     LlmUsageResponse,
     PaymentInfoResponse,
+    ProjectDraftOutput,
     ProjectDraftTaskResponse,
     SummaryAnswersRequest,
     SummaryAnswersTaskResponse,
