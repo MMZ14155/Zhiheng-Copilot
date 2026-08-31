@@ -247,6 +247,11 @@
   color: var(--risk-block-text);
 }
 
+.status.multimodal_required {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
 .resource-actions {
   justify-content: flex-end;
   margin-bottom: 16px;

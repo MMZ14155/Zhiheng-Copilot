@@ -267,6 +267,7 @@ export interface ProjectFileLatestVersionDto {
   parse_status: string;
   size_bytes: number;
   uploaded_at: string;
+  extract_path?: string | null;
 }
 export interface ProjectFileResponseDto {
   id: number;
@@ -292,6 +293,7 @@ export interface FileVersionResponseDto {
   parse_status: string;
   is_frozen: boolean;
   uploaded_at: string;
+  extract_path?: string | null;
 }
 export interface VersionListResponseDto {
   file_id: number;

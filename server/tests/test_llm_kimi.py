@@ -321,23 +321,25 @@ def test_extractor_factory_selects_kimi_when_configured():
 def test_extract_injects_document_text_and_persists_result(monkeypatch, tmp_path):
     document = tmp_path / "contract.pdf"
     document.write_bytes(b"%PDF-1.4 fake")
+    extracted_md = tmp_path / f"{'c' * 64}.md"
+    extracted_md.write_text(
+        "本合同由甲方A与乙方B于2026年签署，项目金额为1000000.00元，付款方式为验收后一次性支付。"
+        "双方约定交付日期为2026年12月31日，如有争议应提交仲裁解决。",
+        encoding="utf-8",
+    )
     version = SimpleNamespace(
         version="b" * 64,
         document_type="contract",
         content_hash="c" * 64,
         storage_path=str(document),
         parse_status="processing",
+        extract_path=str(extracted_md),
     )
     task = SimpleNamespace(id=1, payload={"version": version.version})
     session = AsyncMock()
     session.add = Mock()
     session.get.return_value = version
     session.scalar.return_value = None
-
-    class FakeExtractor:
-        async def extract_text(self, file_path: str) -> str:
-            assert file_path == str(document)
-            return "甲方A 乙方B 金额100万"
 
     recorded = {}
 
@@ -357,9 +359,6 @@ def test_extract_injects_document_text_and_persists_result(monkeypatch, tmp_path
             return ProviderResult(data, 1000, 500, Decimal("0.006000"))
 
     monkeypatch.setattr(
-        ai_tasks, "create_file_content_extractor", lambda: FakeExtractor()
-    )
-    monkeypatch.setattr(
         "app.services.llm_kimi.create_llm_provider", lambda: RecordingProvider()
     )
     fake_audit = _patch_audit_session(monkeypatch)
@@ -367,7 +366,10 @@ def test_extract_injects_document_text_and_persists_result(monkeypatch, tmp_path
     asyncio.run(AiTaskExecutor._extract(session, task))
 
     prompt_payload = json.loads(recorded["prompt"])
-    assert prompt_payload["document_text"] == "甲方A 乙方B 金额100万"
+    assert prompt_payload["document_text"] == (
+        "本合同由甲方A与乙方B于2026年签署，项目金额为1000000.00元，付款方式为验收后一次性支付。"
+        "双方约定交付日期为2026年12月31日，如有争议应提交仲裁解决。"
+    )
     assert "仅依据 document_text 抽取" in prompt_payload["instruction"]
     assert prompt_payload["required_fields"] == [
         "contract_no",
@@ -389,45 +391,27 @@ def test_extract_injects_document_text_and_persists_result(monkeypatch, tmp_path
     assert fake_audit.added[0].provider == "kimi"
 
 
-def test_extract_without_extractor_keeps_metadata_only_prompt(monkeypatch):
+def test_extract_without_text_raises_multimodal_required(monkeypatch):
     version = SimpleNamespace(
         version="b" * 64,
         document_type="contract",
         content_hash="c" * 64,
         storage_path="/data/nonexistent.pdf",
         parse_status="processing",
+        extract_path=None,
     )
     task = SimpleNamespace(id=1, payload={"version": version.version})
     session = AsyncMock()
-    session.add = Mock()
     session.get.return_value = version
     session.scalar.return_value = None
 
-    recorded = {}
-
-    class RecordingProvider:
-        name = "mock"
-        model_name = "mock-structured-v1"
-
-        async def generate(self, prompt: str, output_schema):
-            recorded["prompt"] = prompt
-            return ProviderResult(
-                {"contract_no": "MOCK-CONTRACT-001"}, 10, 10, Decimal("0")
-            )
-
     monkeypatch.setattr(
-        "app.services.llm_kimi.create_llm_provider", lambda: RecordingProvider()
+        "app.services.llm_kimi.create_llm_provider",
+        lambda: MockLlmProvider(),
     )
     _patch_audit_session(monkeypatch)
 
-    asyncio.run(AiTaskExecutor._extract(session, task))
+    with pytest.raises(ValueError, match="多模态"):
+        asyncio.run(AiTaskExecutor._extract(session, task))
 
-    prompt_payload = json.loads(recorded["prompt"])
-    assert "document_text" not in prompt_payload
-    assert "instruction" not in prompt_payload
-    assert prompt_payload == {
-        "version": version.version,
-        "document_type": "contract",
-        "content_hash": version.content_hash,
-        "required_fields": ["contract_no", "party_a", "party_b", "amount", "signed_date", "payment_terms"],
-    }
+    assert version.parse_status == "multimodal_required"

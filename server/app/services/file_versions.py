@@ -16,9 +16,12 @@ from app.api.errors import (
     unsupported_media_type,
 )
 from app.core.config import get_settings
+from app.core.extraction import MultimodalRequiredError
+from app.db.session import AsyncSessionLocal
 from app.models.file_version import FileVersion
 from app.models.project import Project
 from app.models.workspace_file import WorkspaceFile
+from app.services.text_extraction import extract_and_store_text
 from app.services.version_hash import VersionHashService
 
 logger = logging.getLogger(__name__)
@@ -61,7 +64,7 @@ class FileVersionService:
             .where(WorkspaceFile.project_id == project_id, WorkspaceFile.is_deleted == False)
             .order_by(WorkspaceFile.created_at, WorkspaceFile.id)
         )
-        files = list(rows.all())
+        files = [(wf, fv) for wf, fv in rows.all()]
         logger.info("listed workspace files project_id=%s count=%s", project_id, len(files))
         return files
 
@@ -255,3 +258,40 @@ class FileVersionService:
         if not fv:
             raise not_found(f"版本 {version} 不存在")
         return fv
+
+    @staticmethod
+    async def extract_text_for_version(version_hash: str) -> None:
+        """后台任务：为指定版本提取文本并保存为 {content_hash}.md。
+
+        如果提取结果无效，则将 parse_status 置为 multimodal_required 并返回，
+        真正的多模态处理逻辑后续再接入。
+        """
+        async with AsyncSessionLocal() as session:
+            version = await session.get(FileVersion, version_hash)
+            if version is None or version.extract_path:
+                logger.info(
+                    "skip text extraction version=%s exists=%s",
+                    version_hash,
+                    bool(version and version.extract_path),
+                )
+                return
+            try:
+                extract_path = await extract_and_store_text(
+                    version.storage_path, version.content_hash
+                )
+            except MultimodalRequiredError:
+                version.parse_status = "multimodal_required"
+                await session.commit()
+                logger.warning(
+                    "multimodal required for version=%s content_hash=%s",
+                    version_hash,
+                    version.content_hash,
+                )
+                return
+            version.extract_path = extract_path
+            await session.commit()
+            logger.info(
+                "updated file_version extract_path version=%s path=%s",
+                version_hash,
+                extract_path,
+            )

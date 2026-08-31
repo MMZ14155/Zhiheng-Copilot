@@ -33,6 +33,7 @@ const statusLabels: Record<string, string> = {
   parsed: "已解析",
   completed: "已解析",
   failed: "解析失败",
+  multimodal_required: "需多模态",
 };
 
 export default function ResourceCenter() {

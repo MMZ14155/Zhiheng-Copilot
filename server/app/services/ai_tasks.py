@@ -3,11 +3,10 @@ import json
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Protocol
 
 from sqlalchemy import func, select
 
-from app.core.config import Settings, get_settings
+from app.core.extraction import MultimodalRequiredError
 from app.db.session import AsyncSessionLocal
 from app.models.contract_info import ContractInfo
 from app.models.file_version import FileVersion
@@ -26,8 +25,23 @@ from app.schemas.ai import (
     SummaryGenerationOutput,
 )
 from app.services.llm import LoggedLlmClient
-from app.services.llm_kimi import KimiFileContentExtractor
-from app.services.settings_store import get_effective_llm_settings
+from app.services.text_extraction import (
+    FileContentExtractor,
+    KimiFileContentExtractor,
+    NullFileContentExtractor,
+    create_file_content_extractor,
+    get_or_extract_text,
+)
+
+# 保持向后兼容：旧代码/测试从 ai_tasks 导入的符号仍然可用
+__all__ = [
+    "create_extraction_task",
+    "AiTaskExecutor",
+    "create_file_content_extractor",
+    "FileContentExtractor",
+    "KimiFileContentExtractor",
+    "NullFileContentExtractor",
+]
 
 logger = logging.getLogger(__name__)
 
@@ -61,26 +75,6 @@ async def create_extraction_task(
         version.document_type,
     )
     return task
-
-
-class FileContentExtractor(Protocol):
-    async def extract_text(self, file_path: str) -> str | None: ...
-
-
-class NullFileContentExtractor:
-    async def extract_text(self, file_path: str) -> str | None:
-        return None
-
-
-def create_file_content_extractor(settings: Settings | None = None) -> FileContentExtractor:
-    effective = get_effective_llm_settings(settings or get_settings())
-    if effective.provider.lower() == "kimi" and effective.api_key:
-        return KimiFileContentExtractor(
-            api_key=effective.api_key,
-            base_url=effective.base_url,
-            timeout_seconds=effective.timeout_seconds,
-        )
-    return NullFileContentExtractor()
 
 
 class AiTaskExecutor:
@@ -277,18 +271,23 @@ class AiTaskExecutor:
         if config is None:
             raise ValueError(f"不支持识别的材料类型 {version.document_type}")
         output_schema, model, scene, required_fields = config
-        extractor = create_file_content_extractor()
         await AiTaskExecutor._set_stage(session, task, "extracting", 30)
-        document_text = await extractor.extract_text(version.storage_path)
+        try:
+            document_text = await get_or_extract_text(
+                version.storage_path,
+                version.content_hash,
+                extract_path=version.extract_path,
+            )
+        except MultimodalRequiredError as exc:
+            version.parse_status = "multimodal_required"
+            raise ValueError(f"文件文本提取无效，需要多模态模型处理: {exc}") from exc
         prompt_payload = {
             "version": version.version,
             "document_type": version.document_type,
             "content_hash": version.content_hash,
             "required_fields": required_fields,
-        }
-        if document_text is not None:
-            prompt_payload["document_text"] = document_text
-            prompt_payload["instruction"] = (
+            "document_text": document_text,
+            "instruction": (
                 "仅依据 document_text 抽取，输出必须是可被 json.loads 直接解析的纯 JSON 对象，不要 Markdown 代码块，不要任何解释。"
                 "JSON 键名必须严格使用 required_fields 中的键名，缺失字段进 missing_fields，不得编造。"
                 "格式要求：日期统一为 YYYY-MM-DD（如 2026-08-25）；"
@@ -296,12 +295,13 @@ class AiTaskExecutor:
                 "税率只输出小数（如 0.06），不要百分号；"
                 "payment_terms 中每个对象必须包含 stage 和 ratio 两个字符串键。"
                 "如果某项信息在文本中无法确认，必须将其放入 missing_fields，不要猜测。"
-            )
-            logger.info(
-                "injecting document text into extraction prompt version=%s text_length=%s",
-                version.version,
-                len(document_text),
-            )
+            ),
+        }
+        logger.info(
+            "injecting document text into extraction prompt version=%s text_length=%s",
+            version.version,
+            len(document_text),
+        )
         await AiTaskExecutor._set_stage(session, task, "generating", 80)
         prompt = json.dumps(prompt_payload, ensure_ascii=False)
         out = await LoggedLlmClient().call(

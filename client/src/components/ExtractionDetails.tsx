@@ -26,7 +26,9 @@ export function ParseStatusBadge({
           ? { label: "已解析", className: "parsed" }
           : parseStatus === "failed"
             ? { label: "失败", className: "failed" }
-            : null;
+            : parseStatus === "multimodal_required"
+              ? { label: "需多模态", className: "multimodal" }
+              : null;
   if (!status) return null;
   return (
     <span className={`version-badge parse-${status.className}`}>
@@ -103,6 +105,10 @@ export default function ExtractionDetails({
               >
                 {retrying ? "重试中…" : "重新识别"}
               </button>
+            </div>
+          ) : parseStatus === "multimodal_required" ? (
+            <div className="extraction-status multimodal">
+              该文件无法通过文本提取获取有效信息，需要多模态模型处理。
             </div>
           ) : loading ? (
             <Skeleton rows={2} />

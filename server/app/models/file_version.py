@@ -16,7 +16,7 @@ class FileVersion(Base):
             name="ck_file_version_document_type",
         ),
         CheckConstraint(
-            "parse_status IN ('pending', 'processing', 'parsed', 'failed', 'skipped')",
+            "parse_status IN ('pending', 'processing', 'parsed', 'failed', 'skipped', 'multimodal_required')",
             name="ck_file_version_parse_status",
         ),
         UniqueConstraint("file_id", "prev_version", name="uq_file_version_file_prev"),
@@ -44,3 +44,5 @@ class FileVersion(Base):
     is_frozen: Mapped[bool] = mapped_column(nullable=False, default=False)
     uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     snapshot_hash: Mapped[str | None] = mapped_column(ForeignKey("snapshot.hash", ondelete="RESTRICT"))
+    # 指向按 content_hash 命名的提取文本 .md 文件；为空表示尚未提取或需要多模态处理
+    extract_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)

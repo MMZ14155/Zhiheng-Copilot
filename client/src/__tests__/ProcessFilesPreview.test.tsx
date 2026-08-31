@@ -38,6 +38,7 @@ describe("ProcessFiles preview", () => {
           parseStatus: "done",
           sizeBytes: 1024,
           uploadedAt: "2026-01-01T00:00:00Z",
+          extractPath: null,
         },
       },
       {
@@ -52,6 +53,7 @@ describe("ProcessFiles preview", () => {
           parseStatus: "done",
           sizeBytes: 2048,
           uploadedAt: "2026-01-01T00:00:00Z",
+          extractPath: null,
         },
       },
     ]);

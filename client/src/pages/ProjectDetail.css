@@ -547,6 +547,10 @@
   color: #991b1b;
   background: #fecaca;
 }
+.version-badge.parse-multimodal {
+  color: #7c3aed;
+  background: #ede9fe;
+}
 .version-meta {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1132,6 +1136,17 @@
   gap: 10px;
   background: #fef2f2;
   color: #991b1b;
+}
+.extraction-status.multimodal {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+.parse-status.multimodal {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #f3e8ff;
+  color: #7c3aed;
+  font-size: 13px;
 }
 .extraction-result dl {
   display: grid;

@@ -325,25 +325,73 @@
 .ai-progress-panel {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
-.ai-progress-label {
+.ai-stepper {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.ai-step {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12px;
 }
-.ai-progress-track {
-  height: 8px;
-  border-radius: 4px;
+.ai-step::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
   background: var(--border);
-  overflow: hidden;
+  z-index: 0;
 }
-.ai-progress-bar {
-  height: 100%;
-  border-radius: 4px;
+.ai-step:first-child::before {
+  display: none;
+}
+.ai-step.done::before {
   background: var(--primary);
-  transition: width 0.3s ease;
+}
+.ai-step-dot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.ai-step.active .ai-step-dot {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+.ai-step.done .ai-step-dot {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+.ai-step-label {
+  font-weight: 500;
+}
+.ai-step.active .ai-step-label {
+  color: var(--primary);
+  font-weight: 700;
 }
 .ai-success-note {
   padding: 11px 13px;

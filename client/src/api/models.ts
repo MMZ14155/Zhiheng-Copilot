@@ -173,6 +173,7 @@ export interface FileVersion {
   isFrozen: boolean;
   isCurrent: boolean;
   uploadedAt: string;
+  extractPath: string | null;
 }
 export interface ProjectFile {
   id: string;
@@ -186,6 +187,7 @@ export interface ProjectFile {
     parseStatus: string;
     sizeBytes: number;
     uploadedAt: string;
+    extractPath: string | null;
   } | null;
 }
 export interface Tag {

@@ -34,7 +34,7 @@ class FileVersionResponse(BaseModel):
     parse_status: str
     is_frozen: bool
     uploaded_at: str
-
+    extract_path: Optional[str] = None
 
 class VersionListResponse(BaseModel):
     file_id: int
@@ -47,6 +47,7 @@ class LatestFileVersionSummary(BaseModel):
     parse_status: str
     size_bytes: int
     uploaded_at: datetime
+    extract_path: Optional[str] = None
 
 
 class WorkspaceFileSummary(BaseModel):

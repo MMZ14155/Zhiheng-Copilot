@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.responses import FileResponse
@@ -59,6 +59,7 @@ def _version_to_response(fv: FileVersion) -> FileVersionResponse:
         parse_status=fv.parse_status,
         is_frozen=fv.is_frozen,
         uploaded_at=fv.uploaded_at.isoformat(),
+        extract_path=fv.extract_path,
     )
 
 
@@ -86,6 +87,7 @@ async def list_project_files(
                         parse_status=latest_version.parse_status,
                         size_bytes=latest_version.size_bytes,
                         uploaded_at=latest_version.uploaded_at,
+                        extract_path=latest_version.extract_path,
                     )
                     if latest_version is not None
                     else None
@@ -100,6 +102,7 @@ async def list_project_files(
 async def create_file(
     project_id: int,
     name: str,
+    background_tasks: BackgroundTasks,
     uploaded_by: str | None = None,
     changelog: str = "",
     doc_type: str | None = None,
@@ -126,6 +129,9 @@ async def create_file(
     snapshot = await SnapshotService.create_snapshot(session, project, parent, user.name, changelog)
     file_version.snapshot_hash = snapshot.hash
     await session.commit()
+    background_tasks.add_task(
+        FileVersionService.extract_text_for_version, file_version.version
+    )
     return CreateFileResponse(
         file_id=file_version.file_id,
         version=file_version.version,
@@ -137,6 +143,7 @@ async def create_file(
 @router.post("/files/{file_id}/versions", response_model=CreateFileResponse)
 async def append_version(
     file_id: int,
+    background_tasks: BackgroundTasks,
     uploaded_by: str | None = None,
     changelog: str = "",
     file: UploadFile | None = None,
@@ -166,6 +173,9 @@ async def append_version(
         await session.rollback()
         raise
     await session.commit()
+    background_tasks.add_task(
+        FileVersionService.extract_text_for_version, file_version.version
+    )
     return CreateFileResponse(
         file_id=file_id,
         version=file_version.version,
@@ -190,7 +200,7 @@ async def workspace_commit(
             session=session,
             project=project,
             author=user.name,
-            message=payload.message,
+            message=payload.message or "",
             operations=[op.model_dump() for op in payload.operations],
         )
         await session.commit()

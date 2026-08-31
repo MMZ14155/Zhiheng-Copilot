@@ -83,6 +83,7 @@ export const mapProjectFile = (dto: ProjectFileResponseDto): ProjectFile => ({
           parseStatus: dto.latest_version.parse_status,
           sizeBytes: dto.latest_version.size_bytes,
           uploadedAt: dto.latest_version.uploaded_at,
+          extractPath: dto.latest_version.extract_path ?? null,
         },
 });
 export const mapTag = (dto: TagResponseDto): Tag => ({
@@ -271,6 +272,7 @@ export const mapTrackedFile = (dto: TrackedFileResponseDto): TrackedFile => ({
     isFrozen: version.is_frozen,
     isCurrent: version.version === dto.current_version,
     uploadedAt: version.uploaded_at,
+    extractPath: version.extract_path ?? null,
   })),
 });
 

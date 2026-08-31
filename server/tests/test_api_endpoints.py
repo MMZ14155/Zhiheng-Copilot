@@ -5,7 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
-from fastapi import HTTPException, UploadFile
+from fastapi import BackgroundTasks, HTTPException, UploadFile
 
 from app.api import ai, auth, copilot, deliverables, files, statistics
 from app.models.file_version import FileVersion
@@ -54,16 +54,16 @@ def test_files_endpoints(fake_session, users, now, monkeypatch, tmp_path):
 
     upload = UploadFile(filename="a.pdf", file=__import__("io").BytesIO(b"ok"))
     monkeypatch.setattr(files.FileVersionService, "create_file_with_first_version", AsyncMock(return_value=(wf, fv)))
-    created = asyncio.run(files.create_file(1, "a.pdf", file=upload, session=fake_session, user=users.member))
+    created = asyncio.run(files.create_file(1, "a.pdf", BackgroundTasks(), file=upload, session=fake_session, user=users.member))
     assert created.file_id == 2
     assert created.snapshot == snapshot.hash
     assert fv.parse_status == "pending"
     with pytest.raises(HTTPException):
-        asyncio.run(files.create_file(1, "a.pdf", file=None, session=fake_session, user=users.member))
+        asyncio.run(files.create_file(1, "a.pdf", BackgroundTasks(), file=None, session=fake_session, user=users.member))
 
     fake_session.scalar.return_value = 1
     monkeypatch.setattr(files.FileVersionService, "append_version", AsyncMock(return_value=fv))
-    appended = asyncio.run(files.append_version(2, file=upload, session=fake_session, user=users.member))
+    appended = asyncio.run(files.append_version(2, BackgroundTasks(), file=upload, session=fake_session, user=users.member))
     assert appended.version == fv.version
     assert appended.snapshot == snapshot.hash
     monkeypatch.setattr(files.FileVersionService, "get_version_chain", AsyncMock(return_value=[fv]))

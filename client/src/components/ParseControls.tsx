@@ -80,6 +80,14 @@ export default function ParseControls({
 
   if (!isExtractableDocumentType(documentType)) return null;
 
+  if (parseStatus === "multimodal_required") {
+    return (
+      <div className="parse-status multimodal">
+        文本提取无效，该文件需要多模态模型处理。
+      </div>
+    );
+  }
+
   if (parseStatus === "parsed") {
     return <ExtractionDetails version={version} parseStatus={parseStatus} />;
   }
