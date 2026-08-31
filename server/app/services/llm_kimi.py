@@ -39,6 +39,17 @@ SUPPORTED_FILE_EXTENSIONS = {
 class KimiProviderError(Exception):
     """Kimi 调用失败，message 不含 API Key 与文件内容。"""
 
+    def __init__(self, message: str, *, raw_output: str | None = None):
+        super().__init__(message)
+        self.raw_output = raw_output
+
+
+def _truncate_for_log(text: str, max_length: int = 1000) -> str:
+    """截断日志/错误信息中的原始文本，避免过长或含敏感大段内容。"""
+    if len(text) <= max_length:
+        return text
+    return text[:max_length] + "..."
+
 
 def _snake_case(name: str) -> str:
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
@@ -125,14 +136,23 @@ class KimiLlmProvider:
         try:
             data = json.loads(stripped)
         except json.JSONDecodeError as exc:
-            raise KimiProviderError("Kimi API 返回非法 JSON") from exc
+            raise KimiProviderError(
+                "Kimi API 返回非法 JSON",
+                raw_output=_truncate_for_log(stripped),
+            ) from exc
         if not isinstance(data, dict):
-            raise KimiProviderError("Kimi API 返回非法 JSON")
+            raise KimiProviderError(
+                "Kimi API 返回非法 JSON",
+                raw_output=_truncate_for_log(stripped),
+            )
         # 提前做结构校验：模型输出不符合 schema 时视为可重试的失败。
         try:
             output_schema.model_validate(data)
         except Exception as exc:
-            raise KimiProviderError("Kimi API 返回内容不符合预期结构") from exc
+            raise KimiProviderError(
+                "Kimi API 返回内容不符合预期结构",
+                raw_output=_truncate_for_log(stripped),
+            ) from exc
         usage = body.get("usage") or {}
         input_tokens = int(usage.get("prompt_tokens") or 0)
         output_tokens = int(usage.get("completion_tokens") or 0)

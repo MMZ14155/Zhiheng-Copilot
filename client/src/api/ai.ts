@@ -67,6 +67,7 @@ export async function getProjectDraftTask(
   stage: string | null;
   progress: number | null;
   failureReason: string | null;
+  rawOutput: string | null;
   draft: ProjectDraft | null;
 }> {
   const dto = await jsonRequest<ProjectDraftTaskResponseDto>(`/ai/project-draft/${id}`);
@@ -75,6 +76,7 @@ export async function getProjectDraftTask(
     stage: dto.stage,
     progress: dto.progress,
     failureReason: dto.failure_reason,
+    rawOutput: dto.raw_output ?? null,
     draft: dto.draft ? mapProjectDraft(dto.draft) : null,
   };
 }

@@ -90,6 +90,7 @@ class ProjectDraftTaskResponse(BaseModel):
     stage: str | None = None
     progress: int | None = None
     failure_reason: str | None = None
+    raw_output: str | None = None
     draft: ProjectDraftOutput | None = None
 
 

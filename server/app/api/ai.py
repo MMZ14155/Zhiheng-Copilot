@@ -104,6 +104,7 @@ async def get_project_draft_task(
     draft = None
     stage = task.payload.get("stage")
     progress = task.payload.get("progress")
+    raw_output = task.payload.get("raw_output")
     if task.status == "completed":
         result = task.payload.get("result")
         if result is not None:
@@ -114,6 +115,7 @@ async def get_project_draft_task(
         stage=stage,
         progress=progress,
         failure_reason=task.failure_reason,
+        raw_output=raw_output,
         draft=draft,
     )
 

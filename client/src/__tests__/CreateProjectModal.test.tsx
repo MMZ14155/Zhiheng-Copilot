@@ -66,6 +66,7 @@ describe("CreateProjectModal AI 合同分析模式", () => {
       stage: "completed",
       progress: 100,
       failureReason: null,
+      rawOutput: null,
       draft,
     });
   });
@@ -129,6 +130,22 @@ describe("CreateProjectModal AI 合同分析模式", () => {
     await waitFor(() =>
       expect(fieldInput("项目名称").value).toBe("AI 识别项目"),
     );
+  });
+
+  it("模型返回值异常时展示原始返回值", async () => {
+    vi.mocked(aiApi.getProjectDraftTask).mockResolvedValue({
+      status: "failed",
+      stage: "generating",
+      progress: 80,
+      failureReason: "返回内容不符合预期结构",
+      rawOutput: '{"name": "异常返回"}',
+      draft: null,
+    });
+    render(<CreateProjectModal onClose={() => {}} onCreated={() => {}} />);
+    await uploadAndAnalyze();
+    expect(await screen.findByText("返回内容不符合预期结构")).toBeTruthy();
+    expect(await screen.findByText("模型原始返回值")).toBeTruthy();
+    expect(await screen.findByText('{"name": "异常返回"}')).toBeTruthy();
   });
 
   it("模式切换共享同一份表单值且不清空", async () => {

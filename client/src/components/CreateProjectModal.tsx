@@ -18,6 +18,16 @@ import {
 import { PROJECT_TYPES } from "../constants/projectTypes";
 import "./CreateProjectModal.css";
 
+class ProjectDraftError extends Error {
+  constructor(
+    message: string,
+    readonly rawOutput: string | null = null,
+  ) {
+    super(message);
+    this.name = "ProjectDraftError";
+  }
+}
+
 type Field =
   | "name"
   | "customerName"
@@ -112,6 +122,7 @@ export default function CreateProjectModal({
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [analysisRawOutput, setAnalysisRawOutput] = useState<string | null>(null);
   const [analysisProgress, setAnalysisProgress] = useState<{
     stage: string | null;
     progress: number;
@@ -189,6 +200,7 @@ export default function CreateProjectModal({
     if (contractFiles.length === 0 || analyzing) return;
     setAnalyzing(true);
     setAnalysisError(null);
+    setAnalysisRawOutput(null);
     setAnalyzed(false);
     setAnalysisProgress({ stage: "preparing", progress: 0 });
     try {
@@ -207,11 +219,16 @@ export default function CreateProjectModal({
       }
     } catch (reason) {
       console.error("合同分析失败", reason);
-      setAnalysisError(
-        reason instanceof ApiError
-          ? reason.message
-          : "合同分析失败，请稍后重试",
-      );
+      if (reason instanceof ProjectDraftError) {
+        setAnalysisError(reason.message);
+        setAnalysisRawOutput(reason.rawOutput);
+      } else {
+        setAnalysisError(
+          reason instanceof ApiError
+            ? reason.message
+            : "合同分析失败，请稍后重试",
+        );
+      }
     } finally {
       setAnalyzing(false);
     }
@@ -233,10 +250,9 @@ export default function CreateProjectModal({
         return result.draft;
       }
       if (result.status === "failed") {
-        throw new ApiError(
+        throw new ProjectDraftError(
           result.failureReason || "合同分析失败",
-          "AI_DRAFT_FAILED",
-          500,
+          result.rawOutput,
         );
       }
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
@@ -410,6 +426,12 @@ export default function CreateProjectModal({
               {analysisError && !analyzing && (
                 <div className="ai-analysis-error">
                   <span>{analysisError}</span>
+                  {analysisRawOutput && (
+                    <details open className="ai-raw-output">
+                      <summary>模型原始返回值</summary>
+                      <pre>{analysisRawOutput}</pre>
+                    </details>
+                  )}
                   <button
                     type="button"
                     className="secondary-button"

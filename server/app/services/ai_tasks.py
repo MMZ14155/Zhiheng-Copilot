@@ -111,11 +111,18 @@ class AiTaskExecutor:
                 await session.rollback()
                 task = await session.get(Task, task_id)
                 if task:
+                    raw_output = getattr(exc, "raw_output", None)
+                    failure_reason = str(exc)[:4000]
                     task.status, task.failure_reason, task.finished_at = (
                         "failed",
-                        str(exc)[:4000],
+                        failure_reason,
                         datetime.now(timezone.utc),
                     )
+                    if raw_output:
+                        task.payload = {
+                            **task.payload,
+                            "raw_output": raw_output[:2000],
+                        }
                     if task.task_type == "contract_recognition":
                         version = await session.get(FileVersion, task.payload.get("version"))
                         if version:
