@@ -1176,6 +1176,37 @@
   font-size: 12px;
   overflow-wrap: anywhere;
 }
+.extract-text-panel {
+  margin-bottom: 10px;
+}
+.extract-text-toggle {
+  font-size: 12px;
+  padding: 4px 10px;
+}
+.extract-text-content {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+}
+.extract-text-hash {
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  color: #6b7280;
+  word-break: break-all;
+}
+.extract-text-body {
+  max-height: 360px;
+  overflow: auto;
+  margin: 0;
+  padding: 8px;
+  background: #f9fafb;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
 .renewal-chain {
   display: grid;
   gap: 8px;

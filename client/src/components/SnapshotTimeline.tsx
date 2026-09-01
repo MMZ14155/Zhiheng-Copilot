@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { errorMessage, filesApi, snapshotsApi } from "../api";
 import type {
   SnapshotDetail,

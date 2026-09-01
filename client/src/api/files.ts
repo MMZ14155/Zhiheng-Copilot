@@ -3,6 +3,7 @@ import {
   jsonRequest,
   multipartRequest,
   queryString,
+  textRequest,
 } from "./client";
 import type {
   CreateFileResponseDto,
@@ -115,6 +116,15 @@ export async function previewVersion(version: string): Promise<VersionPreview> {
     contentType,
     ...(textContent === undefined ? {} : { textContent }),
   };
+}
+
+export async function getExtractText(
+  version: string,
+): Promise<{ text: string; contentHash: string | null }> {
+  const { text, headers } = await textRequest(
+    `/versions/${encodeURIComponent(version)}/extract-text`,
+  );
+  return { text, contentHash: headers.get("x-content-hash") };
 }
 
 export async function workspaceCommit(

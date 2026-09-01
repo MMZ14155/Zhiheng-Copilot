@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError, projectsApi, statisticsApi } from "../api";
 import { formatMoney } from "../utils/format";
@@ -87,7 +87,7 @@ export default function Statistics() {
         setDeadlineError(
           failure instanceof ApiError
             ? failure.message
-            : "到期项目清单加载失败，请稍后刷新",
+            : "到期项目清单加载失败，请稍候刷新",
         );
         return;
       }

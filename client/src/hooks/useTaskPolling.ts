@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import { aiApi, errorMessage } from "../api";
 
 type PollingState = "idle" | "polling" | "completed" | "failed";

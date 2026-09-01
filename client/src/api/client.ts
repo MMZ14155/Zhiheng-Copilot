@@ -1,4 +1,4 @@
-import type { CurrentUser } from "./models";
+﻿import type { CurrentUser } from "./models";
 
 const BASE_URL = "/api/v1";
 
@@ -118,6 +118,14 @@ export function blobRequest(path: string, init: RequestInit = {}) {
     blob: await response.blob(),
     headers: response.headers,
   }));
+}
+
+export function textRequest(path: string, init: RequestInit = {}) {
+  return request<{ text: string; headers: Headers }>(
+    path,
+    init,
+    async (response) => ({ text: await response.text(), headers: response.headers }),
+  );
 }
 
 export function queryString(

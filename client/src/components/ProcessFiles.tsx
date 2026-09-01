@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useRef, useState } from "react";
 import { errorMessage, filesApi } from "../api";
 import type { ProjectFile } from "../api";
 import { formatDateTime, shortHash } from "../utils/format";

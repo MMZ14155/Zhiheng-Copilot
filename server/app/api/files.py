@@ -27,6 +27,7 @@ from app.services.file_versions import FileVersionService
 from app.services.snapshots import SnapshotService
 from app.services.workspace_commit import WorkspaceCommitService
 from app.services.docx_preview import docx_to_html
+from app.services.text_extraction import get_extract_path, load_extracted_text
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["files"])
@@ -297,3 +298,35 @@ async def preview_version(
         "X-Content-Type-Options": "nosniff",
     }
     return FileResponse(path=str(path), media_type=media_type, headers=headers)
+
+
+@router.get("/versions/{version}/extract-text")
+async def get_extract_text(
+    version: str,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    fv, _ = await _resolve_version_storage(session, version, user)
+    # 兼容 extract_path 未写入数据库但 .md 文件已由识别任务生成的情况
+    extract_path = fv.extract_path
+    text = None
+    if extract_path:
+        text = load_extracted_text(extract_path)
+    if text is None:
+        fallback_path = get_extract_path(fv.content_hash)
+        text = load_extracted_text(fallback_path)
+        if text is not None and fallback_path != extract_path:
+            fv.extract_path = str(fallback_path)
+            await session.commit()
+            logger.info("backfilled extract_path version=%s path=%s", version, fallback_path)
+    if text is None:
+        raise not_found("该版本尚未提取文本", code="EXTRACT_TEXT_NOT_FOUND")
+    return Response(
+        content=text,
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": f"inline; filename*=UTF-8''{quote(fv.content_hash)}.md",
+            "X-Content-Type-Options": "nosniff",
+            "X-Content-Hash": fv.content_hash,
+        },
+    )

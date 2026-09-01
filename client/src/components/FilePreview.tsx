@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { errorMessage, filesApi } from "../api";
 import type { VersionPreview } from "../api/files";
 import { Alert, Modal, Skeleton } from "./ui";

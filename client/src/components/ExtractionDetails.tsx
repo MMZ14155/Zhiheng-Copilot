@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { aiApi, errorMessage } from "../api";
+﻿import { useCallback, useEffect, useState } from "react";
+import { aiApi, errorMessage, filesApi } from "../api";
 import type { ExtractionInfoResponseDto } from "../api";
 import { Alert, Skeleton } from "./ui";
 
@@ -145,11 +145,14 @@ export default function ExtractionDetails({
       </div>
       {expanded && (
         <div className="extraction-content">
+          {(parseStatus === "parsed" || parseStatus === "failed" || parseStatus === "multimodal_required") && (
+            <ExtractTextPanel version={version} />
+          )}
           {activeTaskId || parseStatus === "pending" || parseStatus === "processing" ? (
             <div className="extraction-status">
               {activeTaskStatus === "failed"
                 ? "识别失败"
-                : "识别中，请稍后…"}
+                : "识别中，请稍候…"}
               {activeTaskStatus && activeTaskStatus !== "pending" && (
                 <span className="extraction-status-detail">（{activeTaskStatus}）</span>
               )}
@@ -190,6 +193,64 @@ export default function ExtractionDetails({
             </Alert>
           ) : (
             result && <ExtractionResult result={result} />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ExtractTextPanel({ version }: { version: string }) {
+  const [visible, setVisible] = useState(false);
+  const [text, setText] = useState<string | null>(null);
+  const [hash, setHash] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const toggle = async () => {
+    if (visible) {
+      setVisible(false);
+      return;
+    }
+    if (text === null && !error) {
+      setLoading(true);
+      try {
+        const res = await filesApi.getExtractText(version);
+        setText(res.text);
+        setHash(res.contentHash);
+      } catch (reason) {
+        console.error("加载提取文本失败", reason);
+        setError(errorMessage(reason, "加载提取文本失败，请稍后重试"));
+      } finally {
+        setLoading(false);
+      }
+    }
+    setVisible(true);
+  };
+
+  return (
+    <div className="extract-text-panel">
+      <button
+        type="button"
+        className="secondary extract-text-toggle"
+        onClick={() => void toggle()}
+        disabled={loading}
+      >
+        {loading ? "加载中…" : visible ? "隐藏提取文本" : "查看提取文本"}
+      </button>
+      {visible && (
+        <div className="extract-text-content">
+          {error ? (
+            <Alert>{error}</Alert>
+          ) : (
+            <>
+              {hash && (
+                <p className="extract-text-hash">
+                  索引：{hash}.md
+                </p>
+              )}
+              <pre className="extract-text-body">{text ?? ""}</pre>
+            </>
           )}
         </div>
       )}

@@ -33,6 +33,7 @@ from app.services.text_extraction import (
     KimiFileContentExtractor,
     NullFileContentExtractor,
     create_file_content_extractor,
+    get_extract_path,
     get_or_extract_text,
 )
 
@@ -49,6 +50,40 @@ __all__ = [
 logger = logging.getLogger(__name__)
 
 EXTRACTABLE_DOCUMENT_TYPES = {"contract", "invoice", "payment"}
+
+_RE_INVOICE_AMOUNT = re.compile(
+    r"价税合计.*?（小写）\s*[￥¥]?\s*([\d,]+(?:\.\d{1,2})?)",
+    re.UNICODE,
+)
+_RE_INVOICE_TAX = re.compile(
+    r"(\d+(?:\.\d+)?)\s*%\s*[￥¥]?\s*([\d,]+(?:\.\d{1,2})?)",
+    re.UNICODE,
+)
+
+
+def _extract_fallback_invoice(document_text: str) -> dict[str, Decimal | None]:
+    """当 LLM 未返回发票金额类字段时，从文本中兜底提取。"""
+    amount = tax_amount = tax_rate = None
+    text = document_text.replace(",", "")
+    for match in _RE_INVOICE_AMOUNT.finditer(text):
+        raw = next(g for g in match.groups() if g is not None)
+        try:
+            amount = Decimal(raw)
+            break
+        except Exception:
+            continue
+    for match in _RE_INVOICE_TAX.finditer(text):
+        try:
+            rate_percent = Decimal(match.group(1))
+            tax = Decimal(match.group(2))
+            if rate_percent > 0 and tax > 0:
+                tax_rate = rate_percent / Decimal("100")
+                tax_amount = tax
+                break
+        except Exception:
+            continue
+    return {"amount": amount, "tax_amount": tax_amount, "tax_rate": tax_rate}
+
 
 _RE_AMOUNT = re.compile(
     r"价税合计[\s：:]?([\d,]+(?:\.\d{1,2})?)|金额[\s：:]?([\d,]+(?:\.\d{1,2})?)",
@@ -296,7 +331,7 @@ class AiTaskExecutor:
         output_schema, model, scene, required_fields = config
         field_guide = {
             "contract": "合同编号(contract_no)、甲方(party_a)、乙方(party_b)、金额(amount)、签署日期(signed_date)、付款条款(payment_terms，每个对象包含 stage 和 ratio)",
-            "invoice": "发票号码(invoice_no)、开票日期(issued_date)、金额(amount)、税额(tax_amount)、税率(tax_rate)、购买方(buyer)、销售方(seller)",
+            "invoice": "发票号码(invoice_no)、开票日期(issued_date)、金额(amount，即价税合计小写金额，如 1995.00)、税额(tax_amount，发票中'税额'合计，如 112.92)、税率(tax_rate，发票中'税率/征收率'如 6% 转换为 0.06)、购买方(buyer)、销售方(seller)",
             "payment": "金额(amount)、付款日期(payment_date)、付款方(payer)、关联合同号(contract_no)、备注(remarks)",
         }
         await AiTaskExecutor._set_stage(session, task, "extracting", 30)
@@ -306,6 +341,8 @@ class AiTaskExecutor:
                 version.content_hash,
                 extract_path=version.extract_path,
             )
+            if not version.extract_path:
+                version.extract_path = str(get_extract_path(version.content_hash))
         except MultimodalRequiredError as exc:
             logger.info("file extraction falling back to multimodal version=%s error=%s", version.version, exc)
             await AiTaskExecutor._set_stage(session, task, "multimodal", 70)
@@ -366,6 +403,15 @@ class AiTaskExecutor:
             output_schema=output_schema,
             request_meta={"file_version": version.version, "document_type": version.document_type},
         )
+        data = out.model_dump(mode="python")
+        if version.document_type == "invoice":
+            fallback = _extract_fallback_invoice(document_text)
+            for key, value in fallback.items():
+                if data.get(key) is None and value is not None:
+                    data[key] = value
+                    if key in data.get("missing_fields", []):
+                        data["missing_fields"].remove(key)
+            out = output_schema.model_validate(data)
         info = await session.scalar(
             select(model).where(model.version == version.version)
         )
