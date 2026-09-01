@@ -2,6 +2,7 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
+from docx import Document
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
@@ -42,7 +43,7 @@ def test_preview_inline_types(fake_session, users, now, monkeypatch, tmp_path, s
     role.assert_awaited_with(fake_session, 1, users.member)
 
 
-@pytest.mark.parametrize("suffix", [".docx", ".svg", ".html"])
+@pytest.mark.parametrize("suffix", [".svg", ".html"])
 def test_preview_rejects_unsupported_types(fake_session, users, now, monkeypatch, tmp_path, suffix):
     path = tmp_path / f"a{suffix}"
     path.write_bytes(b"data")
@@ -52,6 +53,21 @@ def test_preview_rejects_unsupported_types(fake_session, users, now, monkeypatch
         asyncio.run(files.preview_version(fv.version, fake_session, users.member))
     assert exc.value.status_code == 415
     assert "下载" in exc.value.detail["detail"]
+
+
+def test_preview_docx_inline(fake_session, users, now, monkeypatch, tmp_path):
+    path = tmp_path / "a.docx"
+    doc = Document()
+    doc.add_paragraph("hello")
+    doc.save(str(path))
+    fv = version(now, path)
+    role = mock_lookup(fake_session, monkeypatch, fv)
+    response = asyncio.run(files.preview_version(fv.version, fake_session, users.member))
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
+    assert response.headers["content-disposition"].startswith("inline; filename*=UTF-8''")
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert b"<p>hello</p>" in response.body
+    role.assert_awaited_with(fake_session, 1, users.member)
 
 
 def test_preview_rejects_non_member(fake_session, users, now, monkeypatch, tmp_path):

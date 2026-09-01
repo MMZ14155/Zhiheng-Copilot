@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { aiApi, errorMessage } from "../api";
 import type { ExtractionInfoResponseDto } from "../api";
 import { Alert, Skeleton } from "./ui";
@@ -49,6 +49,8 @@ export default function ExtractionDetails({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const [activeTaskId, setActiveTaskId] = useState<number | null>(null);
+  const [activeTaskStatus, setActiveTaskStatus] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,10 +65,15 @@ export default function ExtractionDetails({
     }
   }, [version]);
 
-  const retry = async () => {
+  const startRetry = async () => {
+    if (retrying || activeTaskId) return;
     setRetrying(true);
+    setError(null);
+    setResult(null);
     try {
-      await aiApi.createExtractionTask(version);
+      const task = await aiApi.createExtractionTask(version);
+      setActiveTaskId(task.task_id);
+      setActiveTaskStatus("pending");
     } catch (reason) {
       console.error("重新触发识别失败", reason);
       setError(errorMessage(reason, "重新触发识别失败，请稍后重试"));
@@ -75,40 +82,99 @@ export default function ExtractionDetails({
     }
   };
 
+  useEffect(() => {
+    if (!activeTaskId) return;
+    const poll = async () => {
+      try {
+        const task = await aiApi.getTask(activeTaskId);
+        setActiveTaskStatus(task.status);
+        if (task.status === "completed") {
+          setActiveTaskId(null);
+          void load();
+        } else if (task.status === "failed") {
+          setActiveTaskId(null);
+          setError(
+            task.failure_reason
+              ? `识别失败：${task.failure_reason}`
+              : "识别任务执行失败，请稍后重试",
+          );
+        }
+      } catch (reason) {
+        console.error("轮询识别任务失败", reason);
+      }
+    };
+    void poll();
+    const timer = setInterval(() => void poll(), 1500);
+    return () => clearInterval(timer);
+  }, [activeTaskId, load]);
+
   const toggle = () => {
     const nextExpanded = !expanded;
     setExpanded(nextExpanded);
-    if (nextExpanded && parseStatus === "parsed" && !result && !loading) void load();
+    if (nextExpanded && parseStatus === "parsed" && !result && !loading && !activeTaskId) {
+      void load();
+    }
   };
+
+  const isBusy =
+    parseStatus === "pending" ||
+    parseStatus === "processing" ||
+    retrying ||
+    activeTaskId !== null;
 
   return (
     <div className="extraction-panel">
-      <button
-        type="button"
-        className="secondary extraction-toggle"
-        aria-expanded={expanded}
-        onClick={toggle}
-      >
-        {expanded ? "收起识别结果" : "识别结果"}
-      </button>
+      <div className="extraction-header">
+        <button
+          type="button"
+          className="secondary extraction-toggle"
+          aria-expanded={expanded}
+          onClick={toggle}
+        >
+          {expanded ? "收起识别结果" : "识别结果"}
+        </button>
+        <button
+          type="button"
+          className="secondary extraction-retry"
+          onClick={() => void startRetry()}
+          disabled={isBusy}
+          title="重新运行一次识别"
+        >
+          {retrying || activeTaskId ? "重试中…" : "重新识别"}
+        </button>
+      </div>
       {expanded && (
         <div className="extraction-content">
-          {parseStatus === "pending" || parseStatus === "processing" ? (
-            <div className="extraction-status">识别中，请稍后…</div>
+          {activeTaskId || parseStatus === "pending" || parseStatus === "processing" ? (
+            <div className="extraction-status">
+              {activeTaskStatus === "failed"
+                ? "识别失败"
+                : "识别中，请稍后…"}
+              {activeTaskStatus && activeTaskStatus !== "pending" && (
+                <span className="extraction-status-detail">（{activeTaskStatus}）</span>
+              )}
+            </div>
           ) : parseStatus === "failed" ? (
             <div className="extraction-status error">
               识别失败
               <button
                 type="button"
-                onClick={() => void retry()}
-                disabled={retrying}
+                onClick={() => void startRetry()}
+                disabled={retrying || activeTaskId !== null}
               >
-                {retrying ? "重试中…" : "重新识别"}
+                {retrying || activeTaskId ? "重试中…" : "重新识别"}
               </button>
             </div>
           ) : parseStatus === "multimodal_required" ? (
             <div className="extraction-status multimodal">
               该文件无法通过文本提取获取有效信息，需要多模态模型处理。
+              <button
+                type="button"
+                onClick={() => void startRetry()}
+                disabled={retrying || activeTaskId !== null}
+              >
+                {retrying || activeTaskId ? "重试中…" : "重新识别"}
+              </button>
             </div>
           ) : loading ? (
             <Skeleton rows={2} />

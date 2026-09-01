@@ -294,6 +294,11 @@ class AiTaskExecutor:
         if config is None:
             raise ValueError(f"不支持识别的材料类型 {version.document_type}")
         output_schema, model, scene, required_fields = config
+        field_guide = {
+            "contract": "合同编号(contract_no)、甲方(party_a)、乙方(party_b)、金额(amount)、签署日期(signed_date)、付款条款(payment_terms，每个对象包含 stage 和 ratio)",
+            "invoice": "发票号码(invoice_no)、开票日期(issued_date)、金额(amount)、税额(tax_amount)、税率(tax_rate)、购买方(buyer)、销售方(seller)",
+            "payment": "金额(amount)、付款日期(payment_date)、付款方(payer)、关联合同号(contract_no)、备注(remarks)",
+        }
         await AiTaskExecutor._set_stage(session, task, "extracting", 30)
         try:
             document_text = await get_or_extract_text(
@@ -305,7 +310,7 @@ class AiTaskExecutor:
             logger.info("file extraction falling back to multimodal version=%s error=%s", version.version, exc)
             await AiTaskExecutor._set_stage(session, task, "multimodal", 70)
             instruction = (
-                f"请根据上传的{version.document_type}文档图片，抽取所需字段并输出纯 JSON。"
+                f"请根据上传的{version.document_type}文档图片，抽取以下字段并输出纯 JSON 对象：{field_guide[version.document_type]}。"
                 "输出必须是可被 json.loads 直接解析的纯 JSON 对象，不要 Markdown 代码块，不要任何解释。"
                 "缺失字段必须进入 missing_fields 数组，不得编造。"
                 "日期统一为 YYYY-MM-DD（如 2026-08-25）；"
@@ -337,7 +342,8 @@ class AiTaskExecutor:
             "required_fields": required_fields,
             "document_text": document_text,
             "instruction": (
-                "仅依据 document_text 抽取，输出必须是可被 json.loads 直接解析的纯 JSON 对象，不要 Markdown 代码块，不要任何解释。"
+                f"仅依据 document_text 抽取以下字段：{field_guide[version.document_type]}。"
+                "输出必须是可被 json.loads 直接解析的纯 JSON 对象，不要 Markdown 代码块，不要任何解释。"
                 "JSON 键名必须严格使用 required_fields 中的键名，缺失字段进 missing_fields，不得编造。"
                 "格式要求：日期统一为 YYYY-MM-DD（如 2026-08-25）；"
                 "金额只输出数字（如 1995.00），不要货币符号、千分位或文字说明；"

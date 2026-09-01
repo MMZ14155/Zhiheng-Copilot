@@ -4,7 +4,7 @@ import type { VersionPreview } from "../api/files";
 import { Alert, Modal, Skeleton } from "./ui";
 import "./FilePreview.css";
 
-const previewableExtension = /\.(?:pdf|png|jpe?g|gif|bmp|webp|txt|md|log)$/i;
+const previewableExtension = /\.(?:pdf|png|jpe?g|gif|bmp|webp|txt|md|log|docx)$/i;
 
 export const isPreviewableFile = (name: string) =>
   previewableExtension.test(name.trim());
@@ -82,6 +82,14 @@ export default function FilePreview({
           className="file-preview-image"
           src={preview.objectUrl}
           alt={`${name} 预览`}
+        />
+      )}
+      {preview && normalizedType.startsWith("text/html") && (
+        <iframe
+          className="file-preview-frame"
+          srcDoc={preview.textContent ?? ""}
+          title={`${name} 文档预览`}
+          sandbox=""
         />
       )}
       {preview && normalizedType.startsWith("text/") && (

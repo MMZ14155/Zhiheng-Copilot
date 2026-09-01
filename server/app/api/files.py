@@ -5,7 +5,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, BackgroundTasks, Depends, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette.responses import FileResponse
+from starlette.responses import FileResponse, Response
 
 from app.api.errors import bad_request, not_found, unsupported_media_type
 from app.api.dependencies import get_current_user, require_project_role
@@ -26,6 +26,7 @@ from app.schemas.workspace_commit import WorkspaceCommitRequest, WorkspaceCommit
 from app.services.file_versions import FileVersionService
 from app.services.snapshots import SnapshotService
 from app.services.workspace_commit import WorkspaceCommitService
+from app.services.docx_preview import docx_to_html
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["files"])
@@ -271,6 +272,17 @@ async def preview_version(
 ):
     _, path = await _resolve_version_storage(session, version, user)
     ext = path.suffix.lower()
+    if ext == ".docx":
+        html = docx_to_html(path)
+        logger.info("preview converted docx version=%s", version)
+        return Response(
+            content=html,
+            media_type="text/html",
+            headers={
+                "Content-Disposition": f"inline; filename*=UTF-8''{quote(path.name)}",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
     media_type = PREVIEW_MEDIA_TYPES.get(ext)
     if media_type is None:
         logger.info(
