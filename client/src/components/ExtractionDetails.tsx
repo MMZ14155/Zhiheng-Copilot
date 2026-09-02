@@ -258,6 +258,30 @@ function ExtractTextPanel({ version }: { version: string }) {
   );
 }
 
+function formatPaymentTerms(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "未识别";
+  const terms = Array.isArray(value) ? value : [value];
+  const parts = terms
+    .map((term) => {
+      if (!term || typeof term !== "object") return String(term);
+      const t = term as Record<string, unknown>;
+      const stage = t.stage ? String(t.stage) : "";
+      const ratio = t.ratio;
+      if (!stage && ratio === undefined) return JSON.stringify(term);
+      if (
+        ratio === "missing_fields" ||
+        ratio === null ||
+        ratio === undefined ||
+        ratio === ""
+      ) {
+        return stage || "未识别";
+      }
+      return `${stage}（${ratio}）`;
+    })
+    .filter(Boolean);
+  return parts.length ? parts.join("；") : "未识别";
+}
+
 function ExtractionResult({ result }: { result: ExtractionInfoResponseDto }) {
   const fields: Array<[string, unknown]> =
     result.type === "contract"
@@ -298,7 +322,9 @@ function ExtractionResult({ result }: { result: ExtractionInfoResponseDto }) {
         {fields.map(([label, value]) => (
           <div key={label}>
             <dt>{label}</dt>
-            <dd>{show(value)}</dd>
+            <dd>
+              {label === "付款条款" ? formatPaymentTerms(value) : show(value)}
+            </dd>
           </div>
         ))}
       </dl>
