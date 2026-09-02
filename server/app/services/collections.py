@@ -105,3 +105,60 @@ def aggregate_collection_overview(documents: Iterable[CollectionDocument], today
         if contract_amount is not None and contract_amount != 0 else None)
     return CollectionOverview(contract_amount, receivable, received, invoiced, overdue, rate,
         "incomplete" if reasons else "ok", tuple(dict.fromkeys(reasons)))
+
+
+_PAYMENT_STAGE_KEYWORDS = {
+    "全款": ["全款", "100%", "一次性", "全额"],
+    "首款": ["首款", "定金", "预付款", "预付款项", "首付", "签订后", "合同签订"],
+    "尾款": ["尾款", "尾款待", "验收后", "终验", "交付后", "上线后", "质保金"],
+}
+
+
+def _classify_payment_term(term: dict[str, str]) -> str | None:
+    stage = str(term.get("stage", ""))
+    ratio_raw = str(term.get("ratio", "")).strip()
+    try:
+        ratio = Decimal(ratio_raw.rstrip("%").strip())
+        if "%" in ratio_raw:
+            ratio = ratio / Decimal("100")
+    except (InvalidOperation, ValueError):
+        ratio = None
+
+    for name, keywords in _PAYMENT_STAGE_KEYWORDS.items():
+        if any(keyword in stage for keyword in keywords):
+            return name
+
+    if ratio is not None and ratio >= Decimal("0.9999"):
+        return "全款"
+
+    return None
+
+
+def build_payment_deliverables(
+    payment_terms: Iterable[dict[str, str]],
+    contract_amount: Decimal | None,
+) -> list[dict[str, object]]:
+    """根据付款条款生成待创建的回款 deliverable 数据列表。"""
+    records: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for term in payment_terms:
+        name = _classify_payment_term(term)
+        if name is None:
+            continue
+        if name in seen:
+            continue
+        ratio = _parse_ratio(term)
+        receivable = None
+        if contract_amount is not None and ratio is not None:
+            receivable = (contract_amount * ratio).quantize(Decimal("0.01"))
+        records.append({
+            "name": name,
+            "category": "回款",
+            "payment_status": "未付款",
+            "receivable_amount": receivable,
+            "received_amount": None,
+            "payment_date": None,
+            "remarks": str(term.get("stage", "")) + (f" {term.get('ratio', '')}" if term.get("ratio") else ""),
+        })
+        seen.add(name)
+    return records

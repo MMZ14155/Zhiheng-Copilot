@@ -20,6 +20,7 @@ from app.models.workspace_file import WorkspaceFile
 from app.models.project_member import ProjectMember
 from app.models.user import User
 from app.schemas.ai import SummaryInputResponse
+from app.services.collections import build_payment_deliverables
 from app.schemas.projects import (
     CollectionOverviewResponse,
     DeliverableSummary,
@@ -256,6 +257,9 @@ async def create_project(
             if payload.renewal_source_id is not None:
                 source_id, target_id = _canonical_pair(payload.renewal_source_id, project.id)
                 session.add(ProjectLink(source_project_id=source_id, target_project_id=target_id, link_type="renewal"))
+            # 根据付款条款自动生成回款 deliverables，状态固定为未付款。
+            for data in build_payment_deliverables(payload.payment_terms, payload.contract_amount):
+                session.add(TrackedFile(project_id=project.id, **data))
             await session.commit()
             break
         except IntegrityError as exc:

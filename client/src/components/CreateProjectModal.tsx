@@ -121,6 +121,7 @@ export default function CreateProjectModal({
   const [renewalOptions, setRenewalOptions] = useState<ProjectListItem[]>([]);
   const [renewalSourceId, setRenewalSourceId] = useState<number | "">("");
   const [renewalLoading, setRenewalLoading] = useState(false);
+  const [paymentTerms, setPaymentTerms] = useState<{ stage: string; ratio: string }[]>([]);
   const busy = submitting || analyzing;
 
   const set = (field: Field, value: string) => {
@@ -183,6 +184,7 @@ export default function CreateProjectModal({
         contactInfo: p.contactInfo ?? p.contact ?? null,
       })),
     );
+    setPaymentTerms(draft.paymentTerms ?? []);
     setErrors({});
     setApiError(null);
   };
@@ -277,6 +279,7 @@ export default function CreateProjectModal({
           (p) =>
             p.role || p.name || p.contact_person || p.contact_info,
         ),
+      payment_terms: paymentTerms,
       renewal_source_id: renewalSourceId ? Number(renewalSourceId) : null,
     };
     setSubmitting(true);
@@ -465,6 +468,19 @@ export default function CreateProjectModal({
                     已根据合同内容回填表单，请核对后提交。
                   </div>
                 )}
+              {analyzed && !analyzing && !analysisError && paymentTerms.length > 0 && (
+                <div className="ai-payment-terms">
+                  <h4>识别到的回款条款</h4>
+                  <ul>
+                    {paymentTerms.map((term, idx) => (
+                      <li key={idx}>
+                        {term.stage}（{term.ratio}）
+                      </li>
+                    ))}
+                  </ul>
+                  <p>提交后将自动生成对应的回款记录，状态为“未付款”。</p>
+                </div>
+              )}
             </div>
           )}
           <div className="project-form-grid">

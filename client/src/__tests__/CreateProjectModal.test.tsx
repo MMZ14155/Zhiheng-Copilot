@@ -15,6 +15,10 @@ const draft: ProjectDraft = {
   startedDate: "2026-02-01",
   plannedDeliveryDate: "",
   projectType: "软件销售",
+  paymentTerms: [
+    { stage: "首款", ratio: "30%" },
+    { stage: "尾款", ratio: "70%" },
+  ],
   missingFields: ["planned_delivery_date"],
   notes: "合同备注",
 };
@@ -183,6 +187,10 @@ describe("CreateProjectModal AI 合同分析模式", () => {
       planned_delivery_date: null,
       notes: "合同备注",
       parties: [{ role: "甲方", name: "甲方公司", contact_info: "138" }],
+      payment_terms: [
+        { stage: "首款", ratio: "30%" },
+        { stage: "尾款", ratio: "70%" },
+      ],
     });
     expect("code" in body).toBe(false);
   });

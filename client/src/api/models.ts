@@ -276,6 +276,7 @@ export interface ProjectDraft {
   startedDate: string | null;
   plannedDeliveryDate: string | null;
   projectType: ProjectType | null;
+  paymentTerms: { stage: string; ratio: string }[];
   missingFields: string[];
   notes: string | null;
 }

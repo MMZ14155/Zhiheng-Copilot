@@ -213,6 +213,7 @@ class ProjectDraftOutput(BaseModel):
     started_date: FlexibleDate = None
     planned_delivery_date: FlexibleDate = None
     project_type: Literal["软件销售", "正版化服务", "正版化服务+软件销售"] | None = None
+    payment_terms: list[dict[str, str]] = Field(default_factory=list)
     missing_fields: list[str] = Field(default_factory=list)
     notes: str | None = None
 

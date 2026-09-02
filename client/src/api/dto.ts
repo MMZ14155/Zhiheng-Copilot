@@ -56,6 +56,7 @@ export interface ProjectWriteDto {
   status?: ProjectStatusDto;
   progress?: number;
   notes?: string | null;
+  payment_terms?: { stage: string; ratio: string }[];
   /** 续签来源项目 ID：后端在同一事务中创建项目与续签链接。 */
   renewal_source_id?: number | null;
 }
@@ -569,6 +570,7 @@ export interface ProjectDraftOutputDto {
   started_date: string | null;
   planned_delivery_date: string | null;
   project_type: ProjectTypeDto | null;
+  payment_terms: { stage: string; ratio: string }[];
   missing_fields: string[];
   notes: string | null;
 }

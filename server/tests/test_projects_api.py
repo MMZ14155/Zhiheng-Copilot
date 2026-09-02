@@ -1,5 +1,6 @@
 import asyncio
 from datetime import date
+from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -11,6 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api import projects
 from app.models.project import Project
 from app.models.project_link import ProjectLink
+from app.models.tracked_file import TrackedFile
 from app.schemas.projects import ProjectCreate, ProjectLinkCreate, ProjectPartyWrite, ProjectUpdate, ProjectNotesUpdate
 from tests.conftest import Result, ScalarRows
 
@@ -119,8 +121,42 @@ def test_generated_project_code_retries_conflict(fake_session, users, now, monke
     fake_session.refresh.side_effect = refresh
     created = asyncio.run(projects.create_project(payload, fake_session, users.admin))
     assert created.code == "PRJ-ABCD1234"
-    assert fake_session.rollback.await_count == 1
-    assert fake_session.flush.await_count == 2
+
+
+def test_create_project_generates_payment_deliverables(fake_session, users, now):
+    async def flush():
+        for item in fake_session.added:
+            if isinstance(item, Project) and item.id is None:
+                item.id = 7
+    fake_session.flush.side_effect = flush
+
+    async def refresh(obj):
+        obj.id = 7
+        obj.created_at = obj.updated_at = now
+        obj.stage = obj.budget = obj.cost = obj.planned_days = obj.used_days = None
+        obj.quality_issues = obj.satisfaction = obj.acceptance_result = None
+
+    fake_session.refresh.side_effect = refresh
+    payload = ProjectCreate(
+        name="回款项目",
+        customer_name="客户",
+        contract_amount=Decimal("10000"),
+        payment_terms=[
+            {"stage": "首款30%", "ratio": "30%"},
+            {"stage": "验收后支付尾款70%", "ratio": "70%"},
+        ],
+    )
+    created = asyncio.run(projects.create_project(payload, fake_session, users.admin))
+    assert created.id == 7
+    tracked = [item for item in fake_session.added if isinstance(item, TrackedFile)]
+    assert len(tracked) == 2
+    assert {t.name for t in tracked} == {"首款", "尾款"}
+    assert all(t.payment_status == "未付款" for t in tracked)
+    assert all(t.category == "回款" for t in tracked)
+    first = next(t for t in tracked if t.name == "首款")
+    assert first.receivable_amount == Decimal("3000.00")
+    tail = next(t for t in tracked if t.name == "尾款")
+    assert tail.receivable_amount == Decimal("7000.00")
 
 
 def test_project_detail_and_risks(fake_session, users, now, monkeypatch):

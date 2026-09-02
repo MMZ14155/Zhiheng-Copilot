@@ -253,6 +253,7 @@ export const mapProjectDraft = (dto: ProjectDraftOutputDto): ProjectDraft => ({
   startedDate: dto.started_date,
   plannedDeliveryDate: dto.planned_delivery_date,
   projectType: dto.project_type,
+  paymentTerms: dto.payment_terms ?? [],
   missingFields: dto.missing_fields,
   notes: dto.notes,
 });

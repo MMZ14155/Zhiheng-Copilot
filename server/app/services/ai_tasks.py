@@ -466,7 +466,7 @@ class AiTaskExecutor:
                 "required_fields": [
                     "name", "customer_name", "parties(role/name/contact_person/contact_info)",
                     "contract_amount", "signed_date", "started_date",
-                    "planned_delivery_date", "project_type", "missing_fields", "notes",
+                    "planned_delivery_date", "project_type", "payment_terms(stage/ratio)", "missing_fields", "notes",
                 ],
                 "instruction": (
                     "仅依据提供的合同文本生成建项草稿。"
@@ -474,7 +474,9 @@ class AiTaskExecutor:
                     "缺失字段必须进入 missing_fields 数组，不得编造。"
                     "project_type 只能为 软件销售、正版化服务、正版化服务+软件销售 之一，无法确认时留空。"
                     "日期统一为 YYYY-MM-DD（如 2026-08-25），金额只输出纯数字（如 1995.00），不要货币符号、千分位或中文说明。"
-                    "parties 中每个对象必须包含 role、name、contact_person、contact_info 四个键，无法确认时置 null。",
+                    "parties 中每个对象必须包含 role、name、contact_person、contact_info 四个键，无法确认时置 null。"
+                    "payment_terms 为付款条款数组，每个对象包含 stage（阶段描述）和 ratio（比例，如 30%），"
+                    "若存在首款、尾款、全款等多个阶段，请全部列出。",
                     "当提供多份合同时，以主合同为准，其他材料作为补充。"
                 ),
                 "documents": documents,
@@ -505,7 +507,9 @@ class AiTaskExecutor:
                 "缺失字段必须进入 missing_fields 数组，不得编造。"
                 "project_type 只能为 软件销售、正版化服务、正版化服务+软件销售 之一，无法确认时留空。"
                 "日期统一为 YYYY-MM-DD（如 2026-08-25），金额只输出纯数字（如 1995.00），不要货币符号、千分位或中文说明。"
-                "parties 中每个对象必须包含 role、name、contact_person、contact_info 四个键，无法确认时置 null。",
+                "parties 中每个对象必须包含 role、name、contact_person、contact_info 四个键，无法确认时置 null。"
+                "payment_terms 为付款条款数组，每个对象包含 stage（阶段描述）和 ratio（比例，如 30%），"
+                "若存在首款、尾款、全款等多个阶段，请全部列出。",
             )
             out = await call_multimodal_document(
                 file_path=primary["path"],
