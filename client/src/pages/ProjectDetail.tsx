@@ -278,12 +278,6 @@ export default function ProjectDetail() {
                   value={project.plannedDeliveryDate}
                 />
               </div>
-              <ProjectNotesEditor
-                projectId={projectId!}
-                notes={project.notes}
-                canEdit={isAdmin || project.managerIds.includes(currentUser?.id ?? -1)}
-                onUpdate={(notes) => setProject((prev) => (prev ? { ...prev, notes } : prev))}
-              />
             </section>
             {remainingDays !== null && remainingDays !== undefined && (
               <Alert
@@ -328,6 +322,15 @@ export default function ProjectDetail() {
                 </div>
               </section>
             )}
+            <section className="detail-section">
+              <h3>备注</h3>
+              <ProjectNotesEditor
+                projectId={projectId!}
+                notes={project.notes}
+                canEdit={isAdmin || project.managerIds.includes(currentUser?.id ?? -1)}
+                onUpdate={(notes) => setProject((prev) => (prev ? { ...prev, notes } : prev))}
+              />
+            </section>
             <div className="detail-cols">
               <section className="detail-section">
                 <h3>最新总结</h3>
