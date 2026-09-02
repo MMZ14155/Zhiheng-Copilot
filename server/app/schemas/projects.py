@@ -20,6 +20,15 @@ class ProjectParty(BaseModel):
     role: str = Field(..., min_length=1, max_length=80)
     name: str = Field(..., min_length=1, max_length=200)
     contact: str | None = Field(default=None, max_length=200)
+    contact_person: str | None = Field(default=None, max_length=80)
+    contact_info: str | None = Field(default=None, max_length=200)
+
+
+class ProjectPartyWrite(BaseModel):
+    role: str = Field(..., min_length=1, max_length=80)
+    name: str = Field(..., min_length=1, max_length=200)
+    contact_person: str | None = Field(default=None, max_length=80)
+    contact_info: str | None = Field(default=None, max_length=200)
 
 
 class ProjectBase(BaseModel):
@@ -27,7 +36,7 @@ class ProjectBase(BaseModel):
     code: str = Field(..., min_length=1, max_length=80)
     project_type: ProjectType | None = None
     customer_name: str = Field(..., min_length=1, max_length=200)
-    parties: list[ProjectParty] = Field(default_factory=list)
+    parties: list[ProjectPartyWrite] = Field(default_factory=list)
     contract_amount: Decimal | None = Field(default=None, gt=0)
     signed_date: date | None = None
     started_date: date | None = None
@@ -59,7 +68,7 @@ class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
     project_type: ProjectType | None = None
     customer_name: str | None = Field(default=None, min_length=1, max_length=200)
-    parties: list[ProjectParty] | None = None
+    parties: list[ProjectPartyWrite] | None = None
     contract_amount: Decimal | None = Field(default=None, gt=0)
     signed_date: date | None = None
     started_date: date | None = None

@@ -262,9 +262,8 @@ export default function ProjectDetail() {
                   }
                 />
                 <Info label="签约日期" value={project.signedDate} />
-                <Info label="启动日期" value={project.startedDate} />
                 <Info
-                  label="计划交付日期"
+                  label="结项时间"
                   value={project.plannedDeliveryDate}
                 />
               </div>
@@ -277,7 +276,7 @@ export default function ProjectDetail() {
             </section>
             {remainingDays !== null && remainingDays !== undefined && (
               <Alert tone={remainingDays < 0 ? "danger" : "warning"}>
-                交付节点{" "}
+                结项节点{" "}
                 {remainingDays < 0
                   ? `已逾期 ${Math.abs(remainingDays)} 天`
                   : `剩余 ${remainingDays} 天`}
@@ -591,8 +590,12 @@ const PARTY_CONTACT_COLLAPSE_LENGTH = 120;
 
 function PartyCard({ party }: { party: ProjectParty }) {
   const [expanded, setExpanded] = useState(false);
-  const contact = party.contact ?? "未填写联系方式";
-  const collapsible = contact.length > PARTY_CONTACT_COLLAPSE_LENGTH;
+  const isPartyB = party.role === "乙方";
+  const contactPerson = party.contactPerson?.trim() || null;
+  const contactInfo =
+    party.contactInfo?.trim() || party.contact?.trim() || null;
+  const displayInfo = contactInfo ?? "未填写联系方式";
+  const collapsible = displayInfo.length > PARTY_CONTACT_COLLAPSE_LENGTH;
   const collapsed = collapsible && !expanded;
   return (
     <article className="party-card">
@@ -600,12 +603,17 @@ function PartyCard({ party }: { party: ProjectParty }) {
         <Badge tone="role">{party.role}</Badge>
         <span className="party-name detail-wrap">{party.name}</span>
       </div>
-      <p
-        className={`party-contact detail-wrap${collapsed ? " collapsed" : ""}`}
-      >
-        {contact}
-      </p>
-      {collapsible && (
+      {!isPartyB && contactPerson && (
+        <p className="party-contact detail-wrap">联系人：{contactPerson}</p>
+      )}
+      {!isPartyB && (
+        <p
+          className={`party-contact detail-wrap${collapsed ? " collapsed" : ""}`}
+        >
+          联系方式：{displayInfo}
+        </p>
+      )}
+      {!isPartyB && collapsible && (
         <button
           type="button"
           className="party-contact-toggle"

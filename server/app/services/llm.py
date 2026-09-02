@@ -76,8 +76,8 @@ class MockLlmProvider:
                 "name": "示例软件采购项目",
                 "customer_name": "示例甲方",
                 "parties": [
-                    {"role": "甲方", "name": "示例甲方", "contact": None},
-                    {"role": "乙方", "name": "示例乙方", "contact": None},
+                    {"role": "甲方", "name": "示例甲方", "contact": None, "contact_person": None, "contact_info": None},
+                    {"role": "乙方", "name": "示例乙方", "contact": None, "contact_person": None, "contact_info": None},
                 ],
                 "contract_amount": "100000.00",
                 "signed_date": "2026-08-10",

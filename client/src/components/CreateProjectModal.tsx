@@ -11,7 +11,7 @@ import {
   projectsApi,
   type ProjectDraft,
   type ProjectListItem,
-  type ProjectPartyDto,
+  type ProjectParty,
   type ProjectTypeDto,
   type ProjectWriteDto,
 } from "../api";
@@ -34,7 +34,6 @@ type Field =
   | "projectType"
   | "contractAmount"
   | "signedDate"
-  | "startedDate"
   | "deliveryDate"
   | "notes";
 type Values = Record<Field, string>;
@@ -46,7 +45,6 @@ const initial: Values = {
   projectType: "",
   contractAmount: "",
   signedDate: "",
-  startedDate: "",
   deliveryDate: "",
   notes: "",
 };
@@ -60,7 +58,7 @@ const MISSING_FIELD_LABELS: Record<string, string> = {
   contract_amount: "合同金额",
   signed_date: "签约日期",
   started_date: "启动日期",
-  planned_delivery_date: "计划交付日期",
+  planned_delivery_date: "结项时间",
   project_type: "项目类型",
   notes: "备注",
 };
@@ -92,17 +90,8 @@ function validate(v: Values): Errors {
       Number(v.contractAmount) <= 0)
   )
     e.contractAmount = "合同金额必须大于 0";
-  if (v.signedDate && v.startedDate && v.signedDate > v.startedDate)
-    e.startedDate = "启动日期不能早于签约日期";
-  if (v.startedDate && v.deliveryDate && v.startedDate > v.deliveryDate)
-    e.deliveryDate = "计划交付日期不能早于启动日期";
-  if (
-    !v.startedDate &&
-    v.signedDate &&
-    v.deliveryDate &&
-    v.signedDate > v.deliveryDate
-  )
-    e.deliveryDate = "计划交付日期不能早于签约日期";
+  if (v.signedDate && v.deliveryDate && v.signedDate > v.deliveryDate)
+    e.deliveryDate = "结项时间不能早于签约日期";
   return e;
 }
 
@@ -116,7 +105,7 @@ export default function CreateProjectModal({
   const titleId = useId();
   const [mode, setMode] = useState<Mode>("ai");
   const [values, setValues] = useState(initial);
-  const [parties, setParties] = useState<ProjectPartyDto[]>([]);
+  const [parties, setParties] = useState<ProjectParty[]>([]);
   const [errors, setErrors] = useState<Errors>({});
   const [apiError, setApiError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -166,7 +155,7 @@ export default function CreateProjectModal({
   }, []);
   const updateParty = (
     index: number,
-    field: keyof ProjectPartyDto,
+    field: keyof ProjectParty,
     value: string,
   ) =>
     setParties((rows) =>
@@ -182,7 +171,6 @@ export default function CreateProjectModal({
       contractAmount:
         draft.contractAmount === null ? "" : String(draft.contractAmount),
       signedDate: draft.signedDate ?? "",
-      startedDate: draft.startedDate ?? "",
       deliveryDate: draft.plannedDeliveryDate ?? "",
       notes: draft.notes ?? "",
     }));
@@ -191,6 +179,8 @@ export default function CreateProjectModal({
         role: p.role,
         name: p.name,
         contact: p.contact,
+        contactPerson: p.contactPerson ?? null,
+        contactInfo: p.contactInfo ?? p.contact ?? null,
       })),
     );
     setErrors({});
@@ -274,16 +264,19 @@ export default function CreateProjectModal({
         ? Number(values.contractAmount)
         : null,
       signed_date: values.signedDate || null,
-      started_date: values.startedDate || null,
       planned_delivery_date: values.deliveryDate || null,
       notes: values.notes.trim() || null,
       parties: parties
         .map((p) => ({
           role: p.role.trim(),
           name: p.name.trim(),
-          contact: p.contact?.trim() || null,
+          contact_person: p.contactPerson?.trim() || null,
+          contact_info: p.contactInfo?.trim() || null,
         }))
-        .filter((p) => p.role || p.name || p.contact),
+        .filter(
+          (p) =>
+            p.role || p.name || p.contact_person || p.contact_info,
+        ),
       renewal_source_id: renewalSourceId ? Number(renewalSourceId) : null,
     };
     setSubmitting(true);
@@ -519,14 +512,7 @@ export default function CreateProjectModal({
                 onChange={(e) => set("signedDate", e.target.value)}
               />
             </Field>
-            <Field label="启动日期" error={errors.startedDate}>
-              <input
-                type="date"
-                value={values.startedDate}
-                onChange={(e) => set("startedDate", e.target.value)}
-              />
-            </Field>
-            <Field label="计划交付日期" error={errors.deliveryDate}>
+            <Field label="结项时间" error={errors.deliveryDate}>
               <input
                 type="date"
                 value={values.deliveryDate}
@@ -546,7 +532,7 @@ export default function CreateProjectModal({
                 onClick={() =>
                   setParties((p) => [
                     ...p,
-                    { role: "", name: "", contact: null },
+                    { role: "", name: "", contact: null, contactPerson: null, contactInfo: null },
                   ])
                 }
               >
@@ -573,13 +559,26 @@ export default function CreateProjectModal({
                   />
                 </label>
                 {p.role !== "乙方" && (
-                  <label>
-                    联系方式
-                    <input
-                      value={p.contact ?? ""}
-                      onChange={(e) => updateParty(i, "contact", e.target.value)}
-                    />
-                  </label>
+                  <>
+                    <label>
+                      联系人
+                      <input
+                        value={p.contactPerson ?? ""}
+                        onChange={(e) =>
+                          updateParty(i, "contactPerson", e.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      联系方式
+                      <input
+                        value={p.contactInfo ?? ""}
+                        onChange={(e) =>
+                          updateParty(i, "contactInfo", e.target.value)
+                        }
+                      />
+                    </label>
+                  </>
                 )}
                 <button
                   type="button"

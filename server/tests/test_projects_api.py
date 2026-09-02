@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from app.api import projects
 from app.models.project import Project
 from app.models.project_link import ProjectLink
-from app.schemas.projects import ProjectCreate, ProjectLinkCreate, ProjectParty, ProjectUpdate, ProjectNotesUpdate
+from app.schemas.projects import ProjectCreate, ProjectLinkCreate, ProjectPartyWrite, ProjectUpdate, ProjectNotesUpdate
 from tests.conftest import Result, ScalarRows
 
 
@@ -28,7 +28,7 @@ def project(now, ident=1):
 def test_helpers_and_date_validation(fake_session):
     assert projects._canonical_pair(9, 2) == (2, 9)
     with pytest.raises(HTTPException): projects._canonical_pair(2, 2)
-    party = SimpleNamespace(role="甲方", name="客户", contact=None)
+    party = SimpleNamespace(role="甲方", name="客户", contact=None, contact_person=None, contact_info=None)
     assert projects._serialize_parties([party])[0]["role"] == "甲方"
     projects._validate_dates(date(2026, 1, 1), date(2026, 1, 2), date(2026, 1, 3))
     with pytest.raises(HTTPException): projects._validate_dates(date(2026, 2, 1), date(2026, 1, 1), None)
@@ -51,7 +51,7 @@ def test_list_projects_admin_and_member(fake_session, users, now):
 
 def test_create_update_project(fake_session, users, now, monkeypatch):
     payload = ProjectCreate(name="新项目", project_type="正版化服务", customer_name="客户",
-        parties=[ProjectParty(role="甲方", name="客户")], signed_date=date(2026, 1, 1),
+        parties=[ProjectPartyWrite(role="甲方", name="客户")], signed_date=date(2026, 1, 1),
         started_date=date(2026, 1, 2), planned_delivery_date=date(2026, 2, 1))
     async def refresh(obj):
         obj.id = 3; obj.created_at = obj.updated_at = now

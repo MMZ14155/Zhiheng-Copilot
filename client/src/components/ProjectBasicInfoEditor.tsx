@@ -22,7 +22,6 @@ type Field =
   | "projectType"
   | "contractAmount"
   | "signedDate"
-  | "startedDate"
   | "plannedDeliveryDate"
   | "status";
 type Values = Record<Field, string>;
@@ -38,21 +37,12 @@ function validate(values: Values): Errors {
       Number(values.contractAmount) <= 0)
   )
     errors.contractAmount = "合同金额必须大于 0";
-  if (values.signedDate && values.startedDate && values.signedDate > values.startedDate)
-    errors.startedDate = "启动日期不能早于签约日期";
   if (
-    values.startedDate &&
-    values.plannedDeliveryDate &&
-    values.startedDate > values.plannedDeliveryDate
-  )
-    errors.plannedDeliveryDate = "计划交付日期不能早于启动日期";
-  if (
-    !values.startedDate &&
     values.signedDate &&
     values.plannedDeliveryDate &&
     values.signedDate > values.plannedDeliveryDate
   )
-    errors.plannedDeliveryDate = "计划交付日期不能早于签约日期";
+    errors.plannedDeliveryDate = "结项时间不能早于签约日期";
   return errors;
 }
 
@@ -75,7 +65,6 @@ export default function ProjectBasicInfoEditor({
       contractAmount:
         project.contractAmount === null ? "" : String(project.contractAmount),
       signedDate: project.signedDate ?? "",
-      startedDate: project.startedDate ?? "",
       plannedDeliveryDate: project.plannedDeliveryDate ?? "",
       status: project.status ?? "项目启动",
     }),
@@ -87,6 +76,8 @@ export default function ProjectBasicInfoEditor({
         role: party.role,
         name: party.name,
         contact: party.contact,
+        contactPerson: party.contactPerson ?? null,
+        contactInfo: party.contactInfo ?? party.contact ?? null,
       })),
     [project],
   );
@@ -140,16 +131,22 @@ export default function ProjectBasicInfoEditor({
         ? Number(values.contractAmount)
         : null,
       signed_date: values.signedDate || null,
-      started_date: values.startedDate || null,
       planned_delivery_date: values.plannedDeliveryDate || null,
       status: values.status as ProjectUpdateDto["status"],
       parties: parties
         .map((party) => ({
           role: party.role.trim(),
           name: party.name.trim(),
-          contact: party.contact?.trim() || null,
+          contact_person: party.contactPerson?.trim() || null,
+          contact_info: party.contactInfo?.trim() || null,
         }))
-        .filter((party) => party.role || party.name || party.contact),
+        .filter(
+          (party) =>
+            party.role ||
+            party.name ||
+            party.contact_person ||
+            party.contact_info,
+        ),
     };
 
     setSubmitting(true);
@@ -265,16 +262,7 @@ export default function ProjectBasicInfoEditor({
               onChange={(event) => setField("signedDate", event.target.value)}
             />
           </Field>
-          <Field label="启动日期" error={errors.startedDate}>
-            <input
-              type="date"
-              value={values.startedDate}
-              onChange={(event) =>
-                setField("startedDate", event.target.value)
-              }
-            />
-          </Field>
-          <Field label="计划交付日期" error={errors.plannedDeliveryDate}>
+          <Field label="结项时间" error={errors.plannedDeliveryDate}>
             <input
               type="date"
               value={values.plannedDeliveryDate}
@@ -296,7 +284,7 @@ export default function ProjectBasicInfoEditor({
               onClick={() =>
                 setParties((rows) => [
                   ...rows,
-                  { role: "", name: "", contact: null },
+                  { role: "", name: "", contact: null, contactPerson: null, contactInfo: null },
                 ])
               }
             >
@@ -327,15 +315,26 @@ export default function ProjectBasicInfoEditor({
                 />
               </label>
               {party.role !== "乙方" && (
-                <label>
-                  联系方式
-                  <input
-                    value={party.contact ?? ""}
-                    onChange={(event) =>
-                      updateParty(index, "contact", event.target.value)
-                    }
-                  />
-                </label>
+                <>
+                  <label>
+                    联系人
+                    <input
+                      value={party.contactPerson ?? ""}
+                      onChange={(event) =>
+                        updateParty(index, "contactPerson", event.target.value)
+                      }
+                    />
+                  </label>
+                  <label>
+                    联系方式
+                    <input
+                      value={party.contactInfo ?? ""}
+                      onChange={(event) =>
+                        updateParty(index, "contactInfo", event.target.value)
+                      }
+                    />
+                  </label>
+                </>
               )}
               <button
                 type="button"

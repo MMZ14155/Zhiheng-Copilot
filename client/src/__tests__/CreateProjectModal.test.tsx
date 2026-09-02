@@ -98,8 +98,7 @@ describe("CreateProjectModal AI 合同分析模式", () => {
     expect(fieldInput("项目类型").value).toBe("软件销售");
     expect(fieldInput("合同金额").value).toBe("120000");
     expect(fieldInput("签约日期").value).toBe("2026-01-01");
-    expect(fieldInput("启动日期").value).toBe("2026-02-01");
-    expect(fieldInput("计划交付日期").value).toBe("");
+    expect(fieldInput("结项时间").value).toBe("");
     expect(
       (
         screen
@@ -115,7 +114,7 @@ describe("CreateProjectModal AI 合同分析模式", () => {
     render(<CreateProjectModal onClose={() => {}} onCreated={() => {}} />);
     await uploadAndAnalyze();
     const banner = await screen.findByText(/以下字段未能从合同识别，请补充/);
-    expect(banner.textContent).toContain("计划交付日期");
+    expect(banner.textContent).toContain("结项时间");
   });
 
   it("分析失败展示服务端 detail 并可重试", async () => {
@@ -181,10 +180,9 @@ describe("CreateProjectModal AI 合同分析模式", () => {
       project_type: "软件销售",
       contract_amount: 120000,
       signed_date: "2026-01-01",
-      started_date: "2026-02-01",
       planned_delivery_date: null,
       notes: "合同备注",
-      parties: [{ role: "甲方", name: "甲方公司", contact: "138" }],
+      parties: [{ role: "甲方", name: "甲方公司", contact_info: "138" }],
     });
     expect("code" in body).toBe(false);
   });

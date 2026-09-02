@@ -464,7 +464,7 @@ class AiTaskExecutor:
             await AiTaskExecutor._set_stage(session, task, "generating", 60)
             prompt_payload = {
                 "required_fields": [
-                    "name", "customer_name", "parties(role/name/contact)",
+                    "name", "customer_name", "parties(role/name/contact_person/contact_info)",
                     "contract_amount", "signed_date", "started_date",
                     "planned_delivery_date", "project_type", "missing_fields", "notes",
                 ],
@@ -474,7 +474,7 @@ class AiTaskExecutor:
                     "缺失字段必须进入 missing_fields 数组，不得编造。"
                     "project_type 只能为 软件销售、正版化服务、正版化服务+软件销售 之一，无法确认时留空。"
                     "日期统一为 YYYY-MM-DD（如 2026-08-25），金额只输出纯数字（如 1995.00），不要货币符号、千分位或中文说明。"
-                    "parties 中每个对象必须包含 role、name、contact 三个键，contact 无法确认时置 null。"
+                    "parties 中每个对象必须包含 role、name、contact_person、contact_info 四个键，无法确认时置 null。",
                     "当提供多份合同时，以主合同为准，其他材料作为补充。"
                 ),
                 "documents": documents,
@@ -505,7 +505,7 @@ class AiTaskExecutor:
                 "缺失字段必须进入 missing_fields 数组，不得编造。"
                 "project_type 只能为 软件销售、正版化服务、正版化服务+软件销售 之一，无法确认时留空。"
                 "日期统一为 YYYY-MM-DD（如 2026-08-25），金额只输出纯数字（如 1995.00），不要货币符号、千分位或中文说明。"
-                "parties 中每个对象必须包含 role、name、contact 三个键，contact 无法确认时置 null。"
+                "parties 中每个对象必须包含 role、name、contact_person、contact_info 四个键，无法确认时置 null。",
             )
             out = await call_multimodal_document(
                 file_path=primary["path"],

@@ -65,14 +65,23 @@ def _canonical_pair(left_id: int, right_id: int) -> tuple[int, int]:
 
 
 def _serialize_parties(parties: Iterable) -> list[dict[str, str | None]]:
-    return [
-        {
-            "role": party.role,
-            "name": party.name,
-            "contact": party.contact,
-        }
-        for party in parties
-    ]
+    result: list[dict[str, str | None]] = []
+    for party in parties:
+        contact_person = getattr(party, "contact_person", None)
+        contact_info = getattr(party, "contact_info", None)
+        contact = getattr(party, "contact", None)
+        if not contact_person and not contact_info and contact:
+            contact_info = contact
+        result.append(
+            {
+                "role": party.role,
+                "name": party.name,
+                "contact": contact,
+                "contact_person": contact_person,
+                "contact_info": contact_info,
+            }
+        )
+    return result
 
 
 def _validate_dates(

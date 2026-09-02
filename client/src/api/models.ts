@@ -149,7 +149,10 @@ export interface RenewalChain {
 export interface ProjectParty {
   role: string;
   name: string;
-  contact: string | null;
+  /** @deprecated 旧版合并字段，新数据请使用 contactPerson + contactInfo */
+  contact?: string | null;
+  contactPerson?: string | null;
+  contactInfo?: string | null;
 }
 export interface ProjectDeliverable {
   id: string;

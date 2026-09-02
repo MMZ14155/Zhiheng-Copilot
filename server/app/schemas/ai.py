@@ -200,6 +200,8 @@ class ProjectDraftParty(BaseModel):
     role: str
     name: str
     contact: str | None = None
+    contact_person: str | None = None
+    contact_info: str | None = None
 
 
 class ProjectDraftOutput(BaseModel):

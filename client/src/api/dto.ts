@@ -38,7 +38,10 @@ export interface LoginResponseDto {
 export interface ProjectPartyDto {
   role: string;
   name: string;
-  contact: string | null;
+  /** @deprecated 旧版合并字段，新数据请使用 contact_person + contact_info */
+  contact?: string | null;
+  contact_person?: string | null;
+  contact_info?: string | null;
 }
 export interface ProjectWriteDto {
   name: string;

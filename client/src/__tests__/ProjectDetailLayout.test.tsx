@@ -35,7 +35,9 @@ const longContact =
   "电话13800001111邮箱zhangsan@example.com地址北京市海淀区中关村大街1号".repeat(
     3,
   );
+const displayLongContact = `联系方式：${longContact}`;
 const exactThresholdContact = "电".repeat(120);
+const displayExactThresholdContact = `联系方式：${exactThresholdContact}`;
 
 const baseProject: ProjectDetailModel = {
   id: "1",
@@ -132,7 +134,7 @@ describe("项目详情页排版", () => {
     expect(name.className).toContain("detail-wrap");
     expect(name.className).not.toContain("collapsed");
 
-    const contact = screen.getByText(longContact);
+    const contact = screen.getByText(displayLongContact);
     expect(contact.className).toContain("party-contact");
     expect(contact.className).toContain("detail-wrap");
     expect(contact.className).toContain("collapsed");
@@ -141,13 +143,13 @@ describe("项目详情页排版", () => {
     const toggle = screen.getByRole("button", { name: "展开" });
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
     await userEvent.click(toggle);
-    const expandedContact = screen.getByText(longContact);
+    const expandedContact = screen.getByText(displayLongContact);
     expect(expandedContact.className).not.toContain("collapsed");
-    expect(expandedContact.textContent).toBe(longContact);
+    expect(expandedContact.textContent).toBe(displayLongContact);
     const collapse = screen.getByRole("button", { name: "收起" });
     expect(collapse.getAttribute("aria-expanded")).toBe("true");
     await userEvent.click(collapse);
-    expect(screen.getByText(longContact).className).toContain("collapsed");
+    expect(screen.getByText(displayLongContact).className).toContain("collapsed");
   });
 
   it("短联系方式与未填写联系方式不折叠、无展开开关", async () => {
@@ -161,13 +163,11 @@ describe("项目详情页排版", () => {
     renderDetail();
     await waitFor(() => expect(screen.getByText("签约方")).toBeTruthy());
 
-    expect(screen.getByText(exactThresholdContact).className).not.toContain(
+    expect(screen.getByText(displayExactThresholdContact).className).not.toContain(
       "collapsed",
     );
-    expect(screen.getByText("13800001111").className).not.toContain(
-      "collapsed",
-    );
-    expect(screen.getByText("未填写联系方式")).toBeTruthy();
+    expect(screen.queryByText("联系方式：13800001111")).toBeNull();
+    expect(screen.getByText("联系方式：未填写联系方式")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "展开" })).toBeNull();
     expect(screen.getAllByText("甲公司")).toHaveLength(1);
   });

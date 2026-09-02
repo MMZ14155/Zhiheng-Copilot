@@ -353,7 +353,7 @@ describe("页面", () => {
       expect(screen.getAllByText("详情项目")).toHaveLength(2),
     );
     expect(screen.queryByText("P")).toBeNull();
-    expect(screen.getByText("交付节点 剩余 8 天")).toBeTruthy();
+    expect(screen.getByText("结项节点 剩余 8 天")).toBeTruthy();
     await userEvent.click(screen.getByRole("tab", { name: "回款" }));
     expect(screen.getByText("回款清单内容")).toBeTruthy();
     expect(screen.getByText("回款清单")).toBeTruthy();
