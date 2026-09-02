@@ -24,7 +24,7 @@ import ProjectBasicInfoEditor from "../components/ProjectBasicInfoEditor";
 import { useTaskPolling } from "../hooks/useTaskPolling";
 import { PROJECT_TYPE_COLORS } from "../constants/projectTypes";
 import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
-import { RISK_TYPE_DELIVERY_DEADLINE, RISK_TYPE_PAYMENT_OVERDUE } from "../constants/risks";
+import { RISK_LABELS, RISK_TYPE_DELIVERY_WARNING, RISK_TYPE_MATERIAL_MISSING, RISK_TYPE_PAYMENT_UNCLEARED } from "../constants/risks";
 import { ROUTES } from "../constants/routes";
 import { formatMoney } from "../utils/format";
 import { Alert, Badge, Button, Modal, Tabs } from "../components/ui";
@@ -190,13 +190,16 @@ export default function ProjectDetail() {
     return <div className="page-container detail-state">暂无项目详情</div>;
   const canEditBasicInfo =
     isAdmin || project.managerIds.includes(currentUser?.id ?? -1);
-  const deadlineRisk = projectRisks?.risks.find(
-    (risk) => risk.type === RISK_TYPE_DELIVERY_DEADLINE,
+  const materialRisk = projectRisks?.risks.find(
+    (risk) => risk.type === RISK_TYPE_MATERIAL_MISSING,
+  );
+  const deliveryRisk = projectRisks?.risks.find(
+    (risk) => risk.type === RISK_TYPE_DELIVERY_WARNING,
   );
   const paymentRisk = projectRisks?.risks.find(
-    (risk) => risk.type === RISK_TYPE_PAYMENT_OVERDUE,
+    (risk) => risk.type === RISK_TYPE_PAYMENT_UNCLEARED,
   );
-  const remainingDays = deadlineRisk?.remainingDays;
+  const remainingDays = deliveryRisk?.remainingDays;
 
   return (
     <div className="page-container">
@@ -279,14 +282,19 @@ export default function ProjectDetail() {
                 />
               </div>
             </section>
+            {materialRisk && materialRisk.missingParts && (
+              <Alert tone="warning">
+                材料缺失：{materialRisk.missingParts.join("、")}
+              </Alert>
+            )}
             {remainingDays !== null && remainingDays !== undefined && (
               <Alert
                 tone={remainingDays < 0 ? "danger" : "warning"}
                 action={
                   canEditBasicInfo &&
-                  deadlineRisk &&
+                  deliveryRisk &&
                   remainingDays >= 0 &&
-                  deadlineRisk.dismissed !== true ? (
+                  deliveryRisk.dismissed !== true ? (
                     <Button
                       variant="secondary"
                       type="button"
@@ -304,9 +312,8 @@ export default function ProjectDetail() {
               </Alert>
             )}
             {paymentRisk && (
-              <Alert>
-                回款已逾期 {paymentRisk.overdueDays ?? 0} 天，逾期金额{" "}
-                {formatMoney(paymentRisk.overdueAmount ?? 0)} 元
+              <Alert tone="warning">
+                回款状态：{paymentRisk.paymentStatus}
               </Alert>
             )}
             {project.parties.length > 0 && (
@@ -469,12 +476,8 @@ export default function ProjectDetail() {
               <div className="risk-list">
                 {projectRisks.risks.map((risk, index) => (
                   <article key={`${risk.type}-${index}`}>
-                    <span className={`badge ${risk.level}`}>
-                      {risk.level === "block"
-                        ? "阻塞"
-                        : risk.level === "warn"
-                          ? "预警"
-                          : "健康"}
+                    <span className={`badge warn`}>
+                      {RISK_LABELS[risk.type] ?? risk.type}
                     </span>
                     <div>
                       <strong className="detail-wrap">{risk.reason}</strong>

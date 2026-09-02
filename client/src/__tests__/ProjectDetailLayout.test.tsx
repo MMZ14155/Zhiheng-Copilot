@@ -189,14 +189,13 @@ describe("项目详情页排版", () => {
       level: "warn",
       risks: [
         {
-          type: "payment-overdue",
+          type: "payment-uncleared",
           level: "warn",
           reason: `原因${"无空格长串".repeat(30)}`,
           recommendation: `建议${"无空格长串".repeat(30)}`,
+          missingParts: null,
           remainingDays: null,
-          overdueDays: 3,
-          overdueAmount: 100,
-          dataStatus: "complete",
+          paymentStatus: "已付首款",
         },
       ],
     });

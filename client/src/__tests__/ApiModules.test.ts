@@ -192,21 +192,20 @@ describe("API domain modules", () => {
       level: "warn",
       risks: [
         {
-          type: "payment-overdue",
+          type: "payment-uncleared",
           level: "warn",
           reason: "r",
           recommendation: "do",
           remaining_days: null,
-          overdue_days: 7,
-          overdue_amount: 1234.5,
-          data_status: "complete",
+          payment_status: "已付首款",
+          missing_parts: null,
+          dismissed: null,
         },
       ],
       config: {},
     });
     expect((await projects.getProjectRisks("1")).risks[0]).toMatchObject({
-      overdueDays: 7,
-      overdueAmount: 1234.5,
+      paymentStatus: "已付首款",
     });
   });
 

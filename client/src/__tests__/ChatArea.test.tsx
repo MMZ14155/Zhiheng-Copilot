@@ -32,12 +32,9 @@ describe("ChatArea 风险自动询问", () => {
       <MemoryRouter>
         <ChatArea
           riskSummary={{
-            blockCount: 0,
-            warnCount: 0,
-            okCount: 1,
+            materialCount: 0,
             deliveryCount: 0,
             paymentCount: 0,
-            incompleteCount: 0,
           }}
         />
       </MemoryRouter>,
@@ -53,12 +50,9 @@ describe("ChatArea 风险自动询问", () => {
       <MemoryRouter>
         <ChatArea
           riskSummary={{
-            blockCount: 2,
-            warnCount: 0,
-            okCount: 0,
+            materialCount: 1,
             deliveryCount: 1,
             paymentCount: 1,
-            incompleteCount: 0,
           }}
         />
       </MemoryRouter>,
@@ -66,13 +60,13 @@ describe("ChatArea 风险自动询问", () => {
     await screen.findByText("你好，我是智衡Copilot。");
     await screen.findByText(/根据风险引擎/);
     expect(
-      screen.getByText(/2 个项目存在阻塞风险/),
+      screen.getByText(/1 个项目存在材料缺失/),
     ).toBeTruthy();
     expect(
       screen.getByText(/1 个项目临近或已逾期交付/),
     ).toBeTruthy();
     expect(
-      screen.getByText(/1 个项目回款逾期/),
+      screen.getByText(/1 个项目回款未结清/),
     ).toBeTruthy();
   });
 
@@ -81,22 +75,16 @@ describe("ChatArea 风险自动询问", () => {
       <MemoryRouter>
         <ChatArea
           riskSummary={{
-            blockCount: 0,
-            warnCount: 3,
-            okCount: 0,
+            materialCount: 0,
             deliveryCount: 0,
-            paymentCount: 0,
-            incompleteCount: 2,
+            paymentCount: 2,
           }}
         />
       </MemoryRouter>,
     );
     await screen.findByText("你好，我是智衡Copilot。");
     await waitFor(() =>
-      expect(screen.queryByText(/3 个项目存在预警/)).toBeTruthy(),
+      expect(screen.queryByText(/2 个项目回款未结清/)).toBeTruthy(),
     );
-    expect(
-      screen.getByText(/2 个项目回款数据不完整/),
-    ).toBeTruthy();
   });
 });

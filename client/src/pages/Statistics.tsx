@@ -2,7 +2,7 @@
 import { useNavigate } from "react-router-dom";
 import { ApiError, projectsApi, statisticsApi } from "../api";
 import { formatMoney } from "../utils/format";
-import { RISK_TYPE_DELIVERY_DEADLINE } from "../constants/risks";
+import { RISK_TYPE_DELIVERY_WARNING } from "../constants/risks";
 import { ROUTES } from "../constants/routes";
 import type {
   AverageMetric,
@@ -101,8 +101,7 @@ export default function Statistics() {
             .get(project.id)
             ?.find(
               (risk) =>
-                risk.type === RISK_TYPE_DELIVERY_DEADLINE &&
-                risk.level === "warn",
+                risk.type === RISK_TYPE_DELIVERY_WARNING,
             );
           return deadline ? [{ ...project, risks: [deadline] }] : [];
         }),
@@ -157,10 +156,6 @@ export default function Statistics() {
             <div className="stats-card">
               <div className="stats-label">项目总数</div>
               <div className="stats-value">{data.projects.total}</div>
-            </div>
-            <div className="stats-card block">
-              <div className="stats-label">阻塞级</div>
-              <div className="stats-value">{data.projects.risks.block}</div>
             </div>
             <div className="stats-card warn">
               <div className="stats-label">预警级</div>

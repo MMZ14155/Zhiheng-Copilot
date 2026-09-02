@@ -114,10 +114,9 @@ const mapRiskItem = (risk: ProjectRiskDto) => ({
   level: risk.level,
   reason: risk.reason,
   recommendation: risk.recommendation,
+  missingParts: risk.missing_parts,
   remainingDays: risk.remaining_days,
-  overdueDays: risk.overdue_days,
-  overdueAmount: risk.overdue_amount,
-  dataStatus: risk.data_status,
+  paymentStatus: risk.payment_status,
   dismissed: risk.dismissed,
 });
 export const mapProjectRisks = (

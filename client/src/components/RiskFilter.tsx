@@ -1,7 +1,7 @@
 import type { RiskLevel } from "../api";
 
 export type RiskBoardFilter =
-  RiskLevel | "delivery" | "payment" | "incomplete" | "all";
+  RiskLevel | "material" | "delivery" | "payment" | "all";
 
 interface FilterItem {
   key: RiskBoardFilter;
@@ -11,50 +11,41 @@ interface FilterItem {
 }
 
 interface RiskFilterProps {
-  blockCount: number;
-  warnCount: number;
-  okCount: number;
-  totalCount: number;
+  materialCount: number;
   deliveryCount: number;
   paymentCount: number;
-  incompleteCount: number;
+  totalCount: number;
   active: RiskBoardFilter;
   onChange: (risk: RiskBoardFilter) => void;
 }
 
 export default function RiskFilter({
-  blockCount,
-  warnCount,
-  okCount,
-  totalCount,
+  materialCount,
   deliveryCount,
   paymentCount,
-  incompleteCount,
+  totalCount,
   active,
   onChange,
 }: RiskFilterProps) {
   const items: FilterItem[] = [
     { key: "all", label: "全部", count: totalCount, riskClass: "" },
-    { key: "block", label: "阻塞", count: blockCount, riskClass: "block" },
-    { key: "warn", label: "预警", count: warnCount, riskClass: "warn" },
-    { key: "ok", label: "健康", count: okCount, riskClass: "ok" },
+    {
+      key: "material",
+      label: "材料缺失",
+      count: materialCount,
+      riskClass: "material",
+    },
     {
       key: "delivery",
-      label: "到期",
+      label: "即将到期",
       count: deliveryCount,
       riskClass: "delivery",
     },
     {
       key: "payment",
-      label: "逾期",
+      label: "回款未结清",
       count: paymentCount,
       riskClass: "payment",
-    },
-    {
-      key: "incomplete",
-      label: "缺数据",
-      count: incompleteCount,
-      riskClass: "incomplete",
     },
   ];
 

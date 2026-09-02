@@ -10,7 +10,6 @@ class AverageMetric(BaseModel):
 
 
 class RiskCounts(BaseModel):
-    block: int
     warn: int
     ok: int
 

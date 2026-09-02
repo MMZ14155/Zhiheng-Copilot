@@ -90,24 +90,22 @@ describe("核心组件", () => {
           riskLevel: "warn",
           risks: [
             {
-              type: "delivery-deadline",
+              type: "delivery-warning",
               level: "warn",
               reason: "",
               recommendation: "",
+              missingParts: null,
               remainingDays: 9,
-              overdueDays: null,
-              overdueAmount: null,
-              dataStatus: "complete",
+              paymentStatus: null,
             },
             {
-              type: "payment-overdue",
+              type: "payment-uncleared",
               level: "warn",
               reason: "",
               recommendation: "",
+              missingParts: null,
               remainingDays: null,
-              overdueDays: 5,
-              overdueAmount: 1234.5,
-              dataStatus: "complete",
+              paymentStatus: "已付首款",
             },
           ],
         }}
@@ -115,9 +113,9 @@ describe("核心组件", () => {
     );
     expect(screen.getByText("Alpha")).toBeTruthy();
     expect(screen.getByText("客户")).toBeTruthy();
-    expect(screen.getByText("预警")).toBeTruthy();
+    expect(screen.getByText("即将到期")).toBeTruthy();
     expect(screen.getByText("距交付 9 天")).toBeTruthy();
-    expect(screen.getByText(/1,234.50 元/)).toBeTruthy();
+    expect(screen.getByText(/已付首款/)).toBeTruthy();
   });
 
   it("ProjectCard 将数据不完整单独标识", () => {
@@ -137,54 +135,47 @@ describe("核心组件", () => {
           riskLevel: "warn",
           risks: [
             {
-              type: "payment-data-incomplete",
+              type: "material-missing",
               level: "warn",
               reason: "",
               recommendation: "",
+              missingParts: ["doc合同", "pdf合同", "发票不全"],
               remainingDays: null,
-              overdueDays: null,
-              overdueAmount: null,
-              dataStatus: "incomplete",
+              paymentStatus: null,
             },
           ],
         }}
       />,
     );
-    expect(screen.getByText("数据待补全")).toBeTruthy();
-    expect(screen.queryByText("预警")).toBeNull();
+    expect(screen.getByText("材料缺失")).toBeTruthy();
+    expect(screen.getByText(/doc合同/)).toBeTruthy();
   });
 
   it("RiskFilter 点击筛选并再次点击恢复全部", async () => {
     const change = vi.fn();
     const { rerender } = render(
       <RiskFilter
-        blockCount={1}
-        warnCount={2}
-        okCount={3}
+        materialCount={1}
+        deliveryCount={2}
+        paymentCount={3}
         totalCount={6}
-        deliveryCount={1}
-        paymentCount={1}
-        incompleteCount={1}
         active="all"
         onChange={change}
       />,
     );
-    await userEvent.click(screen.getByTitle("点击只看阻塞"));
-    expect(change).toHaveBeenCalledWith("block");
+    await userEvent.click(screen.getByTitle("点击只看材料缺失"));
+    expect(change).toHaveBeenCalledWith("material");
     rerender(
       <RiskFilter
-        blockCount={1}
-        warnCount={2}
-        okCount={3}
+        materialCount={1}
+        deliveryCount={2}
+        paymentCount={3}
         totalCount={6}
-        deliveryCount={1}
-        paymentCount={1}
-        incompleteCount={1}
-        active="block"
+        active="material"
         onChange={change}
       />,
     );
-    await userEvent.click(screen.getByTitle("点击只看阻塞"));
+    await userEvent.click(screen.getByTitle("点击只看材料缺失"));
     expect(change).toHaveBeenLastCalledWith("all");
   });
 

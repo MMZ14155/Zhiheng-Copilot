@@ -136,16 +136,15 @@ export interface RenewalChainResponseDto {
   depth_limit: number;
   items: ProjectResponseDto[];
 }
-export type RiskLevelDto = "block" | "warn" | "ok";
+export type RiskLevelDto = "warn" | "ok";
 export interface ProjectRiskDto {
   type: string;
   level: RiskLevelDto;
   reason: string;
   recommendation: string;
+  missing_parts: string[] | null;
   remaining_days: number | null;
-  overdue_days: number | null;
-  overdue_amount: number | null;
-  data_status: "complete" | "incomplete" | null;
+  payment_status: string | null;
   dismissed: boolean | null;
 }
 export interface ProjectRisksResponseDto {

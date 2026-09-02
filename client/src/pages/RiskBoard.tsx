@@ -9,9 +9,9 @@ import RiskFilter from "../components/RiskFilter";
 import type { RiskBoardFilter } from "../components/RiskFilter";
 import { PROJECT_TYPES, PROJECT_TYPE_LABELS } from "../constants/projectTypes";
 import {
-  RISK_TYPE_DELIVERY_DEADLINE,
-  RISK_TYPE_PAYMENT_DATA_INCOMPLETE,
-  RISK_TYPE_PAYMENT_OVERDUE,
+  RISK_TYPE_DELIVERY_WARNING,
+  RISK_TYPE_MATERIAL_MISSING,
+  RISK_TYPE_PAYMENT_UNCLEARED,
 } from "../constants/risks";
 import {
   Alert,
@@ -32,12 +32,9 @@ export default function RiskBoard() {
   const [chatOpen, setChatOpen] = useState(true);
   const requestedFilter = searchParams.get("filter");
   const [filter, setFilterState] = useState<RiskBoardFilter>(
-    requestedFilter === "block" ||
-      requestedFilter === "warn" ||
-      requestedFilter === "ok" ||
+    requestedFilter === "material" ||
       requestedFilter === "delivery" ||
-      requestedFilter === "payment" ||
-      requestedFilter === "incomplete"
+      requestedFilter === "payment"
       ? requestedFilter
       : "all",
   );
@@ -85,44 +82,24 @@ export default function RiskBoard() {
   }, [load]);
   const counts = useMemo(
     () => ({
-      block:
-        data?.items.filter((project) => project.riskLevel === "block").length ??
-        0,
-      warn:
-        data?.items.filter((project) => project.riskLevel === "warn").length ??
-        0,
-      ok:
-        data?.items.filter(
-          (project) =>
-            project.riskLevel === "ok" &&
-            !project.risks?.some(
-              (risk) => risk.type === RISK_TYPE_PAYMENT_DATA_INCOMPLETE,
-            ),
+      material:
+        data?.items.filter((project) =>
+          project.risks?.some(
+            (risk) => risk.type === RISK_TYPE_MATERIAL_MISSING,
+          ),
         ).length ?? 0,
       delivery:
         data?.items.filter((project) =>
           project.risks?.some(
-            (risk) => risk.type === RISK_TYPE_DELIVERY_DEADLINE,
-          ),
-        ).length ?? 0,
-      activeDelivery:
-        data?.items.filter((project) =>
-          project.risks?.some(
             (risk) =>
-              risk.type === RISK_TYPE_DELIVERY_DEADLINE &&
+              risk.type === RISK_TYPE_DELIVERY_WARNING &&
               !risk.dismissed,
           ),
         ).length ?? 0,
       payment:
         data?.items.filter((project) =>
           project.risks?.some(
-            (risk) => risk.type === RISK_TYPE_PAYMENT_OVERDUE,
-          ),
-        ).length ?? 0,
-      incomplete:
-        data?.items.filter((project) =>
-          project.risks?.some(
-            (risk) => risk.type === RISK_TYPE_PAYMENT_DATA_INCOMPLETE,
+            (risk) => risk.type === RISK_TYPE_PAYMENT_UNCLEARED,
           ),
         ).length ?? 0,
       total: data?.total ?? 0,
@@ -131,12 +108,9 @@ export default function RiskBoard() {
   );
   const riskSummary = useMemo(
     () => ({
-      blockCount: counts.block,
-      warnCount: counts.warn,
-      okCount: counts.ok,
-      deliveryCount: counts.activeDelivery,
+      materialCount: counts.material,
+      deliveryCount: counts.delivery,
       paymentCount: counts.payment,
-      incompleteCount: counts.incomplete,
     }),
     [counts],
   );
@@ -147,15 +121,9 @@ export default function RiskBoard() {
         project.risks?.some((risk) => risk.type === type) ?? false;
       const matchRisk =
         filter === "all" ||
-        (filter === "delivery" && hasRisk(RISK_TYPE_DELIVERY_DEADLINE)) ||
-        (filter === "payment" && hasRisk(RISK_TYPE_PAYMENT_OVERDUE)) ||
-        (filter === "incomplete" &&
-          hasRisk(RISK_TYPE_PAYMENT_DATA_INCOMPLETE)) ||
-        ((filter === "block" || filter === "warn") &&
-          project.riskLevel === filter) ||
-        (filter === "ok" &&
-          project.riskLevel === "ok" &&
-          !hasRisk(RISK_TYPE_PAYMENT_DATA_INCOMPLETE));
+        (filter === "material" && hasRisk(RISK_TYPE_MATERIAL_MISSING)) ||
+        (filter === "delivery" && hasRisk(RISK_TYPE_DELIVERY_WARNING)) ||
+        (filter === "payment" && hasRisk(RISK_TYPE_PAYMENT_UNCLEARED));
       const matchType =
         projectTypeFilter === "all" ||
         project.projectType === projectTypeFilter;
@@ -257,13 +225,10 @@ export default function RiskBoard() {
             <div className="risk-filter-panel">
               <h3>风险概览</h3>
               <RiskFilter
-                blockCount={counts.block}
-                warnCount={counts.warn}
-                okCount={counts.ok}
-                totalCount={counts.total}
+                materialCount={counts.material}
                 deliveryCount={counts.delivery}
                 paymentCount={counts.payment}
-                incompleteCount={counts.incomplete}
+                totalCount={counts.total}
                 active={filter}
                 onChange={setFilter}
               />

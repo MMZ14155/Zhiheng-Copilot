@@ -70,7 +70,7 @@ async def get_statistics_overview(
     deliverables = await _load_deliverable_states(session, project_ids)
     financial_documents = await load_financial_documents(session, project_ids)
 
-    risk_counts = Counter({"block": 0, "warn": 0, "ok": 0})
+    risk_counts = Counter({"warn": 0, "ok": 0})
     deliverable_counts = empty_status_counts()
     type_counts: Counter[str] = Counter()
     deadline_counts = Counter({"overdue": 0, "due_soon": 0, "normal": 0, "excluded": 0})

@@ -1,5 +1,6 @@
 import logging
 from collections import defaultdict
+from pathlib import Path
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -192,6 +193,16 @@ class DeliverableService:
                 file_versions,
                 contract_pins.get(tracked.source_file_id or -1),
             )
+            extensions = DeliverableService._extensions(tracked.name)
+            document_types = tuple(
+                sorted(
+                    {
+                        str(version.document_type)
+                        for version in file_versions
+                        if version.document_type is not None
+                    }
+                )
+            )
             grouped[tracked.project_id].append(
                 DeliverableRiskState(
                     name=tracked.name,
@@ -201,9 +212,17 @@ class DeliverableService:
                     unfrozen_versions=sum(
                         not version.is_frozen for version in file_versions
                     ),
+                    extensions=extensions,
+                    document_types=document_types,
+                    payment_status=tracked.payment_status if tracked.category == "回款" else None,
                 )
             )
         return grouped
+
+    @staticmethod
+    def _extensions(name: str) -> tuple[str, ...]:
+        suffix = Path(name).suffix.lower()
+        return (suffix,) if suffix else ()
 
     @staticmethod
     def calculate_status(

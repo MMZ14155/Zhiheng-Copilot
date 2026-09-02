@@ -289,7 +289,8 @@ def test_file_extractor_rejects_oversize_file(tmp_path, monkeypatch):
         asyncio.run(extractor.extract_text(str(document)))
 
 
-def test_provider_factory_falls_back_to_mock_without_kimi_config():
+def test_provider_factory_falls_back_to_mock_without_kimi_config(monkeypatch):
+    monkeypatch.delenv("KIMI_API_KEY", raising=False)
     assert isinstance(create_llm_provider(Settings()), MockLlmProvider)
     assert isinstance(
         create_llm_provider(Settings(LLM_PROVIDER="kimi")), MockLlmProvider
@@ -305,7 +306,8 @@ def test_provider_factory_selects_kimi_when_configured():
     assert provider.model_name == "kimi-k2.6"
 
 
-def test_extractor_factory_falls_back_to_null_without_kimi_config():
+def test_extractor_factory_falls_back_to_null_without_kimi_config(monkeypatch):
+    monkeypatch.delenv("KIMI_API_KEY", raising=False)
     assert isinstance(create_file_content_extractor(Settings()), NullFileContentExtractor)
     assert asyncio.run(
         create_file_content_extractor(Settings()).extract_text("/tmp/whatever.pdf")
@@ -393,6 +395,11 @@ def test_extract_injects_document_text_and_persists_result(monkeypatch, tmp_path
 
 
 def test_extract_without_text_falls_back_to_multimodal(monkeypatch):
+    monkeypatch.delenv("KIMI_API_KEY", raising=False)
+    monkeypatch.setattr(
+        "app.services.text_extraction.create_file_content_extractor",
+        lambda settings=None: NullFileContentExtractor(),
+    )
     version = SimpleNamespace(
         version="b" * 64,
         document_type="contract",

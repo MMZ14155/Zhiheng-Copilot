@@ -4,29 +4,30 @@ import { formatMoney } from "../utils/format";
 import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
 import { ROUTES } from "../constants/routes";
 import {
-  RISK_TYPE_DELIVERY_DEADLINE,
-  RISK_TYPE_PAYMENT_DATA_INCOMPLETE,
-  RISK_TYPE_PAYMENT_OVERDUE,
+  RISK_TYPE_DELIVERY_WARNING,
+  RISK_TYPE_MATERIAL_MISSING,
+  RISK_TYPE_PAYMENT_UNCLEARED,
+  RISK_LABELS,
 } from "../constants/risks";
 
-const riskLabels = { block: "阻塞", warn: "预警", ok: "健康" } as const;
-const riskColors = {
-  block: "#dc2626",
-  warn: "#d97706",
-  ok: "#16a34a",
-} as const;
+const riskColors: Record<string, string> = {
+  [RISK_TYPE_MATERIAL_MISSING]: "#d97706",
+  [RISK_TYPE_DELIVERY_WARNING]: "#2563eb",
+  [RISK_TYPE_PAYMENT_UNCLEARED]: "#7c3aed",
+};
 
 export default function ProjectCard({ project }: { project: ProjectListItem }) {
-  const deadlineRisk = project.risks?.find(
-    (risk) => risk.type === RISK_TYPE_DELIVERY_DEADLINE,
+  const materialRisk = project.risks?.find(
+    (risk) => risk.type === RISK_TYPE_MATERIAL_MISSING,
+  );
+  const deliveryRisk = project.risks?.find(
+    (risk) => risk.type === RISK_TYPE_DELIVERY_WARNING,
   );
   const paymentRisk = project.risks?.find(
-    (risk) => risk.type === RISK_TYPE_PAYMENT_OVERDUE,
+    (risk) => risk.type === RISK_TYPE_PAYMENT_UNCLEARED,
   );
-  const incomplete = project.risks?.some(
-    (risk) => risk.type === RISK_TYPE_PAYMENT_DATA_INCOMPLETE,
-  );
-  const remainingDays = deadlineRisk?.remainingDays;
+  const primaryRisk = materialRisk ?? deliveryRisk ?? paymentRisk;
+  const remainingDays = deliveryRisk?.remainingDays;
   const deadlineText =
     remainingDays === null || remainingDays === undefined
       ? null
@@ -38,8 +39,8 @@ export default function ProjectCard({ project }: { project: ProjectListItem }) {
       to={ROUTES.project(project.id)}
       className="project-card project-card-real"
       style={{
-        borderLeftColor: project.riskLevel
-          ? riskColors[project.riskLevel]
+        borderLeftColor: primaryRisk
+          ? riskColors[primaryRisk.type]
           : undefined,
       }}
     >
@@ -54,45 +55,29 @@ export default function ProjectCard({ project }: { project: ProjectListItem }) {
           <div className={`badge project-status ${project.status}`}>
             {PROJECT_STATUS_LABELS[project.status]}
           </div>
-          {incomplete ? (
-            <div className="badge meta">数据待补全</div>
-          ) : (
-            project.riskLevel && (
-              <div className={`badge project-risk ${project.riskLevel}`}>
-                {riskLabels[project.riskLevel]}
-              </div>
-            )
+          {primaryRisk && (
+            <div className="badge project-risk warn">
+              {RISK_LABELS[primaryRisk.type]}
+            </div>
           )}
         </div>
       </div>
-      {project.risks?.[0] && (
-        <p className="risk-summary">
-          {project.risks[0].reason || project.risks[0].recommendation}
-        </p>
+      {primaryRisk && (
+        <p className="risk-summary">{primaryRisk.reason}</p>
       )}
-      {(deadlineText || paymentRisk) && (
-        <div className="risk-highlights">
-          {deadlineText && (
-            <span
-              className={
-                remainingDays !== null &&
-                remainingDays !== undefined &&
-                remainingDays < 0
-                  ? "block"
-                  : "warn"
-              }
-            >
-              {deadlineText}
-            </span>
-          )}
-          {paymentRisk && (
-            <span className="block">
-              逾期 {paymentRisk.overdueDays ?? 0} 天 ·{" "}
-              {formatMoney(paymentRisk.overdueAmount ?? 0)} 元
-            </span>
-          )}
-        </div>
-      )}
+      <div className="risk-highlights">
+        {materialRisk?.missingParts && (
+          <span className="warn">缺失 {materialRisk.missingParts.join("、")}</span>
+        )}
+        {deadlineText && (
+          <span className={remainingDays !== null && remainingDays !== undefined && remainingDays < 0 ? "block" : "warn"}>
+            {deadlineText}
+          </span>
+        )}
+        {paymentRisk && (
+          <span className="warn">{paymentRisk.paymentStatus}</span>
+        )}
+      </div>
       <div className="card-meta-line">
         {project.contractAmount !== null && (
           <span className="card-amount">

@@ -39,16 +39,15 @@ export interface LlmConfigUpdate {
   outputPricePerMtok?: string;
 }
 export type ProjectType = "软件销售" | "正版化服务" | "正版化服务+软件销售";
-export type RiskLevel = "block" | "warn" | "ok";
+export type RiskLevel = "warn" | "ok";
 export interface ProjectRisk {
   type: string;
   level: RiskLevel;
   reason: string;
   recommendation: string;
+  missingParts: string[] | null;
   remainingDays: number | null;
-  overdueDays: number | null;
-  overdueAmount: number | null;
-  dataStatus: "complete" | "incomplete" | null;
+  paymentStatus: string | null;
   dismissed?: boolean | null;
 }
 export interface ProjectRisks {

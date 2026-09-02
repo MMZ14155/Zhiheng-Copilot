@@ -141,7 +141,7 @@ describe("页面", () => {
     vi.mocked(statisticsApi.getStatisticsOverview).mockResolvedValue({
       projects: {
         total: 1,
-        risks: { block: 1, warn: 0, ok: 0 },
+        risks: { warn: 1, ok: 0 },
         averageCostUsageRate: { value: 20, sampleCount: 1 },
         averageScheduleUsageRate: { value: null, sampleCount: 0 },
         averageSatisfaction: { value: 5, sampleCount: 1 },
@@ -186,7 +186,7 @@ describe("页面", () => {
       .mockResolvedValueOnce({
         projects: {
           total: 0,
-          risks: { block: 0, warn: 0, ok: 0 },
+          risks: { warn: 0, ok: 0 },
           averageCostUsageRate: { value: null, sampleCount: 0 },
           averageScheduleUsageRate: { value: null, sampleCount: 0 },
           averageSatisfaction: { value: null, sampleCount: 0 },
@@ -252,7 +252,7 @@ describe("页面", () => {
     await screen.findByText("Alpha");
     expect(screen.getByText("共 1 个项目")).toBeTruthy();
     expect(screen.queryByText("A")).toBeNull();
-    await userEvent.click(screen.getByTitle("点击只看阻塞"));
+    await userEvent.click(screen.getByTitle("点击只看材料缺失"));
     expect(screen.getByText("未找到匹配项目")).toBeTruthy();
     await userEvent.click(screen.getByText("新建项目"));
     expect(screen.getByText("创建弹窗")).toBeTruthy();
@@ -321,14 +321,13 @@ describe("页面", () => {
       level: "warn",
       risks: [
         {
-          type: "delivery-deadline",
+          type: "delivery-warning",
           level: "warn",
           reason: "即将到期",
           recommendation: "跟进",
+          missingParts: null,
           remainingDays: 8,
-          overdueDays: null,
-          overdueAmount: null,
-          dataStatus: "complete",
+          paymentStatus: null,
         },
       ],
     });

@@ -10,12 +10,9 @@ interface ChatMessage {
 }
 
 export interface RiskSummary {
-  blockCount: number;
-  warnCount: number;
-  okCount: number;
+  materialCount: number;
   deliveryCount: number;
   paymentCount: number;
-  incompleteCount: number;
 }
 
 const DEFAULT_QUESTION = "当前项目风险概况";
@@ -35,19 +32,14 @@ interface ChatAreaProps {
 
 function buildAutoQuestions(summary: RiskSummary): ChatMessage[] {
   const parts: string[] = [];
-  if (summary.blockCount > 0) {
-    parts.push(`${summary.blockCount} 个项目存在阻塞风险`);
-  } else if (summary.warnCount > 0) {
-    parts.push(`${summary.warnCount} 个项目存在预警`);
+  if (summary.materialCount > 0) {
+    parts.push(`${summary.materialCount} 个项目存在材料缺失`);
   }
   if (summary.deliveryCount > 0) {
     parts.push(`${summary.deliveryCount} 个项目临近或已逾期交付`);
   }
   if (summary.paymentCount > 0) {
-    parts.push(`${summary.paymentCount} 个项目回款逾期`);
-  }
-  if (summary.incompleteCount > 0) {
-    parts.push(`${summary.incompleteCount} 个项目回款数据不完整`);
+    parts.push(`${summary.paymentCount} 个项目回款未结清`);
   }
   if (parts.length === 0) return [];
   const intro = "根据风险引擎最新计算结果，我发现以下需要关注的情况：";
