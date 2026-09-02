@@ -43,7 +43,6 @@ export default function ProjectNotesEditor({
   return (
     <div className="project-notes-editor">
       <div className="project-notes-header">
-        <h4>备注</h4>
         {canEdit && (
           <Button variant="secondary" type="button" onClick={openEdit}>
             编辑备注
