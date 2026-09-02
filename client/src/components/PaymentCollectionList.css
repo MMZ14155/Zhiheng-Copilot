@@ -2,6 +2,12 @@
   margin-top: 1rem;
 }
 
+.payment-summary {
+  margin: 0 0 0.75rem;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.875rem;
+}
+
 .payment-collection-list > button {
   margin-top: 0.75rem;
 }

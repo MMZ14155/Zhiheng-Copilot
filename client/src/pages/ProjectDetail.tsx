@@ -413,7 +413,7 @@ export default function ProjectDetail() {
             <div className="deliverable-heading">
               <h3>回款清单</h3>
             </div>
-            <PaymentCollectionList projectId={projectId!} />
+            <PaymentCollectionList projectId={projectId!} contractAmount={project.contractAmount} />
           </section>
         )}
         {activeTab === "files" && (

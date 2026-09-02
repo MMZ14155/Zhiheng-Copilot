@@ -13,17 +13,19 @@ const EMPTY: TrackedFile = {
   currentVersion: null,
   status: "ok",
   versions: [],
-  paymentStatus: "未回款",
+  paymentStatus: "未付款",
   receivableAmount: "",
   receivedAmount: "",
   paymentDate: "",
   remarks: "",
 };
 
+const PAYMENT_NAMES = ["首款", "尾款", "全款"];
+const PAYMENT_STATUSES = ["未付款", "已付款"];
+
 type Draft = {
   name: string;
   paymentStatus: string;
-  receivableAmount: string;
   receivedAmount: string;
   paymentDate: string;
   remarks: string;
@@ -32,18 +34,29 @@ type Draft = {
 function toDraft(item: TrackedFile): Draft {
   return {
     name: item.name,
-    paymentStatus: item.paymentStatus ?? "",
-    receivableAmount: item.receivableAmount ?? "",
+    paymentStatus: PAYMENT_STATUSES.includes(item.paymentStatus ?? "")
+      ? (item.paymentStatus as string)
+      : "未付款",
     receivedAmount: item.receivedAmount ?? "",
     paymentDate: item.paymentDate ?? "",
     remarks: item.remarks ?? "",
   };
 }
 
+function derivePaymentStatus(items: TrackedFile[]): string {
+  if (items.length === 0) return "未付款";
+  const names = new Set(items.map((i) => i.name));
+  if (names.has("尾款") || names.has("全款")) return "已付全款";
+  if (names.has("首款")) return "已付首款";
+  return "未付款";
+}
+
 export default function PaymentCollectionList({
   projectId,
+  contractAmount,
 }: {
   projectId: number;
+  contractAmount: number | null;
 }) {
   const [items, setItems] = useState<TrackedFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -91,7 +104,6 @@ export default function PaymentCollectionList({
         name: draft.name,
         category: "回款" as const,
         payment_status: draft.paymentStatus || null,
-        receivable_amount: draft.receivableAmount || null,
         received_amount: draft.receivedAmount || null,
         payment_date: draft.paymentDate || null,
         remarks: draft.remarks || null,
@@ -133,40 +145,35 @@ export default function PaymentCollectionList({
       <tr key={item.id}>
         <td>
           {isEditing ? (
-            <input
+            <select
               value={value.name}
               onChange={(e) => update({ name: e.target.value })}
-              placeholder="名称"
-            />
+            >
+              <option value="">请选择</option>
+              {PAYMENT_NAMES.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
           ) : (
-            item.name
+            item.name || "-"
           )}
         </td>
         <td>
           {isEditing ? (
             <select
-              value={value.paymentStatus || "未回款"}
+              value={value.paymentStatus || "未付款"}
               onChange={(e) => update({ paymentStatus: e.target.value })}
             >
-              <option value="未回款">未回款</option>
-              <option value="部分回款">部分回款</option>
-              <option value="已回款">已回款</option>
+              {PAYMENT_STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </select>
           ) : (
-            item.paymentStatus ?? "未回款"
-          )}
-        </td>
-        <td>
-          {isEditing ? (
-            <input
-              type="number"
-              step="0.01"
-              value={value.receivableAmount}
-              onChange={(e) => update({ receivableAmount: e.target.value })}
-              placeholder="应收金额"
-            />
-          ) : (
-            item.receivableAmount ?? "-"
+            item.paymentStatus ?? "未付款"
           )}
         </td>
         <td>
@@ -176,7 +183,7 @@ export default function PaymentCollectionList({
               step="0.01"
               value={value.receivedAmount}
               onChange={(e) => update({ receivedAmount: e.target.value })}
-              placeholder="已收金额"
+              placeholder="金额"
             />
           ) : (
             item.receivedAmount ?? "-"
@@ -239,6 +246,10 @@ export default function PaymentCollectionList({
   return (
     <div className="payment-collection-list">
       {error && <Alert>{error}</Alert>}
+      <p className="payment-summary">
+        合同金额：{contractAmount === null ? "—" : `${contractAmount} 元`} 状态：
+        {derivePaymentStatus(items)}
+      </p>
       {loading && items.length === 0 ? (
         <p>加载中…</p>
       ) : (
@@ -246,10 +257,9 @@ export default function PaymentCollectionList({
           <thead>
             <tr>
               <th>名称</th>
-              <th>回款状态</th>
-              <th>应收金额</th>
-              <th>已收金额</th>
-              <th>回款日期</th>
+              <th>状态</th>
+              <th>金额</th>
+              <th>日期</th>
               <th>备注</th>
               <th>操作</th>
             </tr>
