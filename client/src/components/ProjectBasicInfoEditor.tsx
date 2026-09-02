@@ -24,7 +24,6 @@ type Field =
   | "signedDate"
   | "startedDate"
   | "plannedDeliveryDate"
-  | "progress"
   | "status";
 type Values = Record<Field, string>;
 type Errors = Partial<Record<Field, string>>;
@@ -39,13 +38,6 @@ function validate(values: Values): Errors {
       Number(values.contractAmount) <= 0)
   )
     errors.contractAmount = "合同金额必须大于 0";
-  if (
-    values.progress &&
-    (!Number.isFinite(Number(values.progress)) ||
-      Number(values.progress) < 0 ||
-      Number(values.progress) > 100)
-  )
-    errors.progress = "进度必须在 0 到 100 之间";
   if (values.signedDate && values.startedDate && values.signedDate > values.startedDate)
     errors.startedDate = "启动日期不能早于签约日期";
   if (
@@ -85,8 +77,7 @@ export default function ProjectBasicInfoEditor({
       signedDate: project.signedDate ?? "",
       startedDate: project.startedDate ?? "",
       plannedDeliveryDate: project.plannedDeliveryDate ?? "",
-      progress: String(project.progress ?? 0),
-      status: project.status ?? "active",
+      status: project.status ?? "项目启动",
     }),
     [project],
   );
@@ -151,7 +142,6 @@ export default function ProjectBasicInfoEditor({
       signed_date: values.signedDate || null,
       started_date: values.startedDate || null,
       planned_delivery_date: values.plannedDeliveryDate || null,
-      progress: values.progress ? Number(values.progress) : 0,
       status: values.status as ProjectUpdateDto["status"],
       parties: parties
         .map((party) => ({
@@ -268,15 +258,6 @@ export default function ProjectBasicInfoEditor({
               }
             />
           </Field>
-          <Field label="进度" error={errors.progress}>
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={values.progress}
-              onChange={(event) => setField("progress", event.target.value)}
-            />
-          </Field>
           <Field label="签约日期">
             <input
               type="date"
@@ -345,15 +326,17 @@ export default function ProjectBasicInfoEditor({
                   }
                 />
               </label>
-              <label>
-                联系方式
-                <input
-                  value={party.contact ?? ""}
-                  onChange={(event) =>
-                    updateParty(index, "contact", event.target.value)
-                  }
-                />
-              </label>
+              {party.role !== "乙方" && (
+                <label>
+                  联系方式
+                  <input
+                    value={party.contact ?? ""}
+                    onChange={(event) =>
+                      updateParty(index, "contact", event.target.value)
+                    }
+                  />
+                </label>
+              )}
               <button
                 type="button"
                 aria-label={`删除第 ${index + 1} 个签约方`}

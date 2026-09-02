@@ -1,18 +1,34 @@
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.files import FileVersionResponse
 
-DeliverableCategory = Literal["合同", "成本明细", "验收材料", "检测报告", "交付成果"]
+DeliverableCategory = Literal["合同", "成本明细", "验收材料", "检测报告", "交付成果", "回款"]
 TagType = Literal["demo", "report", "meeting", "audit", "custom"]
 
 
 class TrackedFileCreate(BaseModel):
-    source_file_id: int = Field(gt=0)
-    category: DeliverableCategory
+    name: str = Field(min_length=1, max_length=255)
+    category: DeliverableCategory = "回款"
+    source_file_id: int | None = None
     required: bool = False
+    payment_status: str | None = None
+    receivable_amount: Decimal | None = None
+    received_amount: Decimal | None = None
+    payment_date: date | None = None
+    remarks: str | None = Field(default=None, max_length=5000)
+
+
+class TrackedFileUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    payment_status: str | None = None
+    receivable_amount: Decimal | None = None
+    received_amount: Decimal | None = None
+    payment_date: date | None = None
+    remarks: str | None = Field(default=None, max_length=5000)
 
 
 class CurrentVersionUpdate(BaseModel):
@@ -29,8 +45,15 @@ class TrackedFileResponse(BaseModel):
     current_version: str | None
     status: Literal["ok", "missing", "old", "conflict"]
     versions: list[FileVersionResponse]
+    payment_status: str | None
+    receivable_amount: Decimal | None
+    received_amount: Decimal | None
+    payment_date: date | None
+    remarks: str | None
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TrackedFileListResponse(BaseModel):

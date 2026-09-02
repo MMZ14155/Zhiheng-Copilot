@@ -183,7 +183,6 @@ describe("CreateProjectModal AI 合同分析模式", () => {
       signed_date: "2026-01-01",
       started_date: "2026-02-01",
       planned_delivery_date: null,
-      progress: 0,
       notes: "合同备注",
       parties: [{ role: "甲方", name: "甲方公司", contact: "138" }],
     });
@@ -202,8 +201,7 @@ describe("CreateProjectModal AI 合同分析模式", () => {
           code: "SRC",
           customerName: "客户",
           projectType: "软件销售",
-          status: "active",
-          progress: 100,
+          status: "项目启动",
           contractAmount: null,
           signedDate: "2025-01-01",
           plannedDeliveryDate: null,

@@ -203,3 +203,23 @@ def test_create_project_draft_word_doc_allowed(client, sample_contract):
     )
     assert response.status_code == 202
 
+
+def test_normalize_party_roles():
+    from app.schemas.ai import ProjectDraftOutput
+    from app.services.ai_tasks import _normalize_party_roles
+
+    out = ProjectDraftOutput(
+        name="合同",
+        parties=[
+            {"role": "购买方", "name": "甲方公司", "contact": None},
+            {"role": "销售方", "name": "乙方公司", "contact": None},
+            {"role": "甲方", "name": "已是甲方", "contact": None},
+            {"role": "乙方", "name": "已是乙方", "contact": None},
+            {"role": "买方", "name": "采购局", "contact": None},
+            {"role": "供应商", "name": "服务商", "contact": None},
+        ],
+    )
+    _normalize_party_roles(out)
+    roles = [p.role for p in out.parties]
+    assert roles == ["甲方", "乙方", "甲方", "乙方", "甲方", "乙方"]
+

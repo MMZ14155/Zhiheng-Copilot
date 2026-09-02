@@ -82,8 +82,7 @@ describe("核心组件", () => {
           code: "A",
           customerName: "客户",
           projectType: "软件销售",
-          status: "active",
-          progress: 42,
+          status: "项目启动",
           contractAmount: null,
           signedDate: null,
           plannedDeliveryDate: null,
@@ -117,7 +116,6 @@ describe("核心组件", () => {
     expect(screen.getByText("Alpha")).toBeTruthy();
     expect(screen.getByText("客户")).toBeTruthy();
     expect(screen.getByText("预警")).toBeTruthy();
-    expect(screen.getByLabelText("项目进度 42%")).toBeTruthy();
     expect(screen.getByText("距交付 9 天")).toBeTruthy();
     expect(screen.getByText(/1,234.50 元/)).toBeTruthy();
   });
@@ -131,8 +129,7 @@ describe("核心组件", () => {
           code: "B",
           customerName: "客户",
           projectType: null,
-          status: "active",
-          progress: 0,
+          status: "项目启动",
           contractAmount: 1000,
           signedDate: null,
           plannedDeliveryDate: null,

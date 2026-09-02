@@ -153,7 +153,10 @@ async def list_projects(
     page: int = Query(default=1, ge=1),
     size: int = Query(default=20, ge=1, le=100),
     company: str | None = Query(default=None, min_length=1, max_length=200),
-    status: str | None = Query(default=None, pattern="^(active|archived|completed)$"),
+    status: str | None = Query(
+        default=None,
+        pattern="^(项目启动|合同签署|已开票|首款已付|尾款已付|全款已付|项目结项)$",
+    ),
     client_name: str | None = Query(default=None, min_length=1, max_length=200),
     expand: str | None = Query(default=None, pattern="^links$"),
     project_type: ProjectType | None = Query(default=None),

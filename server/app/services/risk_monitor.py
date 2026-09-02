@@ -76,7 +76,7 @@ def evaluate_project(
     delivery_date = getattr(project, "planned_delivery_date", None)
     project_status = getattr(project, "status", "active")
     if (config.enabled_rules.delivery_deadline and delivery_date is not None
-            and project_status not in {"completed", "archived"}):
+            and project_status not in {"项目结项"}):
         remaining_days = (delivery_date - current_date).days
         if remaining_days < -thresholds.delivery_block_days:
             risks.append(RiskItem(
@@ -131,8 +131,10 @@ def evaluate_project(
                 recommendation="复核剩余工作所需支出，对超预算风险提前向客户和管理层同步。",
             ))
 
+    deliverable_items = [item for item in deliverables if item.category != "回款"]
+
     if config.enabled_rules.document_missing:
-        for item in deliverables:
+        for item in deliverable_items:
             if item.required and item.status == "missing":
                 risks.append(RiskItem(
                     type="document-missing", level="block",
@@ -141,7 +143,7 @@ def evaluate_project(
                 ))
 
     if config.enabled_rules.version_conflict:
-        for item in deliverables:
+        for item in deliverable_items:
             if item.unfrozen_versions >= 2:
                 risks.append(RiskItem(
                     type="version-conflict", level="warn",
@@ -150,7 +152,7 @@ def evaluate_project(
                 ))
 
     if config.enabled_rules.rule_conflict and project.stage == "accepting":
-        if not any(item.category == "验收材料" for item in deliverables):
+        if not any(item.category == "验收材料" for item in deliverable_items):
             risks.append(RiskItem(
                 type="rule-conflict", level="block",
                 reason="项目当前阶段为“验收前”，但文件空间中未找到“验收材料”类交付物，不满足验收条件。",

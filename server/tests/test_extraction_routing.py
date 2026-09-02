@@ -23,7 +23,7 @@ def test_changelog_defaults_to_empty_string():
 
 @pytest.mark.parametrize(
     ("document_type", "creates_task"),
-    [("contract", True), ("invoice", True), ("payment", True), (None, False), ("other", False)],
+    [("contract", True), ("invoice", True), ("payment", False), (None, False), ("other", False)],
 )
 def test_create_extraction_task_routes_supported_types(fake_session, document_type, creates_task):
     version = FileVersion(
@@ -48,7 +48,7 @@ def test_create_extraction_task_routes_supported_types(fake_session, document_ty
         fake_session.flush.assert_not_awaited()
 
 
-@pytest.mark.parametrize("document_type", ["contract", "invoice", "payment"])
+@pytest.mark.parametrize("document_type", ["contract", "invoice"])
 def test_create_extract_task_accepts_material_types(document_type):
     file_version = SimpleNamespace(
         document_type=document_type, parse_status="pending", file_id=1

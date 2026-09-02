@@ -19,7 +19,7 @@ def project(now, ident=1):
     return Project(id=ident, name=f"项目{ident}", code=f"P{ident}", customer_name="客户",
         project_type=None,
         parties=[], contract_amount=None, signed_date=None, started_date=None,
-        planned_delivery_date=None, status="active", progress=20, stage="executing",
+        planned_delivery_date=None, status="项目启动", progress=20, stage="executing",
         budget=None, cost=None, planned_days=None, used_days=None, quality_issues=None,
         satisfaction=None, acceptance_result=None, risk_config=None, notes=None,
         created_at=now, updated_at=now)
@@ -41,7 +41,7 @@ def test_list_projects_admin_and_member(fake_session, users, now):
     p = project(now)
     fake_session.scalar.return_value = 1
     fake_session.execute.return_value = Result([p])
-    response = asyncio.run(projects.list_projects(1, 20, "客户", "active", "客", None, "软件销售", fake_session, users.member))
+    response = asyncio.run(projects.list_projects(1, 20, "客户", "项目启动", "客", None, "软件销售", fake_session, users.member))
     assert response.total == 1 and response.items[0].code == "P1"
     list_sql = str(fake_session.execute.call_args.args[0])
     assert "project.project_type" in list_sql and "project_member.user_id" in list_sql

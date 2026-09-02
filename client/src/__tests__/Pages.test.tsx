@@ -48,6 +48,9 @@ vi.mock("../components/ResourceCenter", () => ({
 vi.mock("../components/VersionHistory", () => ({
   default: () => <div>版本历史</div>,
 }));
+vi.mock("../components/PaymentCollectionList", () => ({
+  default: () => <div>回款清单内容</div>,
+}));
 vi.mock("../components/TagPanel", () => ({
   default: () => <div>标签面板</div>,
 }));
@@ -230,8 +233,7 @@ describe("页面", () => {
           code: "A",
           customerName: "客户",
           projectType: "软件销售",
-          status: "active",
-          progress: 10,
+          status: "项目启动",
           contractAmount: null,
           signedDate: null,
           plannedDeliveryDate: null,
@@ -270,8 +272,7 @@ describe("页面", () => {
             code: "A",
             customerName: "客户",
             projectType: "软件销售",
-            status: "active",
-            progress: 10,
+            status: "项目启动",
             contractAmount: null,
             signedDate: null,
             plannedDeliveryDate: null,
@@ -310,8 +311,7 @@ describe("页面", () => {
       signedDate: null,
       startedDate: null,
       plannedDeliveryDate: null,
-      status: "active",
-      progress: 10,
+      status: "项目启动",
       notes: null,
       managerIds: [],
       deliverables: [],
@@ -354,11 +354,9 @@ describe("页面", () => {
     );
     expect(screen.queryByText("P")).toBeNull();
     expect(screen.getByText("交付节点 剩余 8 天")).toBeTruthy();
-    await userEvent.click(screen.getByRole("tab", { name: "交付物" }));
-    expect(screen.getByText("版本历史")).toBeTruthy();
-    expect(screen.getByText("距交付 8 天")).toBeTruthy();
-    expect(screen.getByText("本项目回款进度")).toBeTruthy();
-    expect(screen.getByText("40%")).toBeTruthy();
+    await userEvent.click(screen.getByRole("tab", { name: "回款" }));
+    expect(screen.getByText("回款清单内容")).toBeTruthy();
+    expect(screen.getByText("回款清单")).toBeTruthy();
     await userEvent.click(screen.getByRole("tab", { name: "标签" }));
     expect(screen.getByText("标签面板")).toBeTruthy();
   });
@@ -376,8 +374,7 @@ describe("页面", () => {
       signedDate: null,
       startedDate: null,
       plannedDeliveryDate: null,
-      status: "active",
-      progress: 0,
+      status: "项目启动",
       notes: null,      managerIds: [],      deliverables: [],
       latestSummary: null,
     });
@@ -433,8 +430,7 @@ describe("页面", () => {
       signedDate: null,
       startedDate: null,
       plannedDeliveryDate: null,
-      status: "active",
-      progress: 10,
+      status: "项目启动",
       notes: null,
       managerIds: [],
       deliverables: [],
@@ -464,18 +460,10 @@ describe("页面", () => {
     await waitFor(() =>
       expect(screen.getAllByText("详情项目")).toHaveLength(2),
     );
-    await userEvent.click(screen.getByRole("tab", { name: "交付物" }));
+    await userEvent.click(screen.getByRole("tab", { name: "回款" }));
     await waitFor(() =>
-      expect(screen.getByText("回款数据不完整：缺少已解析合同")).toBeTruthy(),
+      expect(screen.getByText("回款清单内容")).toBeTruthy(),
     );
-    await waitFor(() =>
-      expect(
-        screen.getByText("逾期金额 375.00 元，请尽快跟进回款"),
-      ).toBeTruthy(),
-    );
-    const progress =
-      screen.getByRole("progressbar") ?? screen.getByLabelText("回款进度 25%");
-    expect((progress.firstElementChild as HTMLElement).style.width).toBe("25%");
   });
 
   it("ProjectDetail 展示续签链并跳转到关联项目", async () => {
@@ -490,8 +478,7 @@ describe("页面", () => {
       signedDate: null,
       startedDate: null,
       plannedDeliveryDate: null,
-      status: "active",
-      progress: 10,
+      status: "项目启动",
       notes: null,
       managerIds: [],
       deliverables: [],
@@ -524,8 +511,7 @@ describe("页面", () => {
           contractAmount: null,
           signedDate: null,
           plannedDeliveryDate: null,
-          status: "active",
-          progress: 10,
+          status: "项目启动",
           updatedAt: "y",
         },
         {
@@ -537,8 +523,7 @@ describe("页面", () => {
           contractAmount: null,
           signedDate: "2026-01-01",
           plannedDeliveryDate: null,
-          status: "active",
-          progress: 0,
+          status: "项目启动",
           updatedAt: "z",
         },
       ],
@@ -558,3 +543,4 @@ describe("页面", () => {
     expect(link.getAttribute("href")).toBe("/projects/2");
   });
 });
+

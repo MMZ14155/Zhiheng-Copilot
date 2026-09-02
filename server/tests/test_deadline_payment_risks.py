@@ -12,7 +12,7 @@ from app.services.statistics import FinancialDocument, aggregate_project_finance
 
 def project(**overrides):
     values = dict(
-        id=1, stage="executing", status="active", planned_delivery_date=None,
+        id=1, stage="executing", status="项目启动", planned_delivery_date=None,
         planned_days=None, used_days=None, budget=None, cost=None,
     )
     values.update(overrides)
@@ -43,7 +43,7 @@ def test_delivery_deadline_boundaries(remaining, level):
         assert risk.remaining_days == remaining
 
 
-@pytest.mark.parametrize("status", ["completed", "archived"])
+@pytest.mark.parametrize("status", ["项目结项"])
 def test_delivery_deadline_excludes_closed_projects(status):
     risks = evaluate_project(
         project(status=status, planned_delivery_date=date(2025, 1, 1)), [],

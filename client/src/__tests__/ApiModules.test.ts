@@ -42,8 +42,7 @@ const project = {
   signed_date: null,
   started_date: null,
   planned_delivery_date: null,
-  status: "active",
-  progress: 30,
+  status: "项目启动",
   notes: null,
   created_at: "x",
   updated_at: "y",
@@ -242,7 +241,7 @@ describe("API domain modules", () => {
     for (const action of [
       () =>
         projects.createProject({ name: "n", code: "c", customer_name: "x" }),
-      () => projects.updateProject(1, { progress: 2 }),
+      () => projects.updateProject(1, { status: "合同签署" }),
       () =>
         projects.createProjectLink(1, {
           target_project_id: 2,
@@ -275,8 +274,7 @@ describe("API domain modules", () => {
       signed_date: null,
       started_date: null,
       planned_delivery_date: null,
-      status: "active",
-      progress: 0,
+      status: "项目启动",
       notes: null,
       created_at: "x",
       updated_at: "y",
@@ -463,12 +461,15 @@ describe("API domain modules", () => {
       (await deliverables.listTrackedFiles(2))[0].versions[0].isCurrent,
     ).toBe(true);
     next({});
-    await deliverables.promoteTrackedFile(2, {
-      source_file_id: 3,
-      category: "合同",
+    await deliverables.createTrackedFile(2, {
+      name: "回款项",
+      category: "回款",
     });
     next({});
-    await deliverables.switchCurrentVersion(1, "v1");
+    await deliverables.updateTrackedFile(1, {
+      payment_status: "已回款",
+      receivable_amount: "1000",
+    });
     next({
       items: [
         {

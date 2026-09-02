@@ -119,8 +119,15 @@ export interface ProjectListItem {
   code: string;
   customerName: string;
   projectType: ProjectType | null;
-  status: "active" | "archived" | "completed";
-  progress: number;
+  status:
+    | "项目启动"
+    | "合同签署"
+    | "已开票"
+    | "首款已付"
+    | "尾款已付"
+    | "全款已付"
+    | "项目结项";
+  progress?: number;
   contractAmount: number | null;
   signedDate: string | null;
   plannedDeliveryDate: string | null;
@@ -251,6 +258,11 @@ export interface TrackedFile {
   currentVersion: string | null;
   status: string;
   versions: FileVersion[];
+  paymentStatus?: string | null;
+  receivableAmount?: string | null;
+  receivedAmount?: string | null;
+  paymentDate?: string | null;
+  remarks?: string | null;
 }
 export interface ProjectDraft {
   name: string | null;
@@ -275,8 +287,15 @@ export interface ProjectDetail {
   signedDate: string | null;
   startedDate: string | null;
   plannedDeliveryDate: string | null;
-  status: "active" | "archived" | "completed";
-  progress: number;
+  status:
+    | "项目启动"
+    | "合同签署"
+    | "已开票"
+    | "首款已付"
+    | "尾款已付"
+    | "全款已付"
+    | "项目结项";
+  progress?: number;
   notes: string | null;
   deliverables: ProjectDeliverable[];
   latestSummary: ProjectLatestSummary | null;

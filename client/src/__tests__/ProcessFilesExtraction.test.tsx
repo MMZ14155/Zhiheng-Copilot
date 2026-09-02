@@ -93,7 +93,7 @@ describe("过程文件解析展示", () => {
               is_deliverable: false,
               created_at: "",
               updated_at: "",
-              latest_version: version("payment", "parsed"),
+              latest_version: version("invoice", "parsed"),
             },
             {
               id: 4,
@@ -155,17 +155,6 @@ describe("过程文件解析展示", () => {
         seller: "销方",
       },
       ["号码", "日期", "税额", "税率", "购买方", "销售方"],
-    ],
-    [
-      "payment",
-      {
-        amount: 60,
-        payment_date: "2026-01-04",
-        payer: "付款公司",
-        contract_no: "HT-01",
-        remarks: "首款",
-      },
-      ["金额", "日期", "付款方", "关联合同号", "备注"],
     ],
   ])("展开 %s 识别结果并提示 missing_fields", async (type, fields, labels) => {
     vi.stubGlobal(

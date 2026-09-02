@@ -1,8 +1,15 @@
-export type ProjectStatusDto = "active" | "archived" | "completed";
+export type ProjectStatusDto =
+  | "项目启动"
+  | "合同签署"
+  | "已开票"
+  | "首款已付"
+  | "尾款已付"
+  | "全款已付"
+  | "项目结项";
 export type ProjectTypeDto = "软件销售" | "正版化服务" | "正版化服务+软件销售";
 export type ProjectLinkTypeDto = "renewal" | "related";
 export type DeliverableCategoryDto =
-  "合同" | "成本明细" | "验收材料" | "检测报告" | "交付成果";
+  "合同" | "成本明细" | "验收材料" | "检测报告" | "交付成果" | "回款";
 export type TagTypeDto = "demo" | "report" | "meeting" | "audit" | "custom";
 export type JsonObject = Record<string, unknown>;
 
@@ -300,9 +307,23 @@ export interface VersionListResponseDto {
   versions: FileVersionResponseDto[];
 }
 export interface TrackedFileCreateDto {
-  source_file_id: number;
-  category: DeliverableCategoryDto;
+  name: string;
+  category?: DeliverableCategoryDto;
+  source_file_id?: number | null;
   required?: boolean;
+  payment_status?: string | null;
+  receivable_amount?: string | null;
+  received_amount?: string | null;
+  payment_date?: string | null;
+  remarks?: string | null;
+}
+export interface TrackedFileUpdateDto {
+  name?: string;
+  payment_status?: string | null;
+  receivable_amount?: string | null;
+  received_amount?: string | null;
+  payment_date?: string | null;
+  remarks?: string | null;
 }
 export interface TrackedFileResponseDto {
   id: number;
@@ -314,6 +335,11 @@ export interface TrackedFileResponseDto {
   current_version: string | null;
   status: "ok" | "missing" | "old" | "conflict" | "frozen";
   versions: FileVersionResponseDto[];
+  payment_status: string | null;
+  receivable_amount: string | null;
+  received_amount: string | null;
+  payment_date: string | null;
+  remarks: string | null;
   created_at: string;
   updated_at: string;
 }

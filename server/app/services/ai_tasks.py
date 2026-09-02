@@ -49,7 +49,18 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
-EXTRACTABLE_DOCUMENT_TYPES = {"contract", "invoice", "payment"}
+
+def _normalize_party_roles(out: ProjectDraftOutput) -> None:
+    """将提取出的购买方/销售方等角色统一改写为甲方/乙方。"""
+    for party in out.parties:
+        role = (party.role or "").strip()
+        if re.search(r"购|买|甲方?|需求|委托|发包|业主", role):
+            party.role = "甲方"
+        elif re.search(r"销|卖|乙方?|供应|承包|受托|服务商", role):
+            party.role = "乙方"
+
+
+EXTRACTABLE_DOCUMENT_TYPES = {"contract", "invoice"}
 
 _RE_INVOICE_AMOUNT = re.compile(
     r"价税合计.*?（小写）\s*[￥¥]?\s*([\d,]+(?:\.\d{1,2})?)",
@@ -480,6 +491,7 @@ class AiTaskExecutor:
                 fallback_amount = _extract_fallback_amount(documents)
                 if fallback_amount is not None:
                     out.contract_amount = fallback_amount
+            _normalize_party_roles(out)
             await AiTaskExecutor._set_stage(session, task, "completed", 100)
             task.payload = {**payload, "result": out.model_dump(mode="json")}
         except MultimodalRequiredError as exc:
@@ -504,6 +516,7 @@ class AiTaskExecutor:
                 fallback_amount = _extract_fallback_amount(documents)
                 if fallback_amount is not None:
                     out.contract_amount = fallback_amount
+            _normalize_party_roles(out)
             await AiTaskExecutor._set_stage(session, task, "completed", 100)
             task.payload = {**payload, "result": out.model_dump(mode="json")}
         finally:

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.errors import conflict
+from app.api.errors import conflict, not_found
 from app.api.dependencies import get_current_user, require_project_role
 from app.api.files import _version_to_response
 from app.db.session import get_session
@@ -14,7 +14,6 @@ from app.models.tag_snapshot import TagSnapshot
 from app.models.tracked_file import TrackedFile
 from app.models.user import User
 from app.schemas.deliverables import (
-    CurrentVersionUpdate,
     ProjectTagSnapshotItem,
     ProjectTagSnapshotListResponse,
     TagCreate,
@@ -26,6 +25,7 @@ from app.schemas.deliverables import (
     TrackedFileCreate,
     TrackedFileListResponse,
     TrackedFileResponse,
+    TrackedFileUpdate,
 )
 from app.services.deliverables import DeliverableService, TagService
 
@@ -44,6 +44,11 @@ def _serialize(tracked, versions, status):
         current_version=tracked.current_version,
         status=status,
         versions=[_version_to_response(v) for v in versions],
+        payment_status=tracked.payment_status,
+        receivable_amount=tracked.receivable_amount,
+        received_amount=tracked.received_amount,
+        payment_date=tracked.payment_date,
+        remarks=tracked.remarks,
         created_at=tracked.created_at,
         updated_at=tracked.updated_at,
     )
@@ -64,25 +69,33 @@ async def _tracked_response(session, tracked_id):
     response_model=TrackedFileResponse,
     status_code=201,
 )
-async def promote_tracked_file(
+async def create_tracked_file(
     project_id: int,
     payload: TrackedFileCreate,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
     await require_project_role(session, project_id, user, {"manager"})
-    try:
-        tracked = await DeliverableService.promote(
-            session,
-            project_id,
-            payload.source_file_id,
-            payload.category,
-            payload.required,
+    if payload.source_file_id is not None:
+        try:
+            tracked = await DeliverableService.promote(
+                session,
+                project_id,
+                payload.source_file_id,
+                payload.category,
+                payload.required,
+            )
+        except IntegrityError as exc:
+            await session.rollback()
+            raise conflict("来源文件已升格为交付物", code="FILE_ALREADY_TRACKED") from exc
+    else:
+        tracked = TrackedFile(
+            project_id=project_id,
+            **payload.model_dump(exclude={"source_file_id"}),
         )
+        session.add(tracked)
+    try:
         await session.commit()
-    except IntegrityError as exc:
-        await session.rollback()
-        raise conflict("来源文件已升格为交付物", code="FILE_ALREADY_TRACKED") from exc
     except Exception:
         await session.rollback()
         raise
@@ -105,26 +118,48 @@ async def list_tracked_files(
 
 
 @router.patch(
-    "/tracked-files/{tracked_file_id}/current-version",
+    "/tracked-files/{tracked_file_id}",
     response_model=TrackedFileResponse,
 )
-async def switch_current_version(
+async def update_tracked_file(
     tracked_file_id: int,
-    payload: CurrentVersionUpdate,
+    payload: TrackedFileUpdate,
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ):
-    tracked_access = await session.get(TrackedFile, tracked_file_id)
-    if tracked_access: await require_project_role(session, tracked_access.project_id, user, {"manager"})
+    tracked = await session.get(TrackedFile, tracked_file_id)
+    if tracked is None:
+        raise not_found(f"回款记录 {tracked_file_id} 不存在", code="TRACKED_FILE_NOT_FOUND")
+    await require_project_role(session, tracked.project_id, user, {"manager"})
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(tracked, field, value)
     try:
-        tracked = await DeliverableService.switch_current_version(
-            session, tracked_file_id, payload.version
-        )
         await session.commit()
     except Exception:
         await session.rollback()
         raise
     return await _tracked_response(session, tracked.id)
+
+
+@router.delete(
+    "/tracked-files/{tracked_file_id}",
+    status_code=204,
+)
+async def delete_tracked_file(
+    tracked_file_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+):
+    tracked = await session.get(TrackedFile, tracked_file_id)
+    if tracked is None:
+        raise not_found(f"回款记录 {tracked_file_id} 不存在", code="TRACKED_FILE_NOT_FOUND")
+    await require_project_role(session, tracked.project_id, user, {"manager"})
+    await session.delete(tracked)
+    try:
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
 
 
 @router.post("/projects/{project_id}/tags", response_model=TagResponse, status_code=201)

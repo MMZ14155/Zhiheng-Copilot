@@ -274,6 +274,11 @@ export const mapTrackedFile = (dto: TrackedFileResponseDto): TrackedFile => ({
     uploadedAt: version.uploaded_at,
     extractPath: version.extract_path ?? null,
   })),
+  paymentStatus: dto.payment_status,
+  receivableAmount: dto.receivable_amount,
+  receivedAmount: dto.received_amount,
+  paymentDate: dto.payment_date,
+  remarks: dto.remarks,
 });
 
 export const mapSnapshotSummary = (

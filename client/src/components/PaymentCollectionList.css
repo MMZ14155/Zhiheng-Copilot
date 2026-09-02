@@ -1,0 +1,43 @@
+.payment-collection-list {
+  margin-top: 1rem;
+}
+
+.payment-collection-list > button {
+  margin-top: 0.75rem;
+}
+
+.payment-collection-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.payment-collection-table th,
+.payment-collection-table td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color, #e5e7eb);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.payment-collection-table th {
+  background: var(--bg-muted, #f3f4f6);
+  font-weight: 600;
+}
+
+.payment-collection-table input,
+.payment-collection-table select {
+  width: 100%;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.payment-actions {
+  white-space: nowrap;
+}
+
+.payment-actions button {
+  margin-right: 0.5rem;
+}

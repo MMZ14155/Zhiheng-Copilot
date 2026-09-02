@@ -3,7 +3,7 @@ import { aiApi, errorMessage, filesApi } from "../api";
 import type { ExtractionInfoResponseDto } from "../api";
 import { Alert, Skeleton } from "./ui";
 
-const supportedDocumentTypes = ["contract", "invoice", "payment"];
+const supportedDocumentTypes = ["contract", "invoice"];
 
 export function isExtractableDocumentType(documentType: string | null) {
   return documentType !== null && supportedDocumentTypes.includes(documentType);
@@ -279,13 +279,7 @@ function ExtractionResult({ result }: { result: ExtractionInfoResponseDto }) {
             ["购买方", result.buyer],
             ["销售方", result.seller],
           ]
-        : [
-            ["金额", result.amount],
-            ["日期", result.payment_date],
-            ["付款方", result.payer],
-            ["关联合同号", result.contract_no],
-            ["备注", result.remarks],
-          ];
+        : [];
   const show = (value: unknown) => {
     if (value === null || value === undefined || value === "") return "未识别";
     if (Array.isArray(value))

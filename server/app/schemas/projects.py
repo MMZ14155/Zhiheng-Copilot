@@ -7,7 +7,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_valid
 from app.schemas.ai import SummaryInputResponse
 
 
-ProjectStatus = Literal["active", "archived", "completed"]
+ProjectStatus = Literal[
+    "项目启动", "合同签署", "已开票", "首款已付", "尾款已付", "全款已付", "项目结项"
+]
 ProjectType = Literal["软件销售", "正版化服务", "正版化服务+软件销售"]
 ProjectLinkType = Literal["renewal", "related"]
 ProjectStage = Literal["init", "planning", "executing", "accepting", "closed"]
@@ -30,7 +32,7 @@ class ProjectBase(BaseModel):
     signed_date: date | None = None
     started_date: date | None = None
     planned_delivery_date: date | None = None
-    status: ProjectStatus = "active"
+    status: ProjectStatus = "项目启动"
     progress: int = Field(default=0, ge=0, le=100)
     notes: str | None = Field(default=None, max_length=10000)
 

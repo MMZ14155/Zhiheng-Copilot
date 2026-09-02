@@ -9,13 +9,12 @@ import {
   subscribeAuth,
 } from "../api";
 import type {
-  CollectionOverview,
   ProjectDetail as ProjectDetailModel,
   ProjectParty,
   ProjectRisks,
   RenewalChain,
 } from "../api";
-import VersionHistory from "../components/VersionHistory";
+import PaymentCollectionList from "../components/PaymentCollectionList";
 import ProcessFiles from "../components/ProcessFiles";
 import TagPanel from "../components/TagPanel";
 import SnapshotTimeline from "../components/SnapshotTimeline";
@@ -27,8 +26,8 @@ import { PROJECT_TYPE_COLORS } from "../constants/projectTypes";
 import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
 import { RISK_TYPE_DELIVERY_DEADLINE, RISK_TYPE_PAYMENT_OVERDUE } from "../constants/risks";
 import { ROUTES } from "../constants/routes";
-import { formatMoney, formatPercentValue } from "../utils/format";
-import { Alert, Badge, Button, Modal, Skeleton, Tabs } from "../components/ui";
+import { formatMoney } from "../utils/format";
+import { Alert, Badge, Button, Modal, Tabs } from "../components/ui";
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
@@ -43,12 +42,6 @@ export default function ProjectDetail() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [projectRisks, setProjectRisks] = useState<ProjectRisks | null>(null);
   const [riskError, setRiskError] = useState<string | null>(null);
-  const [collectionOverview, setCollectionOverview] =
-    useState<CollectionOverview | null>(null);
-  const [collectionLoading, setCollectionLoading] = useState(
-    projectId !== null,
-  );
-  const [collectionError, setCollectionError] = useState<string | null>(null);
   const [loading, setLoading] = useState(projectId !== null);
   const [notFound, setNotFound] = useState(projectId === null);
   const [error, setError] = useState<string | null>(null);
@@ -124,24 +117,6 @@ export default function ProjectDetail() {
     }
   }, [loadQuestions, projectId]);
 
-  const loadCollectionOverview = useCallback(async () => {
-    if (projectId === null) return;
-    setCollectionLoading(true);
-    setCollectionError(null);
-    try {
-      setCollectionOverview(await projectsApi.getCollectionOverview(projectId));
-    } catch (reason) {
-      console.error("回款概览加载失败", reason);
-      setCollectionError(
-        reason instanceof ApiError
-          ? reason.message
-          : "回款概览加载失败，请稍后重试",
-      );
-    } finally {
-      setCollectionLoading(false);
-    }
-  }, [projectId]);
-
   const loadRenewalChain = useCallback(async () => {
     if (projectId === null) return;
     setRenewalChainLoading(true);
@@ -181,9 +156,8 @@ export default function ProjectDetail() {
 
   useEffect(() => {
     void loadProject();
-    void loadCollectionOverview();
     void loadRenewalChain();
-  }, [loadProject, loadCollectionOverview, loadRenewalChain]);
+  }, [loadProject, loadRenewalChain]);
 
   if (notFound) return <ProjectNotFound />;
   if (loading)
@@ -240,7 +214,7 @@ export default function ProjectDetail() {
           onChange={setActiveTab}
           tabs={[
             { key: "overview", label: "概览" },
-            { key: "deliverables", label: "交付物" },
+            { key: "deliverables", label: "回款" },
             { key: "files", label: "过程文件" },
             { key: "tags", label: "标签" },
             { key: "risks", label: "风险列表" },
@@ -293,20 +267,6 @@ export default function ProjectDetail() {
                   label="计划交付日期"
                   value={project.plannedDeliveryDate}
                 />
-              </div>
-              <div
-                className={`detail-progress${project.progress === 0 ? " idle" : ""}`}
-                aria-label={`项目进度 ${project.progress}%`}
-              >
-                <div>
-                  <span>项目进度</span>
-                  <strong>
-                    {project.progress === 0 ? "未开始" : `${project.progress}%`}
-                  </strong>
-                </div>
-                <div className="detail-progress-track">
-                  <span style={{ width: `${project.progress}%` }} />
-                </div>
               </div>
               <ProjectNotesEditor
                 projectId={projectId!}
@@ -452,25 +412,9 @@ export default function ProjectDetail() {
         {activeTab === "deliverables" && (
           <section className="detail-section deliverable-payment-section">
             <div className="deliverable-heading">
-              <h3>交付物清单</h3>
-              <div className="deadline-countdown">
-                {remainingDays === null || remainingDays === undefined
-                  ? "暂无到期预警"
-                  : remainingDays < 0
-                    ? `已逾期 ${Math.abs(remainingDays)} 天`
-                    : `距交付 ${remainingDays} 天`}
-              </div>
+              <h3>回款清单</h3>
             </div>
-            <PaymentOverview
-              overview={collectionOverview}
-              loading={collectionLoading}
-              error={collectionError}
-              onRetry={loadCollectionOverview}
-            />
-            <VersionHistory
-              projectId={projectId!}
-              deliverables={project.deliverables}
-            />
+            <PaymentCollectionList projectId={projectId!} />
           </section>
         )}
         {activeTab === "files" && (
@@ -697,109 +641,6 @@ function Info({
           {value}
         </strong>
       )}
-    </div>
-  );
-}
-
-function PaymentOverview({
-  overview,
-  loading,
-  error,
-  onRetry,
-}: {
-  overview: CollectionOverview | null;
-  loading: boolean;
-  error: string | null;
-  onRetry: () => Promise<void>;
-}) {
-  if (loading)
-    return (
-      <div className="payment-progress-panel">
-        <Skeleton rows={2} />
-      </div>
-    );
-  if (error)
-    return (
-      <div className="payment-progress-panel">
-        <Alert
-          action={
-            <button
-              type="button"
-              className="payment-retry"
-              onClick={() => void onRetry()}
-            >
-              重试
-            </button>
-          }
-        >
-          {error}
-        </Alert>
-      </div>
-    );
-  if (overview === null)
-    return (
-      <div className="payment-progress-panel">
-        <p className="detail-empty">暂无回款数据</p>
-      </div>
-    );
-
-  const collectionPercent = Math.min(
-    100,
-    Math.max(
-      0,
-      overview.collectionRate === null ? 0 : overview.collectionRate * 100,
-    ),
-  );
-  const formatAmount = (amount: number | null) =>
-    amount === null ? "—" : `${formatMoney(amount)} 元`;
-
-  return (
-    <div className="payment-progress-panel">
-      <div className="payment-progress-heading">
-        <span>本项目回款进度</span>
-        <strong>
-          {overview.dataStatus === "incomplete"
-            ? "数据不完整"
-            : `${formatPercentValue(collectionPercent)}%`}
-        </strong>
-      </div>
-      <div
-        className="detail-progress-track payment-track"
-        role="progressbar"
-        aria-label={`回款进度 ${formatPercentValue(collectionPercent)}%`}
-        aria-valuenow={collectionPercent}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <span style={{ width: `${collectionPercent}%` }} />
-      </div>
-      <div className="payment-metrics">
-        <div className="detail-info">
-          <span>合同金额</span>
-          <strong>{formatAmount(overview.contractAmount)}</strong>
-        </div>
-        <div className="detail-info">
-          <span>应收金额</span>
-          <strong>{formatAmount(overview.receivableAmount)}</strong>
-        </div>
-        <div className="detail-info">
-          <span>已收金额</span>
-          <strong>{formatAmount(overview.receivedAmount)}</strong>
-        </div>
-        <div className="detail-info">
-          <span>逾期金额</span>
-          <strong>{formatAmount(overview.overdueAmount)}</strong>
-        </div>
-      </div>
-      {overview.overdueAmount !== null && overview.overdueAmount > 0 && (
-        <Alert tone="danger">
-          逾期金额 {formatMoney(overview.overdueAmount)} 元，请尽快跟进回款
-        </Alert>
-      )}
-      {overview.dataStatus === "incomplete" &&
-        overview.incompleteReasons.length > 0 && (
-          <Alert>回款数据不完整：{overview.incompleteReasons.join("、")}</Alert>
-        )}
     </div>
   );
 }

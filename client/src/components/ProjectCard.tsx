@@ -104,15 +104,6 @@ export default function ProjectCard({ project }: { project: ProjectListItem }) {
           <span>交付 {project.plannedDeliveryDate}</span>
         )}
       </div>
-      <div
-        className={`project-progress${project.progress === 0 ? " idle" : ""}`}
-        aria-label={`项目进度 ${project.progress}%`}
-      >
-        <div className="project-progress-track">
-          <span style={{ width: `${project.progress}%` }} />
-        </div>
-        <strong>{project.progress === 0 ? "未开始" : `${project.progress}%`}</strong>
-      </div>
     </Link>
   );
 }

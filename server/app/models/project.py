@@ -12,7 +12,7 @@ class Project(Base):
     __tablename__ = "project"
     __table_args__ = (
         CheckConstraint(
-            "status IN ('active', 'archived', 'completed')",
+            "status IN ('项目启动', '合同签署', '已开票', '首款已付', '尾款已付', '全款已付', '项目结项')",
             name="ck_project_status",
         ),
         CheckConstraint("progress >= 0 AND progress <= 100", name="ck_project_progress"),

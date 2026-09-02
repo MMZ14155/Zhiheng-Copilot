@@ -300,7 +300,7 @@ async def create_extract_task(
     file_version = await _require_version_access(
         session, version, user, {"manager", "implementer"}
     )
-    if file_version.document_type not in {"contract", "invoice", "payment"}:
+    if file_version.document_type not in {"contract", "invoice"}:
         raise conflict("该版本不是可识别的材料类型", code="NOT_CONTRACT_VERSION")
     task = await create_extraction_task(session, file_version, version)
     if task is None:  # 上方材料类型校验保证正常情况下不会发生

@@ -18,7 +18,7 @@ from app.models.tracked_file import TrackedFile
 from app.models.workspace_file import WorkspaceFile
 from app.schemas.ai import SummaryAnswer, SummaryAnswersRequest
 from app.schemas.copilot import CopilotAnswerOutput, CopilotAskRequest
-from app.schemas.deliverables import CurrentVersionUpdate, TagCreate, TagSnapshotCreate, TrackedFileCreate
+from app.schemas.deliverables import TagCreate, TagSnapshotCreate, TrackedFileCreate, TrackedFileUpdate
 from app.services.statistics import FinancialDocument
 from tests.conftest import Result
 
@@ -95,14 +95,13 @@ def test_deliverable_endpoints(fake_session, users, now, monkeypatch):
     item, fv = tracked(now), version(now)
     monkeypatch.setattr(deliverables.DeliverableService, "promote", AsyncMock(return_value=item))
     monkeypatch.setattr(deliverables.DeliverableService, "list_with_state", AsyncMock(return_value=[(item, [fv], "ok")]))
-    out = asyncio.run(deliverables.promote_tracked_file(1, TrackedFileCreate(source_file_id=2, category="合同", required=True), fake_session, users.member))
+    out = asyncio.run(deliverables.create_tracked_file(1, TrackedFileCreate(name="合同文件", source_file_id=2, category="合同", required=True), fake_session, users.member))
     assert out.status == "ok"
     assert len(asyncio.run(deliverables.list_tracked_files(1, fake_session, users.member)).items) == 1
 
     fake_session.get.return_value = item
-    monkeypatch.setattr(deliverables.DeliverableService, "switch_current_version", AsyncMock(return_value=item))
-    switched = asyncio.run(deliverables.switch_current_version(4, CurrentVersionUpdate(version=fv.version), fake_session, users.member))
-    assert switched.current_version == fv.version
+    switched = asyncio.run(deliverables.update_tracked_file(4, TrackedFileUpdate(receivable_amount=Decimal("1000"), received_amount=Decimal("500")), fake_session, users.member))
+    assert switched.receivable_amount == Decimal("1000") and switched.received_amount == Decimal("500")
 
     monkeypatch.setattr(deliverables.DeliverableService, "require_project", AsyncMock())
     async def refresh(obj):

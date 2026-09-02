@@ -211,7 +211,6 @@ export default function ProcessFiles({
               <option value="">普通材料</option>
               <option value="contract">合同</option>
               <option value="invoice">发票</option>
-              <option value="payment">付款材料</option>
             </select>
           </label>
           <label className="process-wide">

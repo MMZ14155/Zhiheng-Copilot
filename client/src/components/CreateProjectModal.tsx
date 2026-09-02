@@ -36,7 +36,6 @@ type Field =
   | "signedDate"
   | "startedDate"
   | "deliveryDate"
-  | "progress"
   | "notes";
 type Values = Record<Field, string>;
 type Errors = Partial<Record<Field, string>>;
@@ -49,7 +48,6 @@ const initial: Values = {
   signedDate: "",
   startedDate: "",
   deliveryDate: "",
-  progress: "",
   notes: "",
 };
 
@@ -94,13 +92,6 @@ function validate(v: Values): Errors {
       Number(v.contractAmount) <= 0)
   )
     e.contractAmount = "合同金额必须大于 0";
-  if (
-    v.progress &&
-    (!Number.isFinite(Number(v.progress)) ||
-      Number(v.progress) < 0 ||
-      Number(v.progress) > 100)
-  )
-    e.progress = "进度必须在 0 到 100 之间";
   if (v.signedDate && v.startedDate && v.signedDate > v.startedDate)
     e.startedDate = "启动日期不能早于签约日期";
   if (v.startedDate && v.deliveryDate && v.startedDate > v.deliveryDate)
@@ -161,7 +152,7 @@ export default function CreateProjectModal({
       .listProjects({ size: 1000 })
       .then(({ items }) => {
         if (!cancelled)
-          setRenewalOptions(items.filter((p) => p.status === "active"));
+          setRenewalOptions(items.filter((p) => p.status !== "项目结项"));
       })
       .catch((reason: unknown) => {
         console.error("加载可续签项目失败", reason);
@@ -285,7 +276,6 @@ export default function CreateProjectModal({
       signed_date: values.signedDate || null,
       started_date: values.startedDate || null,
       planned_delivery_date: values.deliveryDate || null,
-      progress: values.progress ? Number(values.progress) : 0,
       notes: values.notes.trim() || null,
       parties: parties
         .map((p) => ({
@@ -543,15 +533,6 @@ export default function CreateProjectModal({
                 onChange={(e) => set("deliveryDate", e.target.value)}
               />
             </Field>
-            <Field label="进度" error={errors.progress}>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={values.progress}
-                onChange={(e) => set("progress", e.target.value)}
-              />
-            </Field>
           </div>
           <div className="parties-section">
             <div className="section-heading">
@@ -591,13 +572,15 @@ export default function CreateProjectModal({
                     onChange={(e) => updateParty(i, "name", e.target.value)}
                   />
                 </label>
-                <label>
-                  联系方式
-                  <input
-                    value={p.contact ?? ""}
-                    onChange={(e) => updateParty(i, "contact", e.target.value)}
-                  />
-                </label>
+                {p.role !== "乙方" && (
+                  <label>
+                    联系方式
+                    <input
+                      value={p.contact ?? ""}
+                      onChange={(e) => updateParty(i, "contact", e.target.value)}
+                    />
+                  </label>
+                )}
                 <button
                   type="button"
                   aria-label={`删除第 ${i + 1} 个签约方`}
