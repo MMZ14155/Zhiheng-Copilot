@@ -63,21 +63,20 @@ export default function ProjectCard({ project }: { project: ProjectListItem }) {
         </div>
       </div>
       {primaryRisk && (
-        <p className="risk-summary">{primaryRisk.reason}</p>
+        <div className="risk-highlights">
+          {materialRisk?.missingParts && (
+            <span className="warn">缺失 {materialRisk.missingParts.join("、")}</span>
+          )}
+          {deadlineText && (
+            <span className={remainingDays !== null && remainingDays !== undefined && remainingDays < 0 ? "block" : "warn"}>
+              {deadlineText}
+            </span>
+          )}
+          {paymentRisk && (
+            <span className="warn">{paymentRisk.paymentStatus}</span>
+          )}
+        </div>
       )}
-      <div className="risk-highlights">
-        {materialRisk?.missingParts && (
-          <span className="warn">缺失 {materialRisk.missingParts.join("、")}</span>
-        )}
-        {deadlineText && (
-          <span className={remainingDays !== null && remainingDays !== undefined && remainingDays < 0 ? "block" : "warn"}>
-            {deadlineText}
-          </span>
-        )}
-        {paymentRisk && (
-          <span className="warn">{paymentRisk.paymentStatus}</span>
-        )}
-      </div>
       <div className="card-meta-line">
         {project.contractAmount !== null && (
           <span className="card-amount">
