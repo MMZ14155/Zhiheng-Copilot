@@ -45,9 +45,12 @@ function toDraft(item: TrackedFile): Draft {
 
 function derivePaymentStatus(items: TrackedFile[]): string {
   if (items.length === 0) return "未付款";
-  const names = new Set(items.map((i) => i.name));
-  if (names.has("尾款") || names.has("全款")) return "已付全款";
-  if (names.has("首款")) return "已付首款";
+  const paidNames = new Set(
+    items.filter((i) => i.paymentStatus === "已付款").map((i) => i.name),
+  );
+  if (paidNames.has("全款")) return "已付全款";
+  if (paidNames.has("首款") && paidNames.has("尾款")) return "已付全款";
+  if (paidNames.has("首款")) return "已付首款";
   return "未付款";
 }
 
