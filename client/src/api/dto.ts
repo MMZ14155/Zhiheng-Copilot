@@ -146,6 +146,7 @@ export interface ProjectRiskDto {
   overdue_days: number | null;
   overdue_amount: number | null;
   data_status: "complete" | "incomplete" | null;
+  dismissed: boolean | null;
 }
 export interface ProjectRisksResponseDto {
   level: RiskLevelDto;

@@ -76,6 +76,7 @@ class RiskItem(BaseModel):
     overdue_days: int | None = None
     overdue_amount: Decimal | None = None
     data_status: Literal["complete", "incomplete"] | None = None
+    dismissed: bool | None = Field(default=None)
 
 
 class RiskResponse(BaseModel):

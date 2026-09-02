@@ -49,6 +49,7 @@ export interface ProjectRisk {
   overdueDays: number | null;
   overdueAmount: number | null;
   dataStatus: "complete" | "incomplete" | null;
+  dismissed?: boolean | null;
 }
 export interface ProjectRisks {
   level: RiskLevel;

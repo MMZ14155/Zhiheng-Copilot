@@ -159,6 +159,17 @@ export default function ProjectDetail() {
     void loadRenewalChain();
   }, [loadProject, loadRenewalChain]);
 
+  const handleDismissDeliveryWarning = useCallback(async () => {
+    if (projectId === null) return;
+    try {
+      await projectsApi.dismissDeliveryWarning(projectId);
+      const risks = await projectsApi.getProjectRisks(projectId);
+      setProjectRisks(risks);
+    } catch (reason) {
+      console.error("关闭交付提醒失败", reason);
+    }
+  }, [projectId]);
+
   if (notFound) return <ProjectNotFound />;
   if (loading)
     return (
@@ -275,7 +286,23 @@ export default function ProjectDetail() {
               />
             </section>
             {remainingDays !== null && remainingDays !== undefined && (
-              <Alert tone={remainingDays < 0 ? "danger" : "warning"}>
+              <Alert
+                tone={remainingDays < 0 ? "danger" : "warning"}
+                action={
+                  canEditBasicInfo &&
+                  deadlineRisk &&
+                  remainingDays >= 0 &&
+                  deadlineRisk.dismissed !== true ? (
+                    <Button
+                      variant="secondary"
+                      type="button"
+                      onClick={() => void handleDismissDeliveryWarning()}
+                    >
+                      关闭提醒
+                    </Button>
+                  ) : undefined
+                }
+              >
                 结项节点{" "}
                 {remainingDays < 0
                   ? `已逾期 ${Math.abs(remainingDays)} 天`

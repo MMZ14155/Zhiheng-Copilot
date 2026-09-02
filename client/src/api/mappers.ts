@@ -118,6 +118,7 @@ const mapRiskItem = (risk: ProjectRiskDto) => ({
   overdueDays: risk.overdue_days,
   overdueAmount: risk.overdue_amount,
   dataStatus: risk.data_status,
+  dismissed: risk.dismissed,
 });
 export const mapProjectRisks = (
   dto: ProjectRisksResponseDto,

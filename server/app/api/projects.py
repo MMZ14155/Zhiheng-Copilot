@@ -366,6 +366,21 @@ async def get_project(
     return response
 
 
+@router.post("/projects/{project_id}/dismiss-delivery-warning", response_model=ProjectResponse)
+async def dismiss_delivery_warning(
+    project_id: int,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> ProjectResponse:
+    await require_project_role(session, project_id, user, {"manager"})
+    project = await _get_project_or_404(session, project_id)
+    project.delivery_warning_dismissed = True
+    await session.commit()
+    await session.refresh(project)
+    logger.info("dismissed delivery warning project_id=%s user_id=%s", project_id, user.id)
+    return ProjectResponse.model_validate(project)
+
+
 @router.get("/projects/{project_id}/collection-overview", response_model=CollectionOverviewResponse)
 async def get_collection_overview(project_id: int, session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user)) -> CollectionOverviewResponse:

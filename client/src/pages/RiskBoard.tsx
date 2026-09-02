@@ -105,6 +105,14 @@ export default function RiskBoard() {
             (risk) => risk.type === RISK_TYPE_DELIVERY_DEADLINE,
           ),
         ).length ?? 0,
+      activeDelivery:
+        data?.items.filter((project) =>
+          project.risks?.some(
+            (risk) =>
+              risk.type === RISK_TYPE_DELIVERY_DEADLINE &&
+              !risk.dismissed,
+          ),
+        ).length ?? 0,
       payment:
         data?.items.filter((project) =>
           project.risks?.some(
@@ -126,7 +134,7 @@ export default function RiskBoard() {
       blockCount: counts.block,
       warnCount: counts.warn,
       okCount: counts.ok,
-      deliveryCount: counts.delivery,
+      deliveryCount: counts.activeDelivery,
       paymentCount: counts.payment,
       incompleteCount: counts.incomplete,
     }),

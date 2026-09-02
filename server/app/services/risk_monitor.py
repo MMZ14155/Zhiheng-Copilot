@@ -85,8 +85,10 @@ def evaluate_project(
                 recommendation="立即确认延期原因与剩余工作，制定补救计划并同步客户。",
             ))
         elif remaining_days <= thresholds.delivery_warn_days:
+            dismissed = getattr(project, "delivery_warning_dismissed", False)
             risks.append(RiskItem(
                 type="delivery-deadline", level="warn", remaining_days=remaining_days,
+                dismissed=dismissed,
                 reason=f"距计划交付仅剩 {remaining_days} 天，计划交付日期为 {delivery_date.isoformat()}。",
                 recommendation="倒排里程碑并按周跟踪关键节点，提前处理交付阻塞。",
             ))

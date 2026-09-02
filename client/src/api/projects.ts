@@ -73,6 +73,10 @@ export const updateProjectNotes = (id: number, notes: string | null) =>
     method: "PATCH",
     body: { notes },
   });
+export const dismissDeliveryWarning = (id: number) =>
+  jsonRequest<ProjectResponseDto>(`/projects/${id}/dismiss-delivery-warning`, {
+    method: "POST",
+  });
 export const createProjectLink = (id: number, body: ProjectLinkCreateDto) =>
   jsonRequest<ProjectLinkResponseDto>(`/projects/${id}/links`, {
     method: "POST",
