@@ -8,6 +8,10 @@
   color: var(--muted);
   font-size: 12px;
 }
+.card-region {
+  color: var(--text-secondary);
+  margin-left: 4px;
+}
 .project-list-heading button,
 .project-list-state button {
   border: 1px solid #cbd5e1;

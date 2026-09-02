@@ -21,6 +21,7 @@ const draft: ProjectDraft = {
   ],
   missingFields: ["planned_delivery_date"],
   notes: "合同备注",
+  region: null,
 };
 
 vi.mock("../api", async (original) => {
@@ -212,6 +213,7 @@ describe("CreateProjectModal AI 合同分析模式", () => {
           signedDate: "2025-01-01",
           plannedDeliveryDate: null,
           updatedAt: "",
+          region: null,
         },
       ],
     });

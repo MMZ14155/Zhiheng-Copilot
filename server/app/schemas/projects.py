@@ -44,6 +44,7 @@ class ProjectBase(BaseModel):
     status: ProjectStatus = "项目启动"
     progress: int = Field(default=0, ge=0, le=100)
     notes: str | None = Field(default=None, max_length=10000)
+    region: str | None = Field(default=None, max_length=100)
 
     @model_validator(mode="after")
     def validate_dates(self) -> "ProjectBase":
@@ -86,6 +87,7 @@ class ProjectUpdate(BaseModel):
     satisfaction: Decimal | None = Field(default=None, ge=0, le=5)
     acceptance_result: AcceptanceResult | None = None
     notes: str | None = Field(default=None, max_length=10000)
+    region: str | None = Field(default=None, max_length=100)
 
     @field_validator("parties")
     @classmethod
@@ -158,6 +160,7 @@ class ProjectResponse(BaseModel):
     status: ProjectStatus
     progress: int
     notes: str | None
+    region: str | None
     created_at: datetime
     updated_at: datetime
     links: list[RelatedProjectSummary] | None = None

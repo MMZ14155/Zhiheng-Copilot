@@ -13,6 +13,7 @@ import {
 } from "../api";
 import { PROJECT_STATUS_LABELS } from "../constants/projectStatus";
 import { PROJECT_TYPES } from "../constants/projectTypes";
+import { PROJECT_REGIONS } from "../constants/regions";
 import { Button, Modal } from "../components/ui";
 import "../components/CreateProjectModal.css";
 
@@ -20,6 +21,7 @@ type Field =
   | "name"
   | "customerName"
   | "projectType"
+  | "region"
   | "contractAmount"
   | "signedDate"
   | "plannedDeliveryDate"
@@ -67,6 +69,7 @@ export default function ProjectBasicInfoEditor({
       signedDate: project.signedDate ?? "",
       plannedDeliveryDate: project.plannedDeliveryDate ?? "",
       status: project.status ?? "项目启动",
+      region: project.region ?? "",
     }),
     [project],
   );
@@ -133,6 +136,7 @@ export default function ProjectBasicInfoEditor({
       signed_date: values.signedDate || null,
       planned_delivery_date: values.plannedDeliveryDate || null,
       status: values.status as ProjectUpdateDto["status"],
+      region: values.region || null,
       parties: parties
         .map((party) => ({
           role: party.role.trim(),
@@ -228,6 +232,19 @@ export default function ProjectBasicInfoEditor({
               {PROJECT_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {type}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="所属地区">
+            <select
+              value={values.region}
+              onChange={(event) => setField("region", event.target.value)}
+            >
+              <option value="">请选择</option>
+              {PROJECT_REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
                 </option>
               ))}
             </select>

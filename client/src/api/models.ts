@@ -132,6 +132,7 @@ export interface ProjectListItem {
   signedDate: string | null;
   plannedDeliveryDate: string | null;
   updatedAt: string;
+  region: string | null;
   riskLevel?: RiskLevel | null;
   risks?: ProjectRisk[];
 }
@@ -279,6 +280,7 @@ export interface ProjectDraft {
   paymentTerms: { stage: string; ratio: string }[];
   missingFields: string[];
   notes: string | null;
+  region: string | null;
 }
 export interface ProjectDetail {
   id: string;
@@ -301,6 +303,7 @@ export interface ProjectDetail {
     | "项目结项";
   progress?: number;
   notes: string | null;
+  region: string | null;
   deliverables: ProjectDeliverable[];
   latestSummary: ProjectLatestSummary | null;
   managerIds: number[];

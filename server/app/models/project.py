@@ -48,6 +48,7 @@ class Project(Base):
     risk_config: Mapped[dict | None] = mapped_column(JSONB)
     delivery_warning_dismissed: Mapped[bool] = mapped_column(nullable=False, default=False)
     notes: Mapped[str | None] = mapped_column(Text)
+    region: Mapped[str | None] = mapped_column(String(100))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

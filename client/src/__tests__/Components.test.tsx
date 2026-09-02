@@ -87,6 +87,7 @@ describe("核心组件", () => {
           signedDate: null,
           plannedDeliveryDate: null,
           updatedAt: "",
+          region: null,
           riskLevel: "warn",
           risks: [
             {
@@ -131,8 +132,7 @@ describe("核心组件", () => {
           contractAmount: 1000,
           signedDate: null,
           plannedDeliveryDate: null,
-          updatedAt: "",
-          riskLevel: "warn",
+          updatedAt: "",          region: null,          riskLevel: "warn",
           risks: [
             {
               type: "material-missing",

@@ -238,6 +238,7 @@ describe("页面", () => {
           signedDate: null,
           plannedDeliveryDate: null,
           updatedAt: "",
+          region: null,
         },
       ],
     });
@@ -277,6 +278,7 @@ describe("页面", () => {
             signedDate: null,
             plannedDeliveryDate: null,
             updatedAt: "",
+            region: null,
           },
         ],
       })
@@ -313,6 +315,7 @@ describe("页面", () => {
       plannedDeliveryDate: null,
       status: "项目启动",
       notes: null,
+      region: null,
       managerIds: [],
       deliverables: [],
       latestSummary: null,
@@ -374,7 +377,9 @@ describe("页面", () => {
       startedDate: null,
       plannedDeliveryDate: null,
       status: "项目启动",
-      notes: null,      managerIds: [],      deliverables: [],
+      notes: null,
+      region: null,
+      managerIds: [],      deliverables: [],
       latestSummary: null,
     });
     vi.mocked(projectsApi.getProjectRisks).mockResolvedValue({
@@ -431,6 +436,7 @@ describe("页面", () => {
       plannedDeliveryDate: null,
       status: "项目启动",
       notes: null,
+      region: null,
       managerIds: [],
       deliverables: [],
       latestSummary: null,
@@ -479,6 +485,7 @@ describe("页面", () => {
       plannedDeliveryDate: null,
       status: "项目启动",
       notes: null,
+      region: null,
       managerIds: [],
       deliverables: [],
       latestSummary: null,
@@ -512,6 +519,7 @@ describe("页面", () => {
           plannedDeliveryDate: null,
           status: "项目启动",
           updatedAt: "y",
+          region: null,
         },
         {
           id: "2",
@@ -524,6 +532,7 @@ describe("页面", () => {
           plannedDeliveryDate: null,
           status: "项目启动",
           updatedAt: "z",
+          region: null,
         },
       ],
     });

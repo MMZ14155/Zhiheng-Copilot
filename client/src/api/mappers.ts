@@ -54,6 +54,7 @@ export const mapProject = (dto: ProjectResponseDto): ProjectListItem => ({
   signedDate: dto.signed_date,
   plannedDeliveryDate: dto.planned_delivery_date,
   updatedAt: dto.updated_at,
+  region: dto.region,
 });
 export const mapProjectList = (dto: ProjectListResponseDto): ProjectList => ({
   page: dto.page,
@@ -212,6 +213,7 @@ export const mapProjectDetail = (
   status: dto.status,
   progress: dto.progress,
   notes: dto.notes,
+  region: dto.region,
   deliverables: dto.deliverables.map((item) => ({
     id: String(item.id),
     name: item.name,
@@ -256,6 +258,7 @@ export const mapProjectDraft = (dto: ProjectDraftOutputDto): ProjectDraft => ({
   paymentTerms: dto.payment_terms ?? [],
   missingFields: dto.missing_fields,
   notes: dto.notes,
+  region: dto.region,
 });
 
 export const mapTrackedFile = (dto: TrackedFileResponseDto): TrackedFile => ({

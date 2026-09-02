@@ -247,6 +247,7 @@ async def create_project(
             status=payload.status,
             progress=payload.progress,
             notes=payload.notes,
+            region=payload.region,
         )
         session.add(project)
         try:

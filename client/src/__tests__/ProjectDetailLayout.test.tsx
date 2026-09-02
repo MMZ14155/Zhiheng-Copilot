@@ -52,6 +52,7 @@ const baseProject: ProjectDetailModel = {
   plannedDeliveryDate: null,
   status: "项目启动",
   notes: null,
+  region: null,
   managerIds: [],
   deliverables: [],
   latestSummary: null,
@@ -214,6 +215,7 @@ describe("项目详情页排版", () => {
           plannedDeliveryDate: null,
           status: "项目启动",
           updatedAt: "y",
+          region: null,
         },
         {
           id: "2",
@@ -226,6 +228,7 @@ describe("项目详情页排版", () => {
           plannedDeliveryDate: null,
           status: "项目启动",
           updatedAt: "z",
+          region: null,
         },
       ],
     });

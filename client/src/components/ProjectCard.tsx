@@ -49,7 +49,12 @@ export default function ProjectCard({ project }: { project: ProjectListItem }) {
           <div className="card-title" title={project.name}>
             {project.name}
           </div>
-          <div className="card-customer">{project.customerName}</div>
+          <div className="card-customer">
+            {project.customerName}
+            {project.region && (
+              <span className="card-region">（{project.region}）</span>
+            )}
+          </div>
         </div>
         <div className="card-actions">
           <div className={`badge project-status ${project.status}`}>

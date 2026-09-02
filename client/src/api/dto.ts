@@ -56,6 +56,7 @@ export interface ProjectWriteDto {
   status?: ProjectStatusDto;
   progress?: number;
   notes?: string | null;
+  region?: string | null;
   payment_terms?: { stage: string; ratio: string }[];
   /** 续签来源项目 ID：后端在同一事务中创建项目与续签链接。 */
   renewal_source_id?: number | null;
@@ -75,6 +76,7 @@ export interface ProjectResponseDto {
   status: ProjectStatusDto;
   progress: number;
   notes: string | null;
+  region: string | null;
   created_at: string;
   updated_at: string;
   links: RelatedProjectSummaryDto[] | null;
@@ -573,4 +575,5 @@ export interface ProjectDraftOutputDto {
   payment_terms: { stage: string; ratio: string }[];
   missing_fields: string[];
   notes: string | null;
+  region: string | null;
 }

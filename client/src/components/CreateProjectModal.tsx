@@ -16,6 +16,7 @@ import {
   type ProjectWriteDto,
 } from "../api";
 import { PROJECT_TYPES } from "../constants/projectTypes";
+import { PROJECT_REGIONS } from "../constants/regions";
 import "./CreateProjectModal.css";
 
 class ProjectDraftError extends Error {
@@ -32,6 +33,7 @@ type Field =
   | "name"
   | "customerName"
   | "projectType"
+  | "region"
   | "contractAmount"
   | "signedDate"
   | "deliveryDate"
@@ -43,6 +45,7 @@ const initial: Values = {
   name: "",
   customerName: "",
   projectType: "",
+  region: "",
   contractAmount: "",
   signedDate: "",
   deliveryDate: "",
@@ -60,6 +63,7 @@ const MISSING_FIELD_LABELS: Record<string, string> = {
   started_date: "启动日期",
   planned_delivery_date: "结项时间",
   project_type: "项目类型",
+  region: "所属地区",
   notes: "备注",
 };
 type AnalysisStep = "upload" | "extract" | "parse" | "done";
@@ -174,6 +178,7 @@ export default function CreateProjectModal({
       signedDate: draft.signedDate ?? "",
       deliveryDate: draft.plannedDeliveryDate ?? "",
       notes: draft.notes ?? "",
+      region: draft.region ?? "",
     }));
     setParties(
       draft.parties.map((p) => ({
@@ -268,6 +273,7 @@ export default function CreateProjectModal({
       signed_date: values.signedDate || null,
       planned_delivery_date: values.deliveryDate || null,
       notes: values.notes.trim() || null,
+      region: values.region || null,
       parties: parties
         .map((p) => ({
           role: p.role.trim(),
@@ -508,6 +514,19 @@ export default function CreateProjectModal({
                 {PROJECT_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {t}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="所属地区">
+              <select
+                value={values.region}
+                onChange={(e) => set("region", e.target.value)}
+              >
+                <option value="">请选择</option>
+                {PROJECT_REGIONS.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
                   </option>
                 ))}
               </select>

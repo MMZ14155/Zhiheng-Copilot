@@ -41,6 +41,7 @@ const project = {
   signedDate: null,
   plannedDeliveryDate: null,
   updatedAt: "",
+  region: null,
 };
 const llmConfig = {
   provider: "kimi",
@@ -79,7 +80,10 @@ describe("管理页与项目创建", () => {
       page: 1,
       size: 100,
       total: 1,
-      items: [project],
+      items: [{
+        ...project,
+        region: null,
+      }],
     });
   });
   afterEach(() => {

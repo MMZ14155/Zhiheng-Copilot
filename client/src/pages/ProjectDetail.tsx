@@ -268,6 +268,10 @@ export default function ProjectDetail() {
                   value={PROJECT_STATUS_LABELS[project.status]}
                 />
                 <Info
+                  label="所属地区"
+                  value={project.region}
+                />
+                <Info
                   label="合同金额"
                   value={
                     project.contractAmount === null

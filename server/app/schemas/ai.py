@@ -216,6 +216,7 @@ class ProjectDraftOutput(BaseModel):
     payment_terms: list[dict[str, str]] = Field(default_factory=list)
     missing_fields: list[str] = Field(default_factory=list)
     notes: str | None = None
+    region: str | None = None
 
     @model_validator(mode="before")
     @classmethod
