@@ -287,13 +287,16 @@ export default function ProjectDetail() {
               </div>
             </section>
             {materialRisks && materialRisks.length > 0 && (
-              <Alert tone="warning">
-                材料缺失：
+              <>
                 {materialRisks
-                  .map((risk) => risk.missingParts?.join("、"))
-                  .filter(Boolean)
-                  .join("、")}
-              </Alert>
+                  .flatMap((risk) => risk.missingParts ?? [])
+                  .filter((part): part is string => Boolean(part))
+                  .map((part) => (
+                    <Alert key={part} tone="warning">
+                      缺失：{part}
+                    </Alert>
+                  ))}
+              </>
             )}
             {remainingDays !== null && remainingDays !== undefined && (
               <Alert
