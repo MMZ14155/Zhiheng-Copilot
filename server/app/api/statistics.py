@@ -3,7 +3,7 @@ from collections import Counter
 from datetime import date
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,28 +47,43 @@ async def _load_deliverable_states(
 
 @router.get("/statistics/overview", response_model=StatisticsOverviewResponse)
 async def get_statistics_overview(
+    region: str | None = Query(default=None, min_length=1, max_length=100),
+    manager_id: int | None = Query(default=None, ge=1),
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
 ) -> StatisticsOverviewResponse:
-    project_ids: list[int] | None = None
+    visible_ids: list[int] | None = None
     if not user.is_admin:
-        project_ids = list(
+        visible_ids = list(
             (
                 await session.scalars(
                     select(ProjectMember.project_id).where(ProjectMember.user_id == user.id)
                 )
             ).all()
         )
+    filters = []
+    if region:
+        filters.append(Project.region == region)
+    if manager_id:
+        filters.append(
+            Project.id.in_(
+                select(ProjectMember.project_id).where(
+                    ProjectMember.user_id == manager_id,
+                    ProjectMember.role == "manager",
+                )
+            )
+        )
+    if visible_ids is not None:
+        filters.append(Project.id.in_(visible_ids))
     project_stmt = select(Project)
-    if project_ids is not None:
-        project_stmt = project_stmt.where(Project.id.in_(project_ids))
+    if filters:
+        project_stmt = project_stmt.where(*filters)
     projects = list((await session.execute(project_stmt)).scalars())
-    file_count_stmt = select(func.count()).select_from(WorkspaceFile)
-    if project_ids is not None:
-        file_count_stmt = file_count_stmt.where(WorkspaceFile.project_id.in_(project_ids))
+    filtered_ids = [project.id for project in projects]
+    file_count_stmt = select(func.count()).select_from(WorkspaceFile).where(WorkspaceFile.project_id.in_(filtered_ids))
     workspace_file_total = await session.scalar(file_count_stmt) or 0
-    deliverables = await _load_deliverable_states(session, project_ids)
-    financial_documents = await load_financial_documents(session, project_ids)
+    deliverables = await _load_deliverable_states(session, filtered_ids)
+    financial_documents = await load_financial_documents(session, filtered_ids)
 
     risk_counts = Counter({"warn": 0, "ok": 0})
     deliverable_counts = empty_status_counts()

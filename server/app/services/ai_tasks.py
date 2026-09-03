@@ -6,7 +6,8 @@ import re
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.extraction import MultimodalRequiredError
 from app.db.session import AsyncSessionLocal
@@ -19,6 +20,7 @@ from app.models.summary import Summary
 from app.models.summary_input import SummaryInput
 from app.models.task import Task
 from app.models.tracked_file import TrackedFile
+from app.models.workspace_file import WorkspaceFile
 from app.schemas.ai import (
     ContractExtractionOutput,
     InvoiceExtractionOutput,
@@ -48,6 +50,62 @@ __all__ = [
 ]
 
 logger = logging.getLogger(__name__)
+
+
+async def _auto_fill_payment_deliverable(
+    session: AsyncSession,
+    version: FileVersion,
+    info: InvoiceInfo | PaymentInfo,
+) -> None:
+    """发票/付款单解析后，自动回填对应回款 deliverable 的实收金额与状态。"""
+    if info.amount is None:
+        return
+    workspace_file = await session.get(WorkspaceFile, version.file_id)
+    if workspace_file is None:
+        return
+    project_id = workspace_file.project_id
+    if project_id is None:
+        return
+    payment_date = getattr(info, "issued_date", None) or getattr(info, "payment_date", None)
+
+    # 优先匹配应收金额相等的未付款回款项；若未命中，则匹配最早的未付款回款项。
+    tracked_files = list(
+        (
+            await session.execute(
+                select(TrackedFile)
+                .where(
+                    TrackedFile.project_id == project_id,
+                    TrackedFile.category == "回款",
+                    or_(
+                        TrackedFile.payment_status.is_(None),
+                        TrackedFile.payment_status != "已付款",
+                    ),
+                )
+                .order_by(TrackedFile.id)
+            )
+        ).scalars()
+    )
+    if not tracked_files:
+        return
+
+    matched = next(
+        (t for t in tracked_files if t.receivable_amount == info.amount),
+        None,
+    )
+    if matched is None:
+        matched = tracked_files[0]
+
+    matched.payment_status = "已付款"
+    matched.received_amount = info.amount
+    if payment_date is not None:
+        matched.payment_date = payment_date
+    await session.flush()
+    logger.info(
+        "auto filled payment deliverable tracked_id=%s project_id=%s amount=%s",
+        matched.id,
+        project_id,
+        info.amount,
+    )
 
 
 def _normalize_party_roles(out: ProjectDraftOutput) -> None:
@@ -433,6 +491,8 @@ class AiTaskExecutor:
             setattr(info, field, value)
         info.raw_output = out.model_dump(mode="json")
         version.parse_status = "parsed"
+        if version.document_type in {"invoice", "payment"}:
+            await _auto_fill_payment_deliverable(session, version, info)
         await AiTaskExecutor._set_stage(session, task, "completed", 100)
 
     @staticmethod

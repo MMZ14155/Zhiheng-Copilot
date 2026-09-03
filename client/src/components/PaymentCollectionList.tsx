@@ -189,7 +189,7 @@ export default function PaymentCollectionList({
               placeholder="金额"
             />
           ) : (
-            item.receivedAmount ?? "-"
+            item.receivedAmount || item.receivableAmount || "-"
           )}
         </td>
         <td>

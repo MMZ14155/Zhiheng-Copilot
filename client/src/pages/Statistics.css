@@ -213,9 +213,27 @@
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.statistics-filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.statistics-filters select {
+  min-width: 120px;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
 }
 
 .statistics-heading button,
+.statistics-filters button,
 .statistics-state button {
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -224,7 +242,8 @@
   cursor: pointer;
 }
 
-.statistics-heading button:disabled {
+.statistics-heading button:disabled,
+.statistics-filters button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }

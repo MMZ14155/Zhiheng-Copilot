@@ -1,10 +1,12 @@
 ﻿import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ApiError, projectsApi, statisticsApi } from "../api";
+import { ApiError, adminApi, projectsApi, statisticsApi } from "../api";
 import { formatMoney } from "../utils/format";
+import { PROJECT_REGIONS } from "../constants/regions";
 import { RISK_TYPE_DELIVERY_WARNING } from "../constants/risks";
 import { ROUTES } from "../constants/routes";
 import type {
+  AdminUser,
   AverageMetric,
   ProjectListItem,
   ProjectStage,
@@ -58,20 +60,30 @@ export default function Statistics() {
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [regionFilter, setRegionFilter] = useState<string>("all");
+  const [managerFilter, setManagerFilter] = useState<string>("all");
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     setDeadlineError(null);
     try {
-      const [overviewResult, projectsResult, risksResult] =
+      const region = regionFilter === "all" ? undefined : regionFilter;
+      const managerId = managerFilter === "all" ? undefined : Number(managerFilter);
+      const [overviewResult, projectsResult, risksResult, userListResult] =
         await Promise.allSettled([
-          statisticsApi.getStatisticsOverview(),
-          projectsApi.listProjects({ page: 1, size: 100 }),
+          statisticsApi.getStatisticsOverview({ region, managerId }),
+          projectsApi.listProjects({ page: 1, size: 100, region, managerId }),
           projectsApi.listProjectRisksBatch(),
+          adminApi.listUsers().catch((reason: unknown) => {
+            console.error("用户列表加载失败", reason);
+            return [];
+          }),
         ]);
       if (overviewResult.status === "rejected") throw overviewResult.reason;
       const overview = overviewResult.value;
       setData(overview);
+      setUsers(userListResult.status === "fulfilled" ? userListResult.value : []);
       if (
         projectsResult.status === "rejected" ||
         risksResult.status === "rejected"
@@ -116,7 +128,7 @@ export default function Statistics() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [regionFilter, managerFilter]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -125,9 +137,35 @@ export default function Statistics() {
     <div className="page-container">
       <div className="statistics-heading">
         <h2 className="page-title">统计看板</h2>
-        <button type="button" onClick={() => void load()} disabled={loading}>
-          {loading ? "加载中…" : "刷新"}
-        </button>
+        <div className="statistics-filters">
+          <select
+            aria-label="所属地区"
+            value={regionFilter}
+            onChange={(e) => setRegionFilter(e.target.value)}
+          >
+            <option value="all">全部地区</option>
+            {PROJECT_REGIONS.map((region) => (
+              <option key={region} value={region}>
+                {region}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label="负责人"
+            value={managerFilter}
+            onChange={(e) => setManagerFilter(e.target.value)}
+          >
+            <option value="all">全部负责人</option>
+            {users.map((user) => (
+              <option key={user.id} value={String(user.id)}>
+                {user.name || user.login}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={() => void load()} disabled={loading}>
+            {loading ? "加载中…" : "刷新"}
+          </button>
+        </div>
       </div>
       {loading && (
         <div className="statistics-state" role="status">
