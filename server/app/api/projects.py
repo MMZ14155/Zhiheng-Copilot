@@ -500,6 +500,17 @@ async def _risk_deliverables(
             required=tracked.required,
             status=status,
             unfrozen_versions=sum(not version.is_frozen for version in versions),
+            extensions=DeliverableService._extensions(tracked.name),
+            document_types=tuple(
+                sorted(
+                    {
+                        str(version.document_type)
+                        for version in versions
+                        if version.document_type is not None
+                    }
+                )
+            ),
+            payment_status=tracked.payment_status if tracked.category == "回款" else None,
         )
         for tracked, versions, status in states
     ]

@@ -190,7 +190,7 @@ export default function ProjectDetail() {
     return <div className="page-container detail-state">暂无项目详情</div>;
   const canEditBasicInfo =
     isAdmin || project.managerIds.includes(currentUser?.id ?? -1);
-  const materialRisk = projectRisks?.risks.find(
+  const materialRisks = projectRisks?.risks.filter(
     (risk) => risk.type === RISK_TYPE_MATERIAL_MISSING,
   );
   const deliveryRisk = projectRisks?.risks.find(
@@ -286,9 +286,13 @@ export default function ProjectDetail() {
                 />
               </div>
             </section>
-            {materialRisk && materialRisk.missingParts && (
+            {materialRisks && materialRisks.length > 0 && (
               <Alert tone="warning">
-                材料缺失：{materialRisk.missingParts.join("、")}
+                材料缺失：
+                {materialRisks
+                  .map((risk) => risk.missingParts?.join("、"))
+                  .filter(Boolean)
+                  .join("、")}
               </Alert>
             )}
             {remainingDays !== null && remainingDays !== undefined && (

@@ -101,11 +101,9 @@ def test_material_missing_detects_doc_pdf_invoice():
         deliverable(name="contract.pdf", extensions=(".pdf",), document_types=("contract",)),
         deliverable(name="invoice.docx", extensions=(), document_types=("invoice",)),
     ]
-    risk = find(risks_for(project(), items), "material-missing")
-    assert risk is not None
-    assert "doc合同" in risk.missing_parts
-    assert "pdf合同" not in risk.missing_parts
-    assert "发票不全" not in risk.missing_parts
+    risks = [risk for risk in risks_for(project(), items) if risk.type == "material-missing"]
+    assert len(risks) == 1
+    assert risks[0].missing_parts == ["doc合同"]
 
 
 def test_material_missing_all_clear():

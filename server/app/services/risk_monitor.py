@@ -79,30 +79,29 @@ def evaluate_project(
 
     if config.enabled_rules.material_missing:
         contract_items = [item for item in deliverables if item.category == "合同"]
-        missing_parts: list[str] = []
         extensions = {
             ext.lower()
             for item in contract_items
             for ext in item.extensions
         }
-        if not any(ext in (".doc", ".docx") for ext in extensions):
-            missing_parts.append("doc合同")
-        if ".pdf" not in extensions:
-            missing_parts.append("pdf合同")
         has_invoice = any(
             "invoice" in (item.document_types or ())
             or "发票" in item.name
             for item in contract_items
         )
-        if not has_invoice:
-            missing_parts.append("发票不全")
-        if missing_parts:
-            risks.append(RiskItem(
-                type="material-missing", level="warn",
-                missing_parts=missing_parts,
-                reason="项目材料缺失：" + "、".join(missing_parts) + "。",
-                recommendation="补齐缺失的合同与发票文件，并冻结有效版本。",
-            ))
+        missing_specs = [
+            ("doc合同", not any(ext in (".doc", ".docx") for ext in extensions)),
+            ("pdf合同", ".pdf" not in extensions),
+            ("发票不全", not has_invoice),
+        ]
+        for part, missing in missing_specs:
+            if missing:
+                risks.append(RiskItem(
+                    type="material-missing", level="warn",
+                    missing_parts=[part],
+                    reason=f"项目材料缺失：{part}。",
+                    recommendation="补齐缺失的合同与发票文件，并冻结有效版本。",
+                ))
 
     current_date = today or date.today()
     delivery_date = getattr(project, "planned_delivery_date", None)

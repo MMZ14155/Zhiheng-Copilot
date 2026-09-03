@@ -17,7 +17,7 @@ const riskColors: Record<string, string> = {
 };
 
 export default function ProjectCard({ project }: { project: ProjectListItem }) {
-  const materialRisk = project.risks?.find(
+  const materialRisks = project.risks?.filter(
     (risk) => risk.type === RISK_TYPE_MATERIAL_MISSING,
   );
   const deliveryRisk = project.risks?.find(
@@ -26,7 +26,7 @@ export default function ProjectCard({ project }: { project: ProjectListItem }) {
   const paymentRisk = project.risks?.find(
     (risk) => risk.type === RISK_TYPE_PAYMENT_UNCLEARED,
   );
-  const primaryRisk = materialRisk ?? deliveryRisk ?? paymentRisk;
+  const primaryRisk = materialRisks?.[0] ?? deliveryRisk ?? paymentRisk;
   const remainingDays = deliveryRisk?.remainingDays;
   const deadlineText =
     remainingDays === null || remainingDays === undefined
@@ -69,8 +69,13 @@ export default function ProjectCard({ project }: { project: ProjectListItem }) {
       </div>
       {primaryRisk && (
         <div className="risk-highlights">
-          {materialRisk?.missingParts && (
-            <span className="warn">缺失 {materialRisk.missingParts.join("、")}</span>
+          {materialRisks?.map(
+            (risk) =>
+              risk.missingParts && (
+                <span key={risk.missingParts.join(",")} className="warn">
+                  缺失 {risk.missingParts.join("、")}
+                </span>
+              ),
           )}
           {deadlineText && (
             <span className={remainingDays !== null && remainingDays !== undefined && remainingDays < 0 ? "block" : "warn"}>
