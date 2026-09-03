@@ -151,11 +151,38 @@ async def _build_link_summaries(
     return grouped
 
 
+async def _build_manager_map(
+    session: AsyncSession,
+    project_ids: list[int],
+) -> dict[int, list[int]]:
+    if not project_ids:
+        return {}
+    result = await session.execute(
+        select(ProjectMember.project_id, ProjectMember.user_id).where(
+            ProjectMember.project_id.in_(project_ids),
+            ProjectMember.role == "manager",
+        )
+    )
+    grouped: dict[int, list[int]] = {}
+    for row in result.all():
+        if isinstance(row, ProjectMember):
+            grouped.setdefault(row.project_id, []).append(row.user_id)
+        elif isinstance(row, Project):
+            continue
+        else:
+            project_id, user_id = row
+            grouped.setdefault(project_id, []).append(user_id)
+    return grouped
+
+
 def _to_project_response(
     project: Project,
     links: list[RelatedProjectSummary] | None = None,
+    manager_ids: list[int] | None = None,
 ) -> ProjectResponse:
-    return ProjectResponse.model_validate(project).model_copy(update={"links": links})
+    return ProjectResponse.model_validate(project).model_copy(
+        update={"links": links, "manager_ids": manager_ids or []}
+    )
 
 
 @router.get("/projects", response_model=ProjectListResponse)
@@ -172,12 +199,25 @@ async def list_projects(
     project_type: ProjectType | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
     user: User = Depends(get_current_user),
+    region: str | None = Query(default=None, min_length=1, max_length=100),
+    manager_id: int | None = Query(default=None, ge=1),
 ) -> ProjectListResponse:
     filters = []
     if status:
         filters.append(Project.status == status)
     if project_type:
         filters.append(Project.project_type == project_type)
+    if region:
+        filters.append(Project.region == region)
+    if manager_id:
+        filters.append(
+            Project.id.in_(
+                select(ProjectMember.project_id).where(
+                    ProjectMember.user_id == manager_id,
+                    ProjectMember.role == "manager",
+                )
+            )
+        )
     if client_name:
         filters.append(Project.customer_name.ilike(f"%{client_name}%"))
     if company:
@@ -189,7 +229,11 @@ async def list_projects(
             )
         )
     if not user.is_admin:
-        filters.append(Project.id.in_(select(ProjectMember.project_id).where(ProjectMember.user_id == user.id)))
+        filters.append(
+            Project.id.in_(
+                select(ProjectMember.project_id).where(ProjectMember.user_id == user.id)
+            )
+        )
 
     total_stmt = select(func.count()).select_from(Project)
     list_stmt = select(Project).order_by(Project.created_at.desc(), Project.id.desc())
@@ -201,13 +245,14 @@ async def list_projects(
     result = await session.execute(list_stmt.offset((page - 1) * size).limit(size))
     projects = list(result.scalars().all())
     link_map = await _build_link_summaries(session, [project.id for project in projects]) if expand == "links" else {}
+    manager_map = await _build_manager_map(session, [project.id for project in projects])
 
     logger.info("listed projects page=%s size=%s total=%s", page, size, total or 0)
     return ProjectListResponse(
         page=page,
         size=size,
         total=total or 0,
-        items=[_to_project_response(project, link_map.get(project.id)) for project in projects],
+        items=[_to_project_response(project, link_map.get(project.id), manager_map.get(project.id, [])) for project in projects],
     )
 
 
@@ -383,7 +428,7 @@ async def dismiss_delivery_warning(
     await session.commit()
     await session.refresh(project)
     logger.info("dismissed delivery warning project_id=%s user_id=%s", project_id, user.id)
-    return ProjectResponse.model_validate(project)
+    return _to_project_response(project)
 
 
 @router.get("/projects/{project_id}/collection-overview", response_model=CollectionOverviewResponse)

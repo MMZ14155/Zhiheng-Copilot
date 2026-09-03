@@ -22,6 +22,10 @@ import {
   Skeleton,
 } from "../components/ui";
 
+import { PROJECT_REGIONS } from "../constants/regions";
+import { adminApi } from "../api";
+import type { AdminUser } from "../api";
+
 export default function RiskBoard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState<ProjectList | null>(null);
@@ -41,23 +45,33 @@ export default function RiskBoard() {
   const [projectTypeFilter, setProjectTypeFilter] = useState<
     ProjectType | "all"
   >("all");
+  const [regionFilter, setRegionFilter] = useState<string>("all");
+  const [managerFilter, setManagerFilter] = useState<string>("all");
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [projects, riskItems] = await Promise.all([
+      const [projects, riskItems, userList] = await Promise.all([
         projectsApi.listProjects({
           page: 1,
           size: 100,
           projectType:
             projectTypeFilter === "all" ? undefined : projectTypeFilter,
+          region: regionFilter === "all" ? undefined : regionFilter,
+          managerId: managerFilter === "all" ? undefined : Number(managerFilter),
         }),
         // 批量接口失败时降级为无风险数据，项目列表仍正常展示。
         projectsApi.listProjectRisksBatch().catch((reason: unknown) => {
           console.error("项目风险批量加载失败", reason);
           return [];
         }),
+        adminApi.listUsers().catch((reason: unknown) => {
+          console.error("用户列表加载失败", reason);
+          return [];
+        }),
       ]);
+      setUsers(userList);
       const riskMap = new Map(riskItems.map((item) => [item.projectId, item]));
       setData({
         ...projects,
@@ -76,7 +90,7 @@ export default function RiskBoard() {
     } finally {
       setLoading(false);
     }
-  }, [projectTypeFilter]);
+  }, [projectTypeFilter, regionFilter, managerFilter]);
   useEffect(() => {
     void load();
   }, [load]);
@@ -179,6 +193,30 @@ export default function RiskBoard() {
               {PROJECT_TYPES.map((type) => (
                 <option key={type} value={type}>
                   {PROJECT_TYPE_LABELS[type]}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="所属地区"
+              value={regionFilter}
+              onChange={(e) => setRegionFilter(e.target.value)}
+            >
+              <option value="all">全部地区</option>
+              {PROJECT_REGIONS.map((region) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="负责人"
+              value={managerFilter}
+              onChange={(e) => setManagerFilter(e.target.value)}
+            >
+              <option value="all">全部负责人</option>
+              {users.map((user) => (
+                <option key={user.id} value={String(user.id)}>
+                  {user.name || user.login}
                 </option>
               ))}
             </Select>

@@ -29,6 +29,8 @@ export interface ProjectListParams {
   projectType?: string;
   clientName?: string;
   expand?: "links";
+  region?: string;
+  managerId?: number;
 }
 
 export async function listProjects(params: ProjectListParams = {}) {
@@ -40,6 +42,8 @@ export async function listProjects(params: ProjectListParams = {}) {
     project_type: params.projectType,
     client_name: params.clientName,
     expand: params.expand,
+    region: params.region,
+    manager_id: params.managerId,
   });
   return mapProjectList(
     await jsonRequest<ProjectListResponseDto>(`/projects${query}`),

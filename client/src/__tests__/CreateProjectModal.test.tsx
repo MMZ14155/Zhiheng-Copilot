@@ -38,6 +38,10 @@ vi.mock("../api", async (original) => {
       listProjects: vi.fn(),
       createProject: vi.fn(),
     },
+    filesApi: {
+      ...actual.filesApi,
+      workspaceCommit: vi.fn(),
+    },
   };
 });
 

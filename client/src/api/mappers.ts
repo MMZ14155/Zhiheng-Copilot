@@ -55,6 +55,7 @@ export const mapProject = (dto: ProjectResponseDto): ProjectListItem => ({
   plannedDeliveryDate: dto.planned_delivery_date,
   updatedAt: dto.updated_at,
   region: dto.region,
+  managerIds: dto.manager_ids ?? [],
 });
 export const mapProjectList = (dto: ProjectListResponseDto): ProjectList => ({
   page: dto.page,

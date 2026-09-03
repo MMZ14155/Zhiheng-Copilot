@@ -45,8 +45,8 @@ def test_list_projects_admin_and_member(fake_session, users, now):
     fake_session.execute.return_value = Result([p])
     response = asyncio.run(projects.list_projects(1, 20, "客户", "项目启动", "客", None, "软件销售", fake_session, users.member))
     assert response.total == 1 and response.items[0].code == "P1"
-    list_sql = str(fake_session.execute.call_args.args[0])
-    assert "project.project_type" in list_sql and "project_member.user_id" in list_sql
+    executed_sqls = [str(call.args[0]) for call in fake_session.execute.call_args_list]
+    assert any("project.project_type" in sql for sql in executed_sqls) and any("project_member.user_id" in sql for sql in executed_sqls)
     response = asyncio.run(projects.list_projects(2, 5, None, None, None, None, None, fake_session, users.admin))
     assert response.page == 2
 

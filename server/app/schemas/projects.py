@@ -164,6 +164,7 @@ class ProjectResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     links: list[RelatedProjectSummary] | None = None
+    manager_ids: list[int] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

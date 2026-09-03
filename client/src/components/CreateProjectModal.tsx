@@ -8,6 +8,7 @@
 import {
   ApiError,
   aiApi,
+  filesApi,
   projectsApi,
   type ProjectDraft,
   type ProjectListItem,
@@ -290,7 +291,16 @@ export default function CreateProjectModal({
     };
     setSubmitting(true);
     try {
-      await projectsApi.createProject(body);
+      const project = await projectsApi.createProject(body);
+      if (mode === "ai" && contractFiles.length > 0) {
+        await filesApi.workspaceCommit(project.id, {
+          operations: contractFiles.map((file) => ({
+            op: "add",
+            name: file.name,
+            file,
+          })),
+        });
+      }
       await onCreated();
       onClose();
     } catch (reason) {

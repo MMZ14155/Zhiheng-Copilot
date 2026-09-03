@@ -133,6 +133,7 @@ export interface ProjectListItem {
   plannedDeliveryDate: string | null;
   updatedAt: string;
   region: string | null;
+  managerIds?: number[];
   riskLevel?: RiskLevel | null;
   risks?: ProjectRisk[];
 }

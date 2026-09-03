@@ -80,6 +80,7 @@ export interface ProjectResponseDto {
   created_at: string;
   updated_at: string;
   links: RelatedProjectSummaryDto[] | null;
+  manager_ids: number[];
 }
 export interface RelatedProjectSummaryDto {
   id: number;
