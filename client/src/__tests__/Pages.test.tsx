@@ -142,6 +142,7 @@ describe("页面", () => {
       projects: {
         total: 1,
         risks: { warn: 1, ok: 0 },
+        riskTypes: { materialMissing: 1, deliveryWarning: 0, paymentUncleared: 0 },
         averageCostUsageRate: { value: 20, sampleCount: 1 },
         averageScheduleUsageRate: { value: null, sampleCount: 0 },
         averageSatisfaction: { value: 5, sampleCount: 1 },
@@ -187,6 +188,7 @@ describe("页面", () => {
         projects: {
           total: 0,
           risks: { warn: 0, ok: 0 },
+          riskTypes: { materialMissing: 0, deliveryWarning: 0, paymentUncleared: 0 },
           averageCostUsageRate: { value: null, sampleCount: 0 },
           averageScheduleUsageRate: { value: null, sampleCount: 0 },
           averageSatisfaction: { value: null, sampleCount: 0 },

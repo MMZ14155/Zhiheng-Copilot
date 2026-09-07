@@ -535,6 +535,11 @@ describe("API domain modules", () => {
       projects: {
         total: 1,
         risks: { block: 0, warn: 1, ok: 0 },
+        risk_types: {
+          material_missing: 1,
+          delivery_warning: 0,
+          payment_uncleared: 0,
+        },
         average_cost_usage_rate: metric,
         average_schedule_usage_rate: metric,
         average_satisfaction: metric,
@@ -567,6 +572,7 @@ describe("API domain modules", () => {
     });
     const overview = await statistics.getStatisticsOverview();
     expect(overview.byStage[0].averageCostUsageRate.sampleCount).toBe(2);
+    expect(overview.projects.riskTypes.materialMissing).toBe(1);
     expect(overview.payment.receivedAmount).toBe(40);
     expect(overview.projectTypeDistribution).toEqual({ 软件销售: 1 });
     next({ detail: "禁止", code: "NO" }, 403);

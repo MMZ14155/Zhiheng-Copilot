@@ -183,7 +183,12 @@ def test_statistics_member_filter(fake_session, users, monkeypatch):
         payment_terms=({"stage": "签订", "ratio": "100%"},),
     )]})
     monkeypatch.setattr(statistics, "load_financial_documents", load_finance)
-    response = asyncio.run(statistics.get_statistics_overview(fake_session, users.member))
+    monkeypatch.setattr(
+        statistics, "_load_tracked_payment_amounts", AsyncMock(return_value={})
+    )
+    response = asyncio.run(
+        statistics.get_statistics_overview(session=fake_session, user=users.member)
+    )
     assert response.projects.total == 1 and response.files.workspace_file_total == 2
     assert response.project_type_distribution == {"软件销售": 1}
     assert response.payment.contract_amount == Decimal("100")

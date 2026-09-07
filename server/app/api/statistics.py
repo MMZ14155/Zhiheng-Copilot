@@ -11,6 +11,7 @@ from app.db.session import get_session
 from app.api.dependencies import get_current_user
 from app.models.project import Project
 from app.models.project_member import ProjectMember
+from app.models.tracked_file import TrackedFile
 from app.models.user import User
 from app.models.workspace_file import WorkspaceFile
 from app.schemas.statistics import (
@@ -19,6 +20,7 @@ from app.schemas.statistics import (
     ProjectStatistics,
     PaymentStatistics,
     RiskCounts,
+    RiskTypeCounts,
     StatisticsOverviewResponse,
 )
 from app.services.deliverables import DeliverableService
@@ -43,6 +45,33 @@ async def _load_deliverable_states(
 ) -> dict[int, list[DeliverableRiskState]]:
     # 批量实现已下沉到 DeliverableService，此处保留薄封装以兼容既有调用与测试。
     return await DeliverableService.list_states_by_projects(session, project_ids)
+
+
+async def _load_tracked_payment_amounts(
+    session: AsyncSession,
+    project_ids: list[int],
+) -> dict[int, tuple[Decimal, Decimal]]:
+    """按项目汇总回款 deliverable 的应收与实收金额，作为单据解析数据的兜底。"""
+    if not project_ids:
+        return {}
+    rows = (
+        await session.execute(
+            select(
+                TrackedFile.project_id,
+                func.coalesce(func.sum(TrackedFile.receivable_amount), 0),
+                func.coalesce(func.sum(TrackedFile.received_amount), 0),
+            )
+            .where(
+                TrackedFile.project_id.in_(project_ids),
+                TrackedFile.category == "回款",
+            )
+            .group_by(TrackedFile.project_id)
+        )
+    ).all()
+    return {
+        project_id: (Decimal(receivable or 0), Decimal(received or 0))
+        for project_id, receivable, received in rows
+    }
 
 
 @router.get("/statistics/overview", response_model=StatisticsOverviewResponse)
@@ -84,8 +113,19 @@ async def get_statistics_overview(
     workspace_file_total = await session.scalar(file_count_stmt) or 0
     deliverables = await _load_deliverable_states(session, filtered_ids)
     financial_documents = await load_financial_documents(session, filtered_ids)
+    tracked_payments = await _load_tracked_payment_amounts(session, filtered_ids)
 
     risk_counts = Counter({"warn": 0, "ok": 0})
+    risk_type_counts = {
+        "material_missing": 0,
+        "delivery_warning": 0,
+        "payment_uncleared": 0,
+    }
+    risk_type_keys = {
+        "material-missing": "material_missing",
+        "delivery-warning": "delivery_warning",
+        "payment-uncleared": "payment_uncleared",
+    }
     deliverable_counts = empty_status_counts()
     type_counts: Counter[str] = Counter()
     deadline_counts = Counter({"overdue": 0, "due_soon": 0, "normal": 0, "excluded": 0})
@@ -94,9 +134,14 @@ async def get_statistics_overview(
     for project in projects:
         states = deliverables.get(project.id, [])
         finance = aggregate_project_finance(financial_documents.get(project.id, []))
-        risk_counts[aggregate_risk(evaluate_project(
+        project_risks = evaluate_project(
             project, states, load_risk_config(project), finance,
-        ))] += 1
+        )
+        risk_counts[aggregate_risk(project_risks)] += 1
+        for risk_type in {risk.type for risk in project_risks}:
+            key = risk_type_keys.get(risk_type)
+            if key:
+                risk_type_counts[key] += 1
         deliverable_counts.update(item.status for item in states)
         type_counts[project.project_type or "未分类"] += 1
         if project.status in {"completed", "archived"} or project.planned_delivery_date is None:
@@ -105,11 +150,17 @@ async def get_statistics_overview(
             remaining = (project.planned_delivery_date - date.today()).days
             key = "overdue" if remaining < 0 else "due_soon" if remaining <= load_risk_config(project).thresholds.delivery_warn_days else "normal"
             deadline_counts[key] += 1
-        receivable += finance.receivable_amount
-        contract_total += finance.contract_amount
+        tracked_receivable, tracked_received = tracked_payments.get(
+            project.id, (Decimal("0"), Decimal("0")),
+        )
+        project_receivable = finance.receivable_amount or tracked_receivable
+        project_received = finance.received_amount or tracked_received
+        project_contract = finance.contract_amount or project.contract_amount or Decimal("0")
+        receivable += project_receivable
+        contract_total += project_contract
         invoiced += finance.invoiced_amount
-        received += finance.received_amount
-        overdue += finance.overdue_amount
+        received += project_received
+        overdue += max(project_receivable - project_received, Decimal("0"))
         incomplete_projects += int(finance.data_incomplete)
 
     cost, schedule, satisfaction = project_averages(projects)
@@ -128,6 +179,7 @@ async def get_statistics_overview(
         projects=ProjectStatistics(
             total=len(projects),
             risks=RiskCounts(**risk_counts),
+            risk_types=RiskTypeCounts(**risk_type_counts),
             average_cost_usage_rate=cost,
             average_schedule_usage_rate=schedule,
             average_satisfaction=satisfaction,

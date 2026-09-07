@@ -152,12 +152,19 @@ const mapAverageMetric = (dto: AverageMetricDto): AverageMetric => ({
   value: dto.value,
   sampleCount: dto.sample_count,
 });
+const toNumber = (value: string | number | null | undefined): number | null =>
+  value === null || value === undefined ? null : Number(value);
 export const mapStatisticsOverview = (
   dto: StatisticsOverviewResponseDto,
 ): StatisticsOverview => ({
   projects: {
     total: dto.projects.total,
     risks: dto.projects.risks,
+    riskTypes: {
+      materialMissing: dto.projects.risk_types.material_missing,
+      deliveryWarning: dto.projects.risk_types.delivery_warning,
+      paymentUncleared: dto.projects.risk_types.payment_uncleared,
+    },
     averageCostUsageRate: mapAverageMetric(
       dto.projects.average_cost_usage_rate,
     ),
@@ -182,13 +189,16 @@ export const mapStatisticsOverview = (
   projectTypeDistribution: dto.project_type_distribution,
   deliveryDeadlineDistribution: dto.delivery_deadline_distribution,
   payment: {
-    contractAmount: dto.payment.contract_amount,
-    invoicedAmount: dto.payment.invoiced_amount,
-    receivableAmount: dto.payment.receivable_amount,
-    receivedAmount: dto.payment.received_amount,
-    outstandingAmount: dto.payment.outstanding_amount,
-    overdueAmount: dto.payment.overdue_amount,
-    collectionRate: dto.payment.collection_rate,
+    contractAmount: toNumber(dto.payment.contract_amount) ?? 0,
+    invoicedAmount: toNumber(dto.payment.invoiced_amount) ?? 0,
+    receivableAmount: toNumber(dto.payment.receivable_amount) ?? 0,
+    receivedAmount: toNumber(dto.payment.received_amount) ?? 0,
+    outstandingAmount: toNumber(dto.payment.outstanding_amount) ?? 0,
+    overdueAmount: toNumber(dto.payment.overdue_amount) ?? 0,
+    collectionRate:
+      dto.payment.collection_rate === null
+        ? null
+        : Number(dto.payment.collection_rate),
     dataIncompleteProjects: dto.payment.data_incomplete_projects,
   },
 });

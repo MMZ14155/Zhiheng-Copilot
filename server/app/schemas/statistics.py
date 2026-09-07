@@ -14,9 +14,16 @@ class RiskCounts(BaseModel):
     ok: int
 
 
+class RiskTypeCounts(BaseModel):
+    material_missing: int = 0
+    delivery_warning: int = 0
+    payment_uncleared: int = 0
+
+
 class ProjectStatistics(BaseModel):
     total: int
     risks: RiskCounts
+    risk_types: RiskTypeCounts = Field(default_factory=RiskTypeCounts)
     average_cost_usage_rate: AverageMetric
     average_schedule_usage_rate: AverageMetric
     average_satisfaction: AverageMetric

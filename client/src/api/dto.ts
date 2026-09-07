@@ -251,6 +251,11 @@ export interface StatisticsOverviewResponseDto {
   projects: {
     total: number;
     risks: Record<RiskLevelDto, number>;
+    risk_types: {
+      material_missing: number;
+      delivery_warning: number;
+      payment_uncleared: number;
+    };
     average_cost_usage_rate: AverageMetricDto;
     average_schedule_usage_rate: AverageMetricDto;
     average_satisfaction: AverageMetricDto;

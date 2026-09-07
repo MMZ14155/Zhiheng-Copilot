@@ -204,6 +204,39 @@ export default function Statistics() {
               <div className="stats-value">{data.projects.risks.ok}</div>
             </div>
           </div>
+          <h3 className="section-title">风险类型</h3>
+          <div className="stats-grid stats-row-primary">
+            <button
+              type="button"
+              className="stats-card warn block drilldown-card"
+              onClick={() => navigate(`${ROUTES.riskBoard}?filter=material`)}
+            >
+              <span className="stats-label">材料缺失</span>
+              <span className="stats-value">
+                {data.projects.riskTypes.materialMissing}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="stats-card delivery block drilldown-card"
+              onClick={() => navigate(`${ROUTES.riskBoard}?filter=delivery`)}
+            >
+              <span className="stats-label">即将到期</span>
+              <span className="stats-value">
+                {data.projects.riskTypes.deliveryWarning}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="stats-card payment block drilldown-card"
+              onClick={() => navigate(`${ROUTES.riskBoard}?filter=payment`)}
+            >
+              <span className="stats-label">回款未结清</span>
+              <span className="stats-value">
+                {data.projects.riskTypes.paymentUncleared}
+              </span>
+            </button>
+          </div>
           <h3 className="section-title">需关注</h3>
           <div className="stats-grid stats-row-primary">
             <div className="stats-card delivery">
@@ -278,6 +311,12 @@ export default function Statistics() {
               <div className="stats-label">已收金额</div>
               <div className="stats-value money-value">
                 ¥ {formatMoney(data.payment.receivedAmount)}
+              </div>
+            </div>
+            <div className="stats-card">
+              <div className="stats-label">未收金额</div>
+              <div className="stats-value money-value">
+                ¥ {formatMoney(data.payment.outstandingAmount)}
               </div>
             </div>
             <button

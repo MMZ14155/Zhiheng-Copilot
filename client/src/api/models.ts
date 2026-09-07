@@ -86,6 +86,11 @@ export interface StatisticsOverview {
   projects: {
     total: number;
     risks: Record<RiskLevel, number>;
+    riskTypes: {
+      materialMissing: number;
+      deliveryWarning: number;
+      paymentUncleared: number;
+    };
     averageCostUsageRate: AverageMetric;
     averageScheduleUsageRate: AverageMetric;
     averageSatisfaction: AverageMetric;
